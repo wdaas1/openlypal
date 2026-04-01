@@ -39,13 +39,11 @@ app.use("*", logger());
 
 // Auth middleware - populate user/session for all routes
 app.use("*", async (c, next) => {
-  const session = await auth.api.getSession({
-    headers: c.req.raw.headers,
-  });
-  if (session) {
-    c.set("user", session.user);
-    c.set("session", session.session);
-  } else {
+  try {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    c.set("user", session?.user ?? null);
+    c.set("session", session?.session ?? null);
+  } catch {
     c.set("user", null);
     c.set("session", null);
   }
@@ -56,7 +54,7 @@ app.use("*", async (c, next) => {
 app.get("/health", (c) => c.json({ status: "ok" }));
 
 // Auth routes - Better Auth handles these
-app.on(["POST", "GET"], "/api/auth/**", (c) => {
+app.all("/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
 });
 
