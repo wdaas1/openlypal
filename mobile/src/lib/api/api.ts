@@ -7,24 +7,29 @@ const request = async <T>(
   url: string,
   options: { method?: string; body?: string } = {}
 ): Promise<T> => {
-  const response = await fetch(`${baseUrl}${url}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      Cookie: authClient.getCookie(),
-    },
-  });
+  try {
+    const response = await fetch(`${baseUrl}${url}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        Cookie: authClient.getCookie(),
+      },
+    });
 
-  if (response.status === 204) return undefined as T;
+    if (response.status === 204) return null as T;
 
-  const contentType = response.headers.get("content-type");
-  if (contentType?.includes("application/json")) {
-    const json = await response.json();
-    return json.data !== undefined ? json.data : json;
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
+      const json = await response.json();
+      return (json?.data !== undefined ? json.data : json) as T;
+    }
+
+    return null as T;
+  } catch (e) {
+    console.error("API request failed:", url, e);
+    return null as T;
   }
-
-  return undefined as T;
 };
 
 export const api = {
