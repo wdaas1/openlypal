@@ -25,9 +25,14 @@ export default function SignInScreen() {
       }
       return result;
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      console.log('[AUTH] sign-in success, user:', JSON.stringify(result?.data?.user?.email));
+      const cookie = (authClient as any).getCookie?.();
+      console.log('[AUTH] stored cookie after sign-in:', cookie ? 'HAS_COOKIE' : 'NO_COOKIE', cookie);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await invalidateSession();
+      const sessionCheck = await authClient.getSession();
+      console.log('[AUTH] session after invalidate:', JSON.stringify(sessionCheck?.data?.user?.email));
     },
   });
 
