@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { expo } from "@better-auth/expo";
-import { emailOTP } from "better-auth/plugins";
 import { prisma } from "./prisma";
 import { env } from "./env";
 
@@ -11,6 +10,10 @@ export const auth = betterAuth({
   }),
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BACKEND_URL,
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: true,
+  },
   trustedOrigins: [
     "vibecode://*/*",
     "exp://*/*",
@@ -22,35 +25,7 @@ export const auth = betterAuth({
     "https://*.vibecode.dev",
     "https://vibecode.dev",
   ],
-  plugins: [
-    expo(),
-    emailOTP({
-      async sendVerificationOTP({ email, otp, type }) {
-        if (type !== "sign-in") return;
-        const response = await fetch(
-          "https://smtp.vibecodeapp.com/v1/send/otp",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: email,
-              code: String(otp),
-              fromName: "Tumblr Clone",
-              lang: "en",
-            }),
-          }
-        );
-        if (!response.ok) {
-          const data = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          throw new Error(
-            data?.error || `Failed to send OTP (HTTP ${response.status})`
-          );
-        }
-      },
-    }),
-  ],
+  plugins: [expo()],
   advanced: {
     trustedProxyHeaders: true,
     disableCSRFCheck: true,
