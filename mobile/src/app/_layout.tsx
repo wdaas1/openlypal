@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { View, AppState, AppStateStatus } from 'react-native';
+import { View, AppState, AppStateStatus, Platform } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useSession } from '@/lib/auth/use-session';
@@ -66,15 +66,19 @@ function PrivacyShield({ children }: { children: React.ReactNode }) {
   );
 }
 
+function NativeScreenCaptureGuard() {
+  usePreventScreenCapture();
+  return null;
+}
+
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
-  // Prevent screenshots and screen recording across the entire app
-  usePreventScreenCapture();
 
   if (isLoading) return null;
 
   return (
     <ThemeProvider value={TumblrDark}>
+      {Platform.OS !== 'web' && <NativeScreenCaptureGuard />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!!session?.user}>
           <Stack.Screen name="(app)" />
