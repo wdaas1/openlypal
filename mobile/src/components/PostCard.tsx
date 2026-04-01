@@ -94,7 +94,7 @@ export function PostCard({ post }: PostCardProps) {
           <UserAvatar uri={post.user.image} name={post.user.name} size={38} />
         </Pressable>
         <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 14 }}>
+          <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 12 }}>
             {post.user.username ?? post.user.name}
           </Text>
           <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }}>
