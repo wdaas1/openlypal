@@ -7,6 +7,7 @@ import { auth } from "./auth";
 import { postsRouter } from "./routes/posts";
 import { usersRouter } from "./routes/users";
 import { exploreRouter } from "./routes/explore";
+import { activityRouter } from "./routes/activity";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -62,6 +63,7 @@ app.all("/api/auth/*", (c) => {
 app.route("/api/posts", postsRouter);
 app.route("/api/users", usersRouter);
 app.route("/api/explore", exploreRouter);
+app.route("/api/activity", activityRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

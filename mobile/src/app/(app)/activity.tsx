@@ -57,7 +57,10 @@ export default function ActivityScreen() {
 
   const { data: activities, isLoading, isRefetching } = useQuery({
     queryKey: ['activity'],
-    queryFn: () => api.get<ActivityItem[]>('/api/activity'),
+    queryFn: async () => {
+      const result = await api.get<ActivityItem[]>('/api/activity');
+      return result ?? [];
+    },
   });
 
   return (
