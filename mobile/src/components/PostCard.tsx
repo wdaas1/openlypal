@@ -6,6 +6,7 @@ import {
   Heart,
   Repeat2,
   MessageCircle,
+  MessageSquare,
   Share,
   Volume2,
   VolumeX,
@@ -14,6 +15,7 @@ import {
   MoreHorizontal,
   Flag,
 } from 'lucide-react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import Animated, {
   useSharedValue,
@@ -146,7 +148,29 @@ export function PostCard({ post }: PostCardProps) {
 
   const videoHeight = Math.round(width * 9 / 16);
 
+  const renderRightActions = () => (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
+      }}
+      style={{
+        backgroundColor: '#00CF35',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 72,
+        marginBottom: 10,
+        marginHorizontal: 12,
+        borderRadius: 16,
+      }}
+    >
+      <MessageSquare size={24} color="#001935" />
+      <Text style={{ color: '#001935', fontSize: 10, fontWeight: '700', marginTop: 4 }}>DM</Text>
+    </Pressable>
+  );
+
   return (
+    <Swipeable renderRightActions={renderRightActions} friction={2} rightThreshold={40}>
     <Pressable
       testID={`post-card-${post.id}`}
       onPress={handleTap}
@@ -426,6 +450,18 @@ export function PostCard({ post }: PostCardProps) {
           ) : null}
         </Pressable>
 
+        <Pressable
+          testID={`dm-button-${post.id}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
+        >
+          <MessageSquare size={18} color="#4a6fa5" />
+        </Pressable>
+
         <Pressable testID={`share-button-${post.id}`} style={{ marginLeft: 'auto' }} onPress={(e) => e.stopPropagation()}>
           <Share size={18} color="#4a6fa5" />
         </Pressable>
@@ -535,5 +571,6 @@ export function PostCard({ post }: PostCardProps) {
         </TouchableWithoutFeedback>
       </Modal>
     </Pressable>
+    </Swipeable>
   );
 }

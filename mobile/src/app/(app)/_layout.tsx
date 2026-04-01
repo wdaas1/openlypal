@@ -1,20 +1,65 @@
 import React, { useRef } from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { View, Pressable } from 'react-native';
-import { Home, Compass, PlusCircle, Zap, User } from 'lucide-react-native';
+import { View, Pressable, Text } from 'react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api/api';
+import type { Conversation } from '@/lib/types';
 
 type TabConfig = {
   route: string;
-  icon: (color: string, size: number) => React.ReactNode;
+  icon: (color: string, size: number, isActive: boolean) => React.ReactNode;
   isCenter?: boolean;
 };
+
+function ChatIcon({ color, size, isActive }: { color: string; size: number; isActive: boolean }) {
+  const { data: conversations } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => api.get<Conversation[]>('/api/conversations'),
+    refetchInterval: 10000,
+  });
+  const totalUnread = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0);
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <MessageSquare
+        size={size}
+        color={color}
+        fill={isActive ? color : 'transparent'}
+      />
+      {totalUnread > 0 ? (
+        <View style={{
+          position: 'absolute',
+          top: -4,
+          right: -6,
+          minWidth: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: '#FF4E6A',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 3,
+          borderWidth: 1.5,
+          borderColor: '#001935',
+        }}>
+          <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800' }}>
+            {totalUnread > 9 ? '9+' : String(totalUnread)}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 const TABS: TabConfig[] = [
   {
@@ -31,8 +76,8 @@ const TABS: TabConfig[] = [
     isCenter: true,
   },
   {
-    route: '/(app)/activity',
-    icon: (color, size) => <Zap size={size} color={color} />,
+    route: '/(app)/messenger',
+    icon: (color, size, isActive) => <ChatIcon color={color} size={size} isActive={isActive} />,
   },
   {
     route: '/(app)/profile',
@@ -53,6 +98,10 @@ function TabButton({
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    shadowColor: '#00CF35',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: isActive ? 0.6 : 0,
+    shadowRadius: isActive ? 8 : 0,
   }));
 
   const handlePress = () => {
@@ -88,7 +137,7 @@ function TabButton({
             },
           ]}
         >
-          {config.icon('#001935', 24)}
+          {config.icon('#001935', 24, false)}
         </Animated.View>
       </Pressable>
     );
@@ -115,7 +164,7 @@ function TabButton({
           },
         ]}
       >
-        {config.icon(iconColor, 22)}
+        {config.icon(iconColor, 22, isActive)}
       </Animated.View>
     </Pressable>
   );
@@ -130,7 +179,7 @@ function FloatingTabBar() {
     if (pathname === '/' || pathname === '/index' || pathname.endsWith('/(app)')) return 0;
     if (pathname.includes('/explore')) return 1;
     if (pathname.includes('/create')) return 2;
-    if (pathname.includes('/activity')) return 3;
+    if (pathname.includes('/messenger')) return 3;
     if (pathname.includes('/profile')) return 4;
     return -1;
   };
@@ -169,7 +218,7 @@ function FloatingTabBar() {
               '/(app)/index': '/',
               '/(app)/explore': '/(app)/explore',
               '/(app)/create': '/(app)/create',
-              '/(app)/activity': '/(app)/activity',
+              '/(app)/messenger': '/(app)/messenger',
               '/(app)/profile': '/(app)/profile',
             };
             router.push(routeMap[tab.route] as any);
@@ -177,6 +226,71 @@ function FloatingTabBar() {
         />
       ))}
     </View>
+  );
+}
+
+function FloatingChatButton() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const pulseScale = useSharedValue(1);
+
+  React.useEffect(() => {
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.08, { duration: 900 }),
+        withTiming(1, { duration: 900 })
+      ),
+      -1,
+      false
+    );
+  }, [pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  if (pathname.includes('/messenger')) return null;
+
+  const bottomOffset = Math.max(insets.bottom, 12) + 64 + 16;
+
+  return (
+    <Animated.View
+      style={[
+        pulseStyle,
+        {
+          position: 'absolute',
+          bottom: bottomOffset,
+          right: 20,
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          shadowColor: '#00CF35',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 16,
+          elevation: 12,
+        },
+      ]}
+    >
+      <Pressable
+        testID="floating-chat-button"
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push('/(app)/messenger' as any);
+        }}
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: '#00CF35',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MessageSquare size={22} color="#001935" />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -193,9 +307,9 @@ export default function AppLayout() {
         <Tabs.Screen name="index" options={{ title: 'Home' }} />
         <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
         <Tabs.Screen name="create" options={{ title: 'Create' }} />
-        <Tabs.Screen name="activity" options={{ title: 'Activity' }} />
+        <Tabs.Screen name="activity" options={{ href: null, title: 'Activity' }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-        <Tabs.Screen name="messenger" options={{ href: null }} />
+        <Tabs.Screen name="messenger" options={{ title: 'Chat' }} />
         <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
         <Tabs.Screen name="post/[id]" options={{ href: null }} />
         <Tabs.Screen name="user/[id]" options={{ href: null }} />
@@ -206,6 +320,7 @@ export default function AppLayout() {
         <Tabs.Screen name="edit-profile" options={{ href: null }} />
       </Tabs>
       <FloatingTabBar />
+      <FloatingChatButton />
     </View>
   );
 }
