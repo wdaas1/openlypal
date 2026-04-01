@@ -17,17 +17,26 @@ export default function ExploreScreen() {
 
   const { data: trendingPosts, isLoading: loadingTrending, isRefetching } = useQuery({
     queryKey: ['explore', 'trending'],
-    queryFn: () => api.get<Post[]>('/api/posts?sort=trending'),
+    queryFn: async () => {
+      const result = await api.get<Post[]>('/api/explore/trending');
+      return result ?? [];
+    },
   });
 
   const { data: recommendedUsers } = useQuery({
     queryKey: ['explore', 'users'],
-    queryFn: () => api.get<User[]>('/api/users?recommended=true'),
+    queryFn: async () => {
+      const result = await api.get<User[]>('/api/explore/recommended');
+      return result ?? [];
+    },
   });
 
   const { data: searchResults, isLoading: loadingSearch } = useQuery({
     queryKey: ['search', searchQuery],
-    queryFn: () => api.get<Post[]>(`/api/posts?search=${encodeURIComponent(searchQuery)}`),
+    queryFn: async () => {
+      const result = await api.get<Post[]>(`/api/posts?tag=${encodeURIComponent(searchQuery)}`);
+      return result ?? [];
+    },
     enabled: searchQuery.length > 2,
   });
 
