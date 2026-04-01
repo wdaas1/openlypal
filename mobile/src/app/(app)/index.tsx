@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
+import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   interpolate,
   Extrapolation,
@@ -230,9 +230,9 @@ export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
   const scrollY = useSharedValue(0);
 
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y;
-  });
+  const scrollHandler = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollY.value = e.nativeEvent.contentOffset.y;
+  };
 
   const headerStyle = useAnimatedStyle(() => ({
     height: interpolate(scrollY.value, [0, HEADER_HEIGHT], [HEADER_HEIGHT, 0], Extrapolation.CLAMP),
