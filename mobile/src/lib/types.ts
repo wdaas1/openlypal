@@ -58,3 +58,20 @@ export interface Comment {
   };
   createdAt: string;
 }
+
+export type Conversation = {
+  userId: string;
+  user: { id: string; name: string; username: string; image: string | null };
+  lastMessage: { content: string; createdAt: string } | null;
+  unreadCount: number;
+};
+
+export type Message = {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  read: boolean;
+  createdAt: string;
+  sender: { id: string; name: string; username: string; image: string | null };
+};

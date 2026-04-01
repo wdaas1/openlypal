@@ -1,60 +1,273 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ActivityIndicator, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { api } from '@/lib/api/api';
 import type { Post } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
+import { AdCard } from '@/components/AdCard';
 
-export default function FeedScreen() {
+type Tab = 'foryou' | 'following' | 'tags';
+
+type FeedItem =
+  | { type: 'post'; data: Post; key: string }
+  | { type: 'ad'; adIndex: number; key: string };
+
+function buildFeedItems(posts: Post[]): FeedItem[] {
+  const items: FeedItem[] = [];
+  let adIndex = 0;
+  posts.forEach((post, i) => {
+    items.push({ type: 'post', data: post, key: post.id });
+    if ((i + 1) % 5 === 0) {
+      items.push({ type: 'ad', adIndex: adIndex++, key: `ad-${adIndex}` });
+    }
+  });
+  return items;
+}
+
+function EmptyState({ message, sub, action, onAction }: {
+  message: string;
+  sub?: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 }}>
+      <Text style={{ color: '#4a6fa5', fontSize: 17, fontWeight: '600', textAlign: 'center' }}>
+        {message}
+      </Text>
+      {sub ? (
+        <Text style={{ color: '#4a6fa5', fontSize: 13, marginTop: 8, textAlign: 'center', opacity: 0.75 }}>
+          {sub}
+        </Text>
+      ) : null}
+      {action && onAction ? (
+        <Pressable
+          onPress={onAction}
+          style={{ marginTop: 20, backgroundColor: '#00CF35', borderRadius: 22, paddingHorizontal: 24, paddingVertical: 11 }}
+        >
+          <Text style={{ color: '#001935', fontWeight: '700', fontSize: 14 }}>{action}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function ForYouTab() {
   const queryClient = useQueryClient();
-
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
     queryFn: () => api.get<Post[]>('/api/posts'),
   });
 
+  const feedItems = buildFeedItems(posts ?? []);
+
   return (
-    <SafeAreaView testID="feed-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <FlashList
+      testID="feed-list"
+      data={feedItems}
+      keyExtractor={(item) => item.key}
+      renderItem={({ item }) => {
+        if (item.type === 'ad') {
+          return <AdCard index={item.adIndex} />;
+        }
+        return <PostCard post={item.data} />;
+      }}
+      estimatedItemSize={320}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed'] })}
+          tintColor="#00CF35"
+        />
+      }
+      ListEmptyComponent={
+        isLoading ? null : (
+          <EmptyState
+            message="No posts yet"
+            sub="Follow some blogs or create your first post"
+          />
+        )
+      }
+    />
+  );
+}
+
+function FollowingTab() {
+  const queryClient = useQueryClient();
+  const { data: posts, isLoading, isRefetching } = useQuery({
+    queryKey: ['feed', 'following'],
+    queryFn: () => api.get<Post[]>('/api/posts/feed/following'),
+  });
+
+  const feedItems = buildFeedItems(posts ?? []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#00CF35" size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <FlashList
+      testID="following-feed-list"
+      data={feedItems}
+      keyExtractor={(item) => item.key}
+      renderItem={({ item }) => {
+        if (item.type === 'ad') {
+          return <AdCard index={item.adIndex} />;
+        }
+        return <PostCard post={item.data} />;
+      }}
+      estimatedItemSize={320}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed', 'following'] })}
+          tintColor="#00CF35"
+        />
+      }
+      ListEmptyComponent={
+        <EmptyState
+          message="Nothing here yet"
+          sub="Follow people to see their posts in this tab"
+        />
+      }
+    />
+  );
+}
+
+function TagsTab() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const { data: followedTags, isLoading: loadingTags } = useQuery({
+    queryKey: ['tags', 'following'],
+    queryFn: () => api.get<string[]>('/api/tags/following'),
+  });
+
+  const { data: posts, isLoading: loadingPosts, isRefetching } = useQuery({
+    queryKey: ['feed', 'tags'],
+    queryFn: () => api.get<Post[]>('/api/feed/tags'),
+    enabled: (followedTags ?? []).length > 0,
+  });
+
+  const isLoading = loadingTags || loadingPosts;
+
+  if (isLoading && !posts) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#00CF35" size="large" />
+      </View>
+    );
+  }
+
+  if (!loadingTags && (followedTags ?? []).length === 0) {
+    return (
+      <EmptyState
+        message="You're not following any tags"
+        sub="Follow tags to see posts about topics you love"
+        action="Explore Tags"
+        onAction={() => router.push('/(app)/explore' as any)}
+      />
+    );
+  }
+
+  const feedItems = buildFeedItems(posts ?? []);
+
+  return (
+    <FlashList
+      testID="tags-feed-list"
+      data={feedItems}
+      keyExtractor={(item) => item.key}
+      renderItem={({ item }) => {
+        if (item.type === 'ad') {
+          return <AdCard index={item.adIndex} />;
+        }
+        return <PostCard post={item.data} />;
+      }}
+      estimatedItemSize={320}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed', 'tags'] })}
+          tintColor="#00CF35"
+        />
+      }
+      ListEmptyComponent={
+        <EmptyState
+          message="No posts in your tags yet"
+          sub="Posts tagged with topics you follow will appear here"
+        />
+      }
+    />
+  );
+}
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'foryou', label: 'For You' },
+  { id: 'following', label: 'Following' },
+  { id: 'tags', label: 'Tags' },
+];
+
+export default function FeedScreen() {
+  const [activeTab, setActiveTab] = useState<Tab>('foryou');
+  const { width } = useWindowDimensions();
+
+  return (
+    <SafeAreaView testID="feed-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
-      <View className="px-4 py-3 items-center" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Text className="text-white text-2xl font-black" style={{ fontStyle: 'italic', letterSpacing: -1 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#1a3a5c' }}>
+        <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1 }}>
           Openly
         </Text>
       </View>
 
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator testID="loading-indicator" color="#00CF35" size="large" />
-        </View>
-      ) : (
-        <FlashList
-          testID="feed-list"
-          data={posts ?? []}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PostCard post={item} />}
-          estimatedItemSize={300}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 20 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed'] })}
-              tintColor="#00CF35"
-            />
-          }
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center pt-32">
-              <Text className="text-lg font-semibold" style={{ color: '#4a6fa5' }}>
-                No posts yet
+      {/* Tab Bar */}
+      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 4 }}>
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <Pressable
+              key={tab.id}
+              testID={`tab-${tab.id}`}
+              onPress={() => setActiveTab(tab.id)}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: isActive ? '#00CF35' : '#0a2d50',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '700',
+                  color: isActive ? '#001935' : '#4a6fa5',
+                  letterSpacing: 0.1,
+                }}
+              >
+                {tab.label}
               </Text>
-              <Text className="text-sm mt-2" style={{ color: '#4a6fa5' }}>
-                Follow some blogs or create your first post
-              </Text>
-            </View>
-          }
-        />
-      )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Tab Content */}
+      <View style={{ flex: 1 }}>
+        {activeTab === 'foryou' && <ForYouTab />}
+        {activeTab === 'following' && <FollowingTab />}
+        {activeTab === 'tags' && <TagsTab />}
+      </View>
     </SafeAreaView>
   );
 }

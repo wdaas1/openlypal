@@ -27,12 +27,15 @@ model User {
   categories    String?   // comma-separated interest categories
   showExplicit  Boolean   @default(false)
 
-  posts         Post[]
-  likes         Like[]
-  reblogs       Reblog[]
-  comments      Comment[]
-  followers     Follow[]  @relation("following")
-  following     Follow[]  @relation("follower")
+  posts            Post[]
+  likes            Like[]
+  reblogs          Reblog[]
+  comments         Comment[]
+  followers        Follow[]    @relation("following")
+  following        Follow[]    @relation("follower")
+  sentMessages     Message[]   @relation("SentMessages")
+  receivedMessages Message[]   @relation("ReceivedMessages")
+  tagFollows       TagFollow[]
 }
 
 model Session {
@@ -135,4 +138,25 @@ model Follow {
   createdAt   DateTime @default(now())
 
   @@unique([followerId, followingId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model TagFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  tag       String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tag])
 }

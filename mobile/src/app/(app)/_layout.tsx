@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Compass, PlusCircle, Zap, User } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, Zap, User, MessageCircle } from 'lucide-react-native';
 import { View } from 'react-native';
 
 export default function AppLayout() {
@@ -57,12 +57,20 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="messenger"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
+      <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
       <Tabs.Screen name="post/[id]" options={{ href: null }} />
       <Tabs.Screen name="user/[id]" options={{ href: null }} />
       <Tabs.Screen name="interests" options={{ href: null }} />

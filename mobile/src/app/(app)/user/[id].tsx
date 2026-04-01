@@ -3,7 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
@@ -104,6 +104,25 @@ export default function UserProfileScreen() {
             <View style={{ borderColor: '#001935', borderWidth: 4, borderRadius: 44 }}>
               <UserAvatar uri={user.image} name={user.name} size={80} />
             </View>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <Pressable
+              testID="message-button"
+              onPress={() => router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: id } })}
+              className="rounded-full px-5 py-2 mb-1"
+              style={{
+                backgroundColor: '#0a2d50',
+                borderColor: '#1a3a5c',
+                borderWidth: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <MessageCircle size={15} color="#4a6fa5" />
+              <Text className="font-bold text-sm" style={{ color: '#ffffff' }}>
+                Message
+              </Text>
+            </Pressable>
             <Pressable
               testID="follow-button"
               onPress={() => followMutation.mutate()}
@@ -122,6 +141,7 @@ export default function UserProfileScreen() {
                 {followMutation.isPending ? '...' : user.isFollowing ? 'Following' : 'Follow'}
               </Text>
             </Pressable>
+          </View>
           </View>
 
           <View className="mt-3">

@@ -8,6 +8,8 @@ import { postsRouter } from "./routes/posts";
 import { usersRouter } from "./routes/users";
 import { exploreRouter } from "./routes/explore";
 import { activityRouter } from "./routes/activity";
+import { messagesRouter } from "./routes/messages";
+import { tagFollowsRouter } from "./routes/tagFollows";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -64,6 +66,8 @@ app.route("/api/posts", postsRouter);
 app.route("/api/users", usersRouter);
 app.route("/api/explore", exploreRouter);
 app.route("/api/activity", activityRouter);
+app.route("/api", messagesRouter);
+app.route("/api", tagFollowsRouter);
 
 app.post("/api/upload", async (c) => {
   const formData = await c.req.formData();

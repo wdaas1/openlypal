@@ -86,6 +86,71 @@ postsRouter.get("/", async (c) => {
   return c.json({ data });
 });
 
+// GET /feed/following - Get posts from users the current user follows
+postsRouter.get("/feed/following", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const page = Math.max(Number(c.req.query("page")) || 1, 1);
+  const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
+  const skip = (page - 1) * limit;
+
+  const follows = await prisma.follow.findMany({
+    where: { followerId: user.id },
+    select: { followingId: true },
+  });
+
+  if (follows.length === 0) {
+    return c.json({ data: [] });
+  }
+
+  const followingIds = follows.map((f) => f.followingId);
+
+  const userPrefs = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { showExplicit: true },
+  });
+  const showExplicit = userPrefs?.showExplicit ?? false;
+
+  const posts = await prisma.post.findMany({
+    where: {
+      userId: { in: followingIds },
+      ...(showExplicit ? {} : { isExplicit: false }),
+    },
+    include: {
+      user: { select: { id: true, name: true, username: true, image: true } },
+      _count: { select: { likes: true, comments: true, reblogs: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    skip,
+    take: limit,
+  });
+
+  const data = posts.map((post) => ({
+    id: post.id,
+    type: post.type,
+    title: post.title,
+    content: post.content,
+    imageUrl: post.imageUrl,
+    videoUrl: post.videoUrl ?? null,
+    linkUrl: post.linkUrl,
+    tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
+    isExplicit: post.isExplicit,
+    category: post.category,
+    userId: post.userId,
+    user: post.user,
+    likeCount: post._count.likes,
+    commentCount: post._count.comments,
+    reblogCount: post._count.reblogs,
+    isLiked: post.likes.length > 0,
+    createdAt: post.createdAt.toISOString(),
+    updatedAt: post.updatedAt.toISOString(),
+  }));
+
+  return c.json({ data });
+});
+
 // GET /:id - Get single post
 postsRouter.get("/:id", async (c) => {
   const user = c.get("user");
