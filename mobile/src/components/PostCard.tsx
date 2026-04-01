@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api/api';
 import type { Post } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+import { MediaViewer } from '@/components/MediaViewer';
 
 interface PostCardProps {
   post: Post;
@@ -20,6 +21,7 @@ export function PostCard({ post }: PostCardProps) {
   const queryClient = useQueryClient();
   const heartScale = useSharedValue(1);
   const [revealed, setRevealed] = useState(false);
+  const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
@@ -113,12 +115,20 @@ export function PostCard({ post }: PostCardProps) {
             </Pressable>
           </View>
         ) : (
-          <Image
-            source={{ uri: post.imageUrl }}
-            style={{ width: '100%', aspectRatio: 16 / 9 }}
-            contentFit="cover"
-            testID={`post-image-${post.id}`}
-          />
+          <Pressable
+            testID={`open-image-viewer-${post.id}`}
+            onPress={(e) => {
+              e.stopPropagation();
+              setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! });
+            }}
+          >
+            <Image
+              source={{ uri: post.imageUrl }}
+              style={{ width: '100%', aspectRatio: 16 / 9 }}
+              contentFit="cover"
+              testID={`post-image-${post.id}`}
+            />
+          </Pressable>
         )
       ) : null}
 
@@ -138,14 +148,22 @@ export function PostCard({ post }: PostCardProps) {
             </Pressable>
           </View>
         ) : (
-          <View className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', height: 200, alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable
+            testID={`open-video-viewer-${post.id}`}
+            onPress={(e) => {
+              e.stopPropagation();
+              setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
+            }}
+            className="mx-4 mb-3 rounded-xl overflow-hidden"
+            style={{ backgroundColor: '#0a2d50', height: 200, alignItems: 'center', justifyContent: 'center' }}
+          >
             <View className="items-center gap-2">
               <View className="rounded-full items-center justify-center" style={{ width: 56, height: 56, backgroundColor: 'rgba(0,207,53,0.2)' }}>
                 <Play size={28} color="#00CF35" fill="#00CF35" />
               </View>
               <Text className="text-sm font-medium" style={{ color: '#4a6fa5' }}>Tap to watch</Text>
             </View>
-          </View>
+          </Pressable>
         )
       ) : null}
 
@@ -220,6 +238,15 @@ export function PostCard({ post }: PostCardProps) {
           <Share size={18} color="#4a6fa5" />
         </Pressable>
       </View>
+
+      {mediaViewer ? (
+        <MediaViewer
+          visible={mediaViewer.visible}
+          type={mediaViewer.type}
+          uri={mediaViewer.uri}
+          onClose={() => setMediaViewer(null)}
+        />
+      ) : null}
     </Pressable>
   );
 }

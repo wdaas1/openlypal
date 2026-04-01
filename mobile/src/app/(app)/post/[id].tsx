@@ -12,6 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api/api';
 import type { Post, Comment } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+import { MediaViewer } from '@/components/MediaViewer';
 
 function VideoPlayer({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => {
@@ -32,6 +33,7 @@ export default function PostDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
+  const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const heartScale = useSharedValue(1);
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
@@ -154,11 +156,16 @@ export default function PostDetailScreen() {
 
             {/* Image */}
             {post.imageUrl ? (
-              <Image
-                source={{ uri: post.imageUrl }}
-                style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12, marginBottom: 16 }}
-                contentFit="cover"
-              />
+              <Pressable
+                testID="detail-open-image-viewer"
+                onPress={() => setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! })}
+              >
+                <Image
+                  source={{ uri: post.imageUrl }}
+                  style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12, marginBottom: 16 }}
+                  contentFit="cover"
+                />
+              </Pressable>
             ) : null}
 
             {/* Video */}
@@ -274,6 +281,15 @@ export default function PostDetailScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {mediaViewer ? (
+        <MediaViewer
+          visible={mediaViewer.visible}
+          type={mediaViewer.type}
+          uri={mediaViewer.uri}
+          onClose={() => setMediaViewer(null)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
