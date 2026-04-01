@@ -24,6 +24,7 @@ export function PostCard({ post }: PostCardProps) {
   const { width } = useWindowDimensions();
   const heartScale = useSharedValue(1);
   const [revealed, setRevealed] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [muted, setMuted] = useState(true);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const videoRef = useRef<Video>(null);
@@ -120,7 +121,7 @@ export function PostCard({ post }: PostCardProps) {
       {/* Image - full width */}
       {post.imageUrl ? (
         !showContent ? (
-          <View style={{ width, aspectRatio: 16 / 9, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <View style={{ width, aspectRatio: imageAspectRatio, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.12)', alignItems: 'center', justifyContent: 'center' }}>
               <ShieldAlert size={24} color="#FF4E6A" />
             </View>
@@ -146,8 +147,12 @@ export function PostCard({ post }: PostCardProps) {
           >
             <Image
               source={{ uri: post.imageUrl }}
-              style={{ width, aspectRatio: 16 / 9 }}
-              contentFit="cover"
+              style={{ width, aspectRatio: imageAspectRatio }}
+              contentFit="contain"
+              onLoad={(e) => {
+                const { width: w, height: h } = e.source;
+                if (w && h) setImageAspectRatio(w / h);
+              }}
               testID={`post-image-${post.id}`}
             />
           </Pressable>

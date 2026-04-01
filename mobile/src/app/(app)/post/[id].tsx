@@ -33,6 +33,7 @@ export default function PostDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const heartScale = useSharedValue(1);
 
@@ -162,8 +163,12 @@ export default function PostDetailScreen() {
               >
                 <Image
                   source={{ uri: post.imageUrl }}
-                  style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12, marginBottom: 16 }}
-                  contentFit="cover"
+                  style={{ width: '100%', aspectRatio: imageAspectRatio, borderRadius: 12, marginBottom: 16 }}
+                  contentFit="contain"
+                  onLoad={(e) => {
+                    const { width: w, height: h } = e.source;
+                    if (w && h) setImageAspectRatio(w / h);
+                  }}
                 />
               </Pressable>
             ) : null}
