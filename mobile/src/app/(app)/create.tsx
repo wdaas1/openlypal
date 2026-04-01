@@ -43,19 +43,18 @@ export default function CreateScreen() {
 
   const createPost = useMutation({
     mutationFn: async () => {
-      const tags = tagsInput
+    const tags = tagsInput
         .split(',')
         .map((t) => t.trim())
-        .filter(Boolean)
-        .join(',');
+        .filter(Boolean);
 
       return api.post('/api/posts', {
         type: postType,
-        title: title || null,
-        content: content || null,
-        imageUrl: postType === 'photo' ? imageUrl || null : null,
-        linkUrl: postType === 'link' ? linkUrl || null : null,
-        tags: tags || null,
+        title: title || undefined,
+        content: content || undefined,
+        imageUrl: postType === 'photo' ? imageUrl || undefined : undefined,
+        linkUrl: postType === 'link' ? linkUrl || undefined : undefined,
+        tags: tags.length > 0 ? tags : undefined,
       });
     },
     onSuccess: () => {
