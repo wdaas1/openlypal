@@ -225,6 +225,8 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const HEADER_HEIGHT = 46;
+const TABBAR_HEIGHT = 52;
+const COLLAPSE_TOTAL = HEADER_HEIGHT + TABBAR_HEIGHT;
 
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
@@ -237,6 +239,11 @@ export default function FeedScreen() {
   const headerStyle = useAnimatedStyle(() => ({
     height: interpolate(scrollY.value, [0, HEADER_HEIGHT], [HEADER_HEIGHT, 0], Extrapolation.CLAMP),
     opacity: interpolate(scrollY.value, [0, HEADER_HEIGHT * 0.6], [1, 0], Extrapolation.CLAMP),
+  }));
+
+  const tabBarStyle = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [HEADER_HEIGHT, COLLAPSE_TOTAL], [TABBAR_HEIGHT, 0], Extrapolation.CLAMP),
+    opacity: interpolate(scrollY.value, [HEADER_HEIGHT, COLLAPSE_TOTAL * 0.8], [1, 0], Extrapolation.CLAMP),
   }));
 
   const handleTabChange = (tab: Tab) => {
@@ -256,7 +263,8 @@ export default function FeedScreen() {
       </Animated.View>
 
       {/* Tab Bar */}
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 4 }}>
+      <Animated.View style={[{ overflow: 'hidden' }, tabBarStyle]}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 4 }}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -285,7 +293,8 @@ export default function FeedScreen() {
             </Pressable>
           );
         })}
-      </View>
+        </View>
+      </Animated.View>
 
       {/* Tab Content */}
       <View style={{ flex: 1 }}>

@@ -17,6 +17,7 @@ export default function AppLayout() {
         },
         tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: '#4a6fa5',
+        tabBarIconStyle: { width: 20, height: 20 },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
@@ -27,14 +28,14 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color }) => <Home size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+          tabBarIcon: ({ color }) => <Compass size={20} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -53,21 +54,21 @@ export default function AppLayout() {
         name="activity"
         options={{
           title: 'Activity',
-          tabBarIcon: ({ color, size }) => <Zap size={size} color={color} />,
+          tabBarIcon: ({ color }) => <Zap size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="messenger"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+          tabBarIcon: ({ color }) => <MessageCircle size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color }) => <User size={20} color={color} />,
         }}
       />
       <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
