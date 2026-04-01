@@ -20,10 +20,12 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  // Tumblr-specific
+  // Openly-specific
   username      String?   @unique
   bio           String?
   headerImage   String?
+  categories    String?   // comma-separated interest categories
+  showExplicit  Boolean   @default(false)
 
   posts         Post[]
   likes         Like[]
@@ -74,14 +76,16 @@ model Verification {
 // ─── Tumblr Models ─────────────────────────────────────────
 
 model Post {
-  id        String   @id @default(cuid())
-  type      String   @default("text") // text, photo, quote, link
-  title     String?
-  content   String?
-  imageUrl  String?
-  videoUrl  String?
-  linkUrl   String?
-  tags      String?  // comma-separated tags
+  id         String   @id @default(cuid())
+  type       String   @default("text") // text, photo, quote, link, video
+  title      String?
+  content    String?
+  imageUrl   String?
+  videoUrl   String?
+  linkUrl    String?
+  tags       String?  // comma-separated tags
+  category   String?  // interest category
+  isExplicit Boolean  @default(false)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes     Like[]

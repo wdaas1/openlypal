@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Heart, Repeat2, MessageCircle, Share, Play } from 'lucide-react-native';
+import { Heart, Repeat2, MessageCircle, Share, Play, EyeOff } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -19,6 +19,7 @@ export function PostCard({ post }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const heartScale = useSharedValue(1);
+  const [revealed, setRevealed] = useState(false);
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
@@ -98,24 +99,54 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Image */}
       {post.imageUrl ? (
-        <Image
-          source={{ uri: post.imageUrl }}
-          style={{ width: '100%', aspectRatio: 16 / 9 }}
-          contentFit="cover"
-          testID={`post-image-${post.id}`}
-        />
+        post.isExplicit && !revealed ? (
+          <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
+            <EyeOff size={32} color="#4a6fa5" />
+            <Text className="text-sm font-medium mt-2" style={{ color: '#4a6fa5' }}>Sensitive content</Text>
+            <Pressable
+              testID={`reveal-image-button-${post.id}`}
+              onPress={() => setRevealed(true)}
+              className="mt-3 rounded-full px-5 py-2"
+              style={{ backgroundColor: '#1a3a5c' }}
+            >
+              <Text className="text-xs font-semibold" style={{ color: '#FFFFFF' }}>Show</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Image
+            source={{ uri: post.imageUrl }}
+            style={{ width: '100%', aspectRatio: 16 / 9 }}
+            contentFit="cover"
+            testID={`post-image-${post.id}`}
+          />
+        )
       ) : null}
 
       {/* Video */}
       {post.type === 'video' && post.videoUrl ? (
-        <View className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', height: 200, alignItems: 'center', justifyContent: 'center' }}>
-          <View className="items-center gap-2">
-            <View className="rounded-full items-center justify-center" style={{ width: 56, height: 56, backgroundColor: 'rgba(0,207,53,0.2)' }}>
-              <Play size={28} color="#00CF35" fill="#00CF35" />
-            </View>
-            <Text className="text-sm font-medium" style={{ color: '#4a6fa5' }}>Tap to watch</Text>
+        post.isExplicit && !revealed ? (
+          <View className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', height: 200, alignItems: 'center', justifyContent: 'center' }}>
+            <EyeOff size={32} color="#4a6fa5" />
+            <Text className="text-sm font-medium mt-2" style={{ color: '#4a6fa5' }}>Sensitive content</Text>
+            <Pressable
+              testID={`reveal-video-button-${post.id}`}
+              onPress={() => setRevealed(true)}
+              className="mt-3 rounded-full px-5 py-2"
+              style={{ backgroundColor: '#1a3a5c' }}
+            >
+              <Text className="text-xs font-semibold" style={{ color: '#FFFFFF' }}>Show</Text>
+            </Pressable>
           </View>
-        </View>
+        ) : (
+          <View className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', height: 200, alignItems: 'center', justifyContent: 'center' }}>
+            <View className="items-center gap-2">
+              <View className="rounded-full items-center justify-center" style={{ width: 56, height: 56, backgroundColor: 'rgba(0,207,53,0.2)' }}>
+                <Play size={28} color="#00CF35" fill="#00CF35" />
+              </View>
+              <Text className="text-sm font-medium" style={{ color: '#4a6fa5' }}>Tap to watch</Text>
+            </View>
+          </View>
+        )
       ) : null}
 
       {/* Link */}

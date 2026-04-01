@@ -3,7 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl, T
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, LogOut, Edit3, Check, X, Camera } from 'lucide-react-native';
+import { Settings, LogOut, Edit3, Check, X, Camera, ChevronRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
@@ -94,6 +94,16 @@ export default function ProfileScreen() {
     },
     onSuccess: () => {
       invalidateSession();
+    },
+  });
+
+  const updateShowExplicit = useMutation({
+    mutationFn: async (value: boolean) => {
+      return api.patch('/api/users/me', { showExplicit: value });
+    },
+    onSuccess: () => {
+      Haptics.selectionAsync();
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });
 
@@ -270,6 +280,56 @@ export default function ProfileScreen() {
             <View>
               <Text className="text-white font-bold text-base">{profile?._count?.following ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Following</Text>
+            </View>
+          </View>
+
+          {/* Settings rows */}
+          <View className="mt-5 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}>
+            {/* Interests */}
+            <Pressable
+              testID="interests-button"
+              onPress={() => router.push('/(app)/interests' as any)}
+              className="flex-row items-center justify-between px-4 py-3.5"
+              style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+            >
+              <Text className="text-white font-medium text-sm">Interests</Text>
+              <View className="flex-row items-center gap-2">
+                {profile?.categories ? (
+                  <Text className="text-xs" style={{ color: '#4a6fa5' }}>
+                    {profile.categories.split(',').filter(Boolean).length} selected
+                  </Text>
+                ) : (
+                  <Text className="text-xs" style={{ color: '#4a6fa5' }}>None selected</Text>
+                )}
+                <ChevronRight size={16} color="#4a6fa5" />
+              </View>
+            </Pressable>
+
+            {/* Show explicit content */}
+            <View className="flex-row items-center justify-between px-4 py-3.5">
+              <Text className="text-white font-medium text-sm">Show explicit content</Text>
+              <Pressable
+                testID="show-explicit-toggle"
+                onPress={() => updateShowExplicit.mutate(!(profile?.showExplicit ?? false))}
+                style={{
+                  width: 48,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: profile?.showExplicit ? '#00CF35' : '#1a3a5c',
+                  justifyContent: 'center',
+                  paddingHorizontal: 2,
+                }}
+              >
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#FFFFFF',
+                    transform: [{ translateX: profile?.showExplicit ? 20 : 0 }],
+                  }}
+                />
+              </Pressable>
             </View>
           </View>
         </View>

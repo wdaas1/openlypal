@@ -32,6 +32,16 @@ postsRouter.get("/", async (c) => {
     }
   }
 
+  // Get user preferences for explicit content
+  let showExplicit = true; // Default: show all for unauthenticated users
+  if (user) {
+    const userPrefs = await prisma.user.findUnique({ where: { id: user.id }, select: { showExplicit: true, categories: true } });
+    showExplicit = userPrefs?.showExplicit ?? false;
+    if (!showExplicit) {
+      whereClause.isExplicit = false;
+    }
+  }
+
   if (tag) {
     whereClause.tags = { contains: tag };
   }
@@ -62,6 +72,8 @@ postsRouter.get("/", async (c) => {
     videoUrl: post.videoUrl ?? null,
     linkUrl: post.linkUrl,
     tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
+    isExplicit: post.isExplicit,
+    category: post.category,
     user: post.user,
     likeCount: post._count.likes,
     commentCount: post._count.comments,
@@ -103,6 +115,8 @@ postsRouter.get("/:id", async (c) => {
     videoUrl: post.videoUrl ?? null,
     linkUrl: post.linkUrl,
     tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
+    isExplicit: post.isExplicit,
+    category: post.category,
     user: post.user,
     likeCount: post._count.likes,
     commentCount: post._count.comments,
@@ -124,6 +138,8 @@ const createPostSchema = z.object({
   videoUrl: z.string().optional(),
   linkUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  isExplicit: z.boolean().default(false),
+  category: z.string().optional(),
 });
 
 postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
@@ -141,6 +157,8 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
       videoUrl: body.videoUrl,
       linkUrl: body.linkUrl,
       tags: body.tags?.join(", "),
+      isExplicit: body.isExplicit ?? false,
+      category: body.category,
       userId: user.id,
     },
     include: {

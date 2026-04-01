@@ -7,6 +7,8 @@ export interface User {
   image: string | null;
   headerImage: string | null;
   createdAt: string;
+  categories: string | null;
+  showExplicit: boolean;
   _count?: {
     followers: number;
     following: number;
@@ -35,6 +37,8 @@ export interface Post {
   commentCount: number;
   reblogCount: number;
   isLiked: boolean;
+  isExplicit: boolean;
+  category: string | null;
   createdAt: string;
 }
 

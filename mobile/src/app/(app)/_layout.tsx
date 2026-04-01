@@ -65,6 +65,7 @@ export default function AppLayout() {
       />
       <Tabs.Screen name="post/[id]" options={{ href: null }} />
       <Tabs.Screen name="user/[id]" options={{ href: null }} />
+      <Tabs.Screen name="interests" options={{ href: null }} />
     </Tabs>
   );
 }

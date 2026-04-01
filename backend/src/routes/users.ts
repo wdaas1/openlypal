@@ -26,6 +26,8 @@ usersRouter.get("/me", async (c) => {
       image: true,
       headerImage: true,
       createdAt: true,
+      categories: true,
+      showExplicit: true,
       _count: { select: { followers: true, following: true, posts: true } },
     },
   });
@@ -128,6 +130,8 @@ const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   image: z.string().optional(),
   headerImage: z.string().optional(),
+  categories: z.string().optional(),
+  showExplicit: z.boolean().optional(),
 });
 
 usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
@@ -151,7 +155,15 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
 
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: body,
+    data: {
+      ...(body.username !== undefined ? { username: body.username } : {}),
+      ...(body.bio !== undefined ? { bio: body.bio } : {}),
+      ...(body.name !== undefined ? { name: body.name } : {}),
+      ...(body.image !== undefined ? { image: body.image } : {}),
+      ...(body.headerImage !== undefined ? { headerImage: body.headerImage } : {}),
+      ...(body.categories !== undefined ? { categories: body.categories } : {}),
+      ...(body.showExplicit !== undefined ? { showExplicit: body.showExplicit } : {}),
+    },
     select: {
       id: true,
       name: true,
@@ -161,6 +173,8 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
       image: true,
       headerImage: true,
       createdAt: true,
+      categories: true,
+      showExplicit: true,
     },
   });
 

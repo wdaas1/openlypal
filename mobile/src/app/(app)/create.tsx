@@ -3,12 +3,12 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Type, ImageIcon, Quote, Link, X, Video as VideoIcon } from 'lucide-react-native';
+import { Type, ImageIcon, Quote, Link, X, Video as VideoIcon, Camera } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { cn } from '@/lib/cn';
-import { pickImage, pickVideo } from '@/lib/file-picker';
+import { pickImage, pickVideo, takePhoto, recordVideo } from '@/lib/file-picker';
 import { uploadFile } from '@/lib/upload';
 
 type PostType = 'text' | 'photo' | 'quote' | 'link' | 'video';
@@ -21,6 +21,12 @@ const postTypes: { key: PostType; label: string; icon: typeof Type }[] = [
   { key: 'video', label: 'Video', icon: VideoIcon },
 ];
 
+const CATEGORIES = [
+  'Art & Design', 'Photography', 'Music', 'Writing & Poetry', 'Gaming',
+  'Fashion & Style', 'Food & Cooking', 'Travel', 'Nature & Animals', 'Sports',
+  'Technology', 'Humor & Memes', 'Film & TV', 'Comics', 'Science', 'LGBTQ+',
+];
+
 export default function CreateScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -31,10 +37,23 @@ export default function CreateScreen() {
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [linkUrl, setLinkUrl] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [category, setCategory] = useState<string>('');
+  const [isExplicit, setIsExplicit] = useState(false);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
       const file = await pickImage();
+      if (!file) return null;
+      return uploadFile(file.uri, file.filename, file.mimeType);
+    },
+    onSuccess: (result) => {
+      if (result) setImageUrl(result.url);
+    },
+  });
+
+  const takePictureMutation = useMutation({
+    mutationFn: async () => {
+      const file = await takePhoto();
       if (!file) return null;
       return uploadFile(file.uri, file.filename, file.mimeType);
     },
@@ -54,9 +73,20 @@ export default function CreateScreen() {
     },
   });
 
+  const recordVideoMutation = useMutation({
+    mutationFn: async () => {
+      const file = await recordVideo();
+      if (!file) return null;
+      return uploadFile(file.uri, file.filename, file.mimeType);
+    },
+    onSuccess: (result) => {
+      if (result) setVideoUrl(result.url);
+    },
+  });
+
   const createPost = useMutation({
     mutationFn: async () => {
-    const tags = tagsInput
+      const tags = tagsInput
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean);
@@ -69,6 +99,8 @@ export default function CreateScreen() {
         videoUrl: postType === 'video' ? videoUrl || undefined : undefined,
         linkUrl: postType === 'link' ? linkUrl || undefined : undefined,
         tags: tags.length > 0 ? tags : undefined,
+        category: category || undefined,
+        isExplicit,
       });
     },
     onSuccess: () => {
@@ -81,6 +113,8 @@ export default function CreateScreen() {
       setVideoUrl('');
       setLinkUrl('');
       setTagsInput('');
+      setCategory('');
+      setIsExplicit(false);
       router.navigate('/(app)' as any);
     },
   });
@@ -91,6 +125,8 @@ export default function CreateScreen() {
     .filter(Boolean);
 
   const canPost = content.trim().length > 0 || imageUrl.trim().length > 0 || videoUrl.trim().length > 0;
+  const isUploading = uploadMutation.isPending || takePictureMutation.isPending;
+  const isVideoUploading = uploadVideoMutation.isPending || recordVideoMutation.isPending;
 
   return (
     <SafeAreaView testID="create-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
@@ -208,28 +244,49 @@ export default function CreateScreen() {
                 </Pressable>
               </View>
             ) : (
-              <Pressable
-                testID="pick-image-button"
-                onPress={() => uploadMutation.mutate()}
-                disabled={uploadMutation.isPending}
-                className="rounded-xl items-center justify-center py-8"
-                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
-              >
-                {uploadMutation.isPending ? (
-                  <ActivityIndicator testID="upload-loading-indicator" color="#00CF35" />
-                ) : (
-                  <>
-                    <ImageIcon size={28} color="#4a6fa5" />
-                    <Text className="text-sm mt-2" style={{ color: '#4a6fa5' }}>
-                      Pick from library
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              <View className="flex-row gap-3">
+                <Pressable
+                  testID="pick-image-button"
+                  onPress={() => uploadMutation.mutate()}
+                  disabled={isUploading}
+                  className="flex-1 rounded-xl items-center justify-center py-8"
+                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                >
+                  {uploadMutation.isPending ? (
+                    <ActivityIndicator testID="upload-loading-indicator" color="#00CF35" />
+                  ) : (
+                    <>
+                      <ImageIcon size={24} color="#4a6fa5" />
+                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Library</Text>
+                    </>
+                  )}
+                </Pressable>
+                <Pressable
+                  testID="take-photo-button"
+                  onPress={() => takePictureMutation.mutate()}
+                  disabled={isUploading}
+                  className="flex-1 rounded-xl items-center justify-center py-8"
+                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                >
+                  {takePictureMutation.isPending ? (
+                    <ActivityIndicator testID="camera-loading-indicator" color="#00CF35" />
+                  ) : (
+                    <>
+                      <Camera size={24} color="#4a6fa5" />
+                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Camera</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
             )}
             {uploadMutation.isError ? (
               <Text className="text-red-400 text-xs mt-2 text-center">
                 {uploadMutation.error.message}
+              </Text>
+            ) : null}
+            {takePictureMutation.isError ? (
+              <Text className="text-red-400 text-xs mt-2 text-center">
+                {takePictureMutation.error.message}
               </Text>
             ) : null}
           </View>
@@ -263,28 +320,49 @@ export default function CreateScreen() {
                 </Pressable>
               </View>
             ) : (
-              <Pressable
-                testID="pick-video-button"
-                onPress={() => uploadVideoMutation.mutate()}
-                disabled={uploadVideoMutation.isPending}
-                className="rounded-xl items-center justify-center py-8"
-                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
-              >
-                {uploadVideoMutation.isPending ? (
-                  <ActivityIndicator testID="upload-video-loading-indicator" color="#00CF35" />
-                ) : (
-                  <>
-                    <VideoIcon size={28} color="#4a6fa5" />
-                    <Text className="text-sm mt-2" style={{ color: '#4a6fa5' }}>
-                      Pick video from library
-                    </Text>
-                  </>
-                )}
-              </Pressable>
+              <View className="flex-row gap-3">
+                <Pressable
+                  testID="pick-video-button"
+                  onPress={() => uploadVideoMutation.mutate()}
+                  disabled={isVideoUploading}
+                  className="flex-1 rounded-xl items-center justify-center py-8"
+                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                >
+                  {uploadVideoMutation.isPending ? (
+                    <ActivityIndicator testID="upload-video-loading-indicator" color="#00CF35" />
+                  ) : (
+                    <>
+                      <VideoIcon size={24} color="#4a6fa5" />
+                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Library</Text>
+                    </>
+                  )}
+                </Pressable>
+                <Pressable
+                  testID="record-video-button"
+                  onPress={() => recordVideoMutation.mutate()}
+                  disabled={isVideoUploading}
+                  className="flex-1 rounded-xl items-center justify-center py-8"
+                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                >
+                  {recordVideoMutation.isPending ? (
+                    <ActivityIndicator testID="record-video-loading-indicator" color="#00CF35" />
+                  ) : (
+                    <>
+                      <Camera size={24} color="#4a6fa5" />
+                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Record</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
             )}
             {uploadVideoMutation.isError ? (
               <Text className="text-red-400 text-xs mt-2 text-center">
                 {uploadVideoMutation.error.message}
+              </Text>
+            ) : null}
+            {recordVideoMutation.isError ? (
+              <Text className="text-red-400 text-xs mt-2 text-center">
+                {recordVideoMutation.error.message}
               </Text>
             ) : null}
           </View>
@@ -325,6 +403,76 @@ export default function CreateScreen() {
             ))}
           </View>
         ) : null}
+
+        {/* Categories */}
+        <Text className="text-white font-semibold text-sm mb-2">Category</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 16 }}>
+          {CATEGORIES.map((cat) => {
+            const isActive = category === cat;
+            return (
+              <Pressable
+                key={cat}
+                testID={`category-${cat}`}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setCategory(isActive ? '' : cat);
+                }}
+                className="rounded-full px-4 py-2"
+                style={{
+                  backgroundColor: isActive ? '#00CF35' : 'transparent',
+                  borderColor: isActive ? '#00CF35' : '#1a3a5c',
+                  borderWidth: 1,
+                }}
+              >
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: isActive ? '#001935' : '#4a6fa5' }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* Explicit Content Toggle */}
+        <View className="flex-row items-center justify-between mb-2 py-3" style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5 }}>
+          <View className="flex-1">
+            <Text className="text-white font-semibold text-sm">Explicit content</Text>
+            {isExplicit ? (
+              <Text className="text-xs mt-0.5" style={{ color: '#FF6B35' }}>
+                This post will require a content warning
+              </Text>
+            ) : null}
+          </View>
+          <Pressable
+            testID="explicit-toggle"
+            onPress={() => {
+              Haptics.selectionAsync();
+              setIsExplicit(!isExplicit);
+            }}
+            style={{
+              width: 48,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: isExplicit ? '#FF6B35' : '#0a2d50',
+              borderColor: isExplicit ? '#FF6B35' : '#1a3a5c',
+              borderWidth: 1,
+              justifyContent: 'center',
+              paddingHorizontal: 2,
+            }}
+          >
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: '#FFFFFF',
+                transform: [{ translateX: isExplicit ? 20 : 0 }],
+              }}
+            />
+          </Pressable>
+        </View>
 
         {createPost.isError ? (
           <Text className="text-red-400 text-center text-sm mt-2">

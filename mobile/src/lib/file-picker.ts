@@ -35,3 +35,36 @@ export async function pickVideo(): Promise<PickedFile | null> {
     mimeType: a.mimeType ?? "video/mp4",
   };
 }
+
+export async function takePhoto(): Promise<PickedFile | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return null;
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 0.85,
+    allowsEditing: true,
+  });
+  if (result.canceled) return null;
+  const a = result.assets[0];
+  return {
+    uri: a.uri,
+    filename: a.fileName ?? `photo-${Date.now()}.jpg`,
+    mimeType: a.mimeType ?? "image/jpeg",
+  };
+}
+
+export async function recordVideo(): Promise<PickedFile | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return null;
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+    videoMaxDuration: 60,
+  });
+  if (result.canceled) return null;
+  const a = result.assets[0];
+  return {
+    uri: a.uri,
+    filename: a.fileName ?? `video-${Date.now()}.mp4`,
+    mimeType: a.mimeType ?? "video/mp4",
+  };
+}

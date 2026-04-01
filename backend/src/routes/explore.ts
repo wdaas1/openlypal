@@ -14,10 +14,24 @@ exploreRouter.get("/trending", async (c) => {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+  const whereClause: Record<string, unknown> = {
+    createdAt: { gte: sevenDaysAgo },
+  };
+
+  // Respect explicit content preference
+  if (user) {
+    const userPrefs = await prisma.user.findUnique({ where: { id: user.id }, select: { showExplicit: true } });
+    const showExplicit = userPrefs?.showExplicit ?? false;
+    if (!showExplicit) {
+      whereClause.isExplicit = false;
+    }
+  } else {
+    // Unauthenticated users: hide explicit by default
+    whereClause.isExplicit = false;
+  }
+
   const posts = await prisma.post.findMany({
-    where: {
-      createdAt: { gte: sevenDaysAgo },
-    },
+    where: whereClause,
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
       _count: { select: { likes: true, comments: true, reblogs: true } },
@@ -37,6 +51,8 @@ exploreRouter.get("/trending", async (c) => {
     imageUrl: post.imageUrl,
     linkUrl: post.linkUrl,
     tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
+    isExplicit: post.isExplicit,
+    category: post.category,
     user: post.user,
     likeCount: post._count.likes,
     commentCount: post._count.comments,
@@ -118,6 +134,17 @@ exploreRouter.get("/recommended", async (c) => {
   }));
 
   return c.json({ data });
+});
+
+// GET /categories - Get list of available categories
+exploreRouter.get("/categories", (c) => {
+  const categories = [
+    "Art & Design", "Photography", "Music", "Writing & Poetry",
+    "Gaming", "Fashion & Style", "Food & Cooking", "Travel",
+    "Nature & Animals", "Sports", "Technology", "Humor & Memes",
+    "Film & TV", "Comics & Animation", "Science", "LGBTQ+",
+  ];
+  return c.json({ data: categories });
 });
 
 export { exploreRouter };

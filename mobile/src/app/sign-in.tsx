@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import { useInvalidateSession } from '@/lib/auth/use-session';
 import * as Haptics from 'expo-haptics';
+import { Logo } from '@/components/Logo';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -45,12 +46,7 @@ export default function SignInScreen() {
           <View className="flex-1 px-8 pt-16 pb-8">
             {/* Logo */}
             <View className="items-center mb-12">
-              <Text
-                className="font-black text-white"
-                style={{ fontSize: 80, fontStyle: 'italic', lineHeight: 90 }}
-              >
-                O
-              </Text>
+              <Logo size={80} showBackground={false} />
               <Text className="text-white text-xl font-semibold mt-2">
                 Welcome back.
               </Text>
