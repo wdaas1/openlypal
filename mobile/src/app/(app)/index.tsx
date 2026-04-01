@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, ActivityIndicator, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { api } from '@/lib/api/api';
 import type { Post } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
@@ -55,7 +62,7 @@ function EmptyState({ message, sub, action, onAction }: {
   );
 }
 
-function ForYouTab() {
+function ForYouTab({ onScroll }: { onScroll: (event: any) => void }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
@@ -70,13 +77,13 @@ function ForYouTab() {
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
-        if (item.type === 'ad') {
-          return <AdCard index={item.adIndex} />;
-        }
+        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
         return <PostCard post={item.data} />;
       }}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -96,7 +103,7 @@ function ForYouTab() {
   );
 }
 
-function FollowingTab() {
+function FollowingTab({ onScroll }: { onScroll: (event: any) => void }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'following'],
@@ -119,13 +126,13 @@ function FollowingTab() {
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
-        if (item.type === 'ad') {
-          return <AdCard index={item.adIndex} />;
-        }
+        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
         return <PostCard post={item.data} />;
       }}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -143,7 +150,7 @@ function FollowingTab() {
   );
 }
 
-function TagsTab() {
+function TagsTab({ onScroll }: { onScroll: (event: any) => void }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -187,13 +194,13 @@ function TagsTab() {
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
-        if (item.type === 'ad') {
-          return <AdCard index={item.adIndex} />;
-        }
+        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
         return <PostCard post={item.data} />;
       }}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -217,18 +224,36 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'tags', label: 'Tags' },
 ];
 
+const HEADER_HEIGHT = 46;
+
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
-  const { width } = useWindowDimensions();
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const headerStyle = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [0, HEADER_HEIGHT], [HEADER_HEIGHT, 0], Extrapolation.CLAMP),
+    opacity: interpolate(scrollY.value, [0, HEADER_HEIGHT * 0.6], [1, 0], Extrapolation.CLAMP),
+  }));
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    scrollY.value = 0;
+  };
 
   return (
     <SafeAreaView testID="feed-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: '#1a3a5c' }}>
-        <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1 }}>
-          Openly
-        </Text>
-      </View>
+      {/* Collapsing header */}
+      <Animated.View style={[{ overflow: 'hidden', borderBottomWidth: 0.5, borderBottomColor: '#1a3a5c' }, headerStyle]}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, alignItems: 'center' }}>
+          <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1 }}>
+            Openly
+          </Text>
+        </View>
+      </Animated.View>
 
       {/* Tab Bar */}
       <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 4 }}>
@@ -238,7 +263,7 @@ export default function FeedScreen() {
             <Pressable
               key={tab.id}
               testID={`tab-${tab.id}`}
-              onPress={() => setActiveTab(tab.id)}
+              onPress={() => handleTabChange(tab.id)}
               style={{
                 flex: 1,
                 alignItems: 'center',
@@ -264,9 +289,9 @@ export default function FeedScreen() {
 
       {/* Tab Content */}
       <View style={{ flex: 1 }}>
-        {activeTab === 'foryou' && <ForYouTab />}
-        {activeTab === 'following' && <FollowingTab />}
-        {activeTab === 'tags' && <TagsTab />}
+        {activeTab === 'foryou' && <ForYouTab onScroll={scrollHandler} />}
+        {activeTab === 'following' && <FollowingTab onScroll={scrollHandler} />}
+        {activeTab === 'tags' && <TagsTab onScroll={scrollHandler} />}
       </View>
     </SafeAreaView>
   );
