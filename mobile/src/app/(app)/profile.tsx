@@ -306,7 +306,7 @@ export default function ProfileScreen() {
             </Pressable>
 
             {/* Show explicit content */}
-            <View className="flex-row items-center justify-between px-4 py-3.5">
+            <View className="flex-row items-center justify-between px-4 py-3.5" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
               <Text className="text-white font-medium text-sm">Show explicit content</Text>
               <Pressable
                 testID="show-explicit-toggle"
@@ -331,6 +331,27 @@ export default function ProfileScreen() {
                 />
               </Pressable>
             </View>
+
+            {/* Support & FAQ */}
+            <Pressable
+              testID="support-button"
+              onPress={() => router.push('/(app)/support' as any)}
+              className="flex-row items-center justify-between px-4 py-3.5"
+              style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+            >
+              <Text className="text-white font-medium text-sm">Support & FAQ</Text>
+              <ChevronRight size={16} color="#4a6fa5" />
+            </Pressable>
+
+            {/* Privacy Policy & Terms */}
+            <Pressable
+              testID="legal-button"
+              onPress={() => router.push('/(app)/legal' as any)}
+              className="flex-row items-center justify-between px-4 py-3.5"
+            >
+              <Text className="text-white font-medium text-sm">Privacy Policy & Terms</Text>
+              <ChevronRight size={16} color="#4a6fa5" />
+            </Pressable>
           </View>
         </View>
 
