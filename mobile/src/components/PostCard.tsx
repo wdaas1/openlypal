@@ -1,10 +1,28 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Heart, Repeat2, MessageCircle, Share, Volume2, VolumeX, Maximize, ShieldAlert } from 'lucide-react-native';
+import {
+  Heart,
+  Repeat2,
+  MessageCircle,
+  Share,
+  Volume2,
+  VolumeX,
+  Maximize,
+  ShieldAlert,
+  MoreHorizontal,
+  Flag,
+} from 'lucide-react-native';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+  withTiming,
+  withRepeat,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { formatDistanceToNow } from 'date-fns';
 import { Video, ResizeMode } from 'expo-av';
@@ -18,15 +36,22 @@ interface PostCardProps {
   post: Post;
 }
 
+const REPORT_CATEGORIES = ['Spam', 'Abuse', 'Illegal', 'Explicit'];
+
 export function PostCard({ post }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const heartScale = useSharedValue(1);
+  const doubleTapHeartScale = useSharedValue(0);
   const [revealed, setRevealed] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [muted, setMuted] = useState(true);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const lastTapRef = useRef<number>(0);
   const videoRef = useRef<Video>(null);
   const { data: session } = useSession();
 
@@ -38,11 +63,15 @@ export function PostCard({ post }: PostCardProps) {
     staleTime: 60_000,
   });
   const userAllowsExplicit = profile?.showExplicit ?? false;
-  // Explicit content is hidden unless user opts in globally or reveals individually
   const showContent = !post.isExplicit || userAllowsExplicit || revealed;
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
+  }));
+
+  const doubleTapHeartStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: doubleTapHeartScale.value }],
+    opacity: doubleTapHeartScale.value > 0.1 ? 1 : 0,
   }));
 
   const likeMutation = useMutation({
@@ -55,6 +84,17 @@ export function PostCard({ post }: PostCardProps) {
     },
   });
 
+  const reportMutation = useMutation({
+    mutationFn: async (category: string) => {
+      await api.post(`/api/posts/${post.id}/report`, { category });
+    },
+    onSuccess: () => {
+      setReportVisible(false);
+      setSelectedCategory(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
+
   const handleLike = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     heartScale.value = withSequence(
@@ -62,6 +102,32 @@ export function PostCard({ post }: PostCardProps) {
       withSpring(1, { damping: 6 })
     );
     likeMutation.mutate();
+  };
+
+  const handleTap = () => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Double tap
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      doubleTapHeartScale.value = withSequence(
+        withSpring(1.4, { damping: 4 }),
+        withTiming(1.4, { duration: 200 }),
+        withSpring(0, { damping: 6 })
+      );
+      if (!post.isLiked) {
+        likeMutation.mutate();
+      }
+    } else {
+      // Single tap - navigate to post
+      const timer = setTimeout(() => {
+        router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id } });
+      }, DOUBLE_TAP_DELAY + 50);
+      lastTapRef.current = now;
+      // Actually store so double tap can clear navigation
+      return () => clearTimeout(timer);
+    }
+    lastTapRef.current = now;
   };
 
   const reblogMutation = useMutation({
@@ -83,11 +149,19 @@ export function PostCard({ post }: PostCardProps) {
   return (
     <Pressable
       testID={`post-card-${post.id}`}
-      onPress={() => router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id } })}
-      style={{ width, backgroundColor: '#0a2d50', marginBottom: 8 }}
+      onPress={handleTap}
+      style={{
+        backgroundColor: '#0a2d50',
+        borderRadius: 16,
+        marginHorizontal: 12,
+        marginBottom: 10,
+        overflow: 'hidden',
+        borderLeftColor: post.isExplicit ? '#FF4E6A' : 'transparent',
+        borderLeftWidth: post.isExplicit ? 3 : 0,
+      }}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 }}>
         <Pressable
           testID={`post-user-avatar-${post.id}`}
           onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: post.userId } })}
@@ -95,25 +169,49 @@ export function PostCard({ post }: PostCardProps) {
           <UserAvatar uri={post.user.image} name={post.user.name} size={38} />
         </Pressable>
         <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 12 }}>
-            {post.user.username ?? post.user.name}
-          </Text>
-          <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>
+              {post.user.username ?? post.user.name}
+            </Text>
+            {post.isExplicit ? (
+              <View style={{
+                backgroundColor: '#FF4E6A',
+                borderRadius: 8,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+              }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>18+</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 1 }}>
             {timeAgo}
           </Text>
         </View>
+        {/* More options button */}
+        <Pressable
+          testID={`post-menu-button-${post.id}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setMenuVisible(true);
+          }}
+          style={{ padding: 4 }}
+        >
+          <MoreHorizontal size={18} color="#4a6fa5" />
+        </Pressable>
       </View>
 
       {/* Title */}
       {post.title ? (
-        <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 17, paddingHorizontal: 16, paddingBottom: 6, lineHeight: 22 }}>
+        <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 17, paddingHorizontal: 14, paddingBottom: 6, lineHeight: 22 }}>
           {post.title}
         </Text>
       ) : null}
 
       {/* Content */}
       {post.content ? (
-        <Text style={{ color: 'rgba(255,255,255,0.88)', paddingHorizontal: 16, paddingBottom: 10, fontSize: 14, lineHeight: 20 }}>
+        <Text style={{ color: 'rgba(255,255,255,0.88)', paddingHorizontal: 14, paddingBottom: 10, fontSize: 14, lineHeight: 20 }}>
           {post.content}
         </Text>
       ) : null}
@@ -121,21 +219,43 @@ export function PostCard({ post }: PostCardProps) {
       {/* Image - full width */}
       {post.imageUrl ? (
         !showContent ? (
-          <View style={{ width, aspectRatio: imageAspectRatio, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.12)', alignItems: 'center', justifyContent: 'center' }}>
-              <ShieldAlert size={24} color="#FF4E6A" />
+          <View style={{ position: 'relative' }}>
+            <Image
+              source={{ uri: post.imageUrl }}
+              style={{ width: '100%', aspectRatio: imageAspectRatio }}
+              contentFit="cover"
+              blurRadius={25}
+              onLoad={(e) => {
+                const { width: w, height: h } = e.source;
+                if (w && h) setImageAspectRatio(w / h);
+              }}
+            />
+            <View style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                <ShieldAlert size={24} color="#FF4E6A" />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
+              <Text style={{ fontSize: 11, color: '#a0b4c8', textAlign: 'center', paddingHorizontal: 24 }}>
+                This post may contain explicit material.
+              </Text>
+              <Pressable
+                testID={`reveal-image-button-${post.id}`}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setRevealed(true);
+                }}
+                style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Tap to reveal</Text>
+              </Pressable>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
-            <Text style={{ fontSize: 11, color: '#4a6fa5', textAlign: 'center', paddingHorizontal: 24 }}>
-              This post may contain explicit material.
-            </Text>
-            <Pressable
-              testID={`reveal-image-button-${post.id}`}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRevealed(true); }}
-              style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Show Anyway</Text>
-            </Pressable>
           </View>
         ) : (
           <Pressable
@@ -147,7 +267,7 @@ export function PostCard({ post }: PostCardProps) {
           >
             <Image
               source={{ uri: post.imageUrl }}
-              style={{ width, aspectRatio: imageAspectRatio }}
+              style={{ width: '100%', aspectRatio: imageAspectRatio }}
               contentFit="contain"
               onLoad={(e) => {
                 const { width: w, height: h } = e.source;
@@ -162,36 +282,36 @@ export function PostCard({ post }: PostCardProps) {
       {/* Video - full width inline */}
       {post.type === 'video' && post.videoUrl ? (
         !showContent ? (
-          <View style={{ width, height: videoHeight, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <View style={{ height: videoHeight, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.12)', alignItems: 'center', justifyContent: 'center' }}>
               <ShieldAlert size={24} color="#FF4E6A" />
             </View>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
-            <Text style={{ fontSize: 11, color: '#4a6fa5', textAlign: 'center', paddingHorizontal: 24 }}>
-              This video may contain explicit material.
-            </Text>
             <Pressable
               testID={`reveal-video-button-${post.id}`}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRevealed(true); }}
+              onPress={(e) => {
+                e.stopPropagation();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRevealed(true);
+              }}
               style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Show Anyway</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Tap to reveal</Text>
             </Pressable>
           </View>
         ) : (
-          <View style={{ width, height: videoHeight, backgroundColor: '#000000', position: 'relative' }}>
+          <View style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}>
             <Video
               ref={videoRef}
               testID={`post-video-${post.id}`}
               source={{ uri: post.videoUrl }}
-              style={{ width, height: videoHeight }}
+              style={{ width: '100%', height: videoHeight }}
               resizeMode={ResizeMode.COVER}
               shouldPlay
               isLooping
               isMuted={muted}
               useNativeControls={false}
             />
-            {/* Mute/unmute overlay */}
             <Pressable
               testID={`mute-button-${post.id}`}
               onPress={(e) => {
@@ -200,28 +320,17 @@ export function PostCard({ post }: PostCardProps) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               style={{
-                position: 'absolute',
-                bottom: 10,
-                left: 12,
-                backgroundColor: 'rgba(0,0,0,0.55)',
-                borderRadius: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                gap: 5,
+                position: 'absolute', bottom: 10, left: 12,
+                backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
+                flexDirection: 'row', alignItems: 'center',
+                paddingHorizontal: 10, paddingVertical: 5, gap: 5,
               }}
             >
-              {muted ? (
-                <VolumeX size={14} color="#ffffff" />
-              ) : (
-                <Volume2 size={14} color="#ffffff" />
-              )}
+              {muted ? <VolumeX size={14} color="#ffffff" /> : <Volume2 size={14} color="#ffffff" />}
               <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
                 {muted ? 'Tap to unmute' : 'Muted off'}
               </Text>
             </Pressable>
-            {/* Fullscreen hint */}
             <Pressable
               testID={`fullscreen-button-${post.id}`}
               onPress={(e) => {
@@ -229,15 +338,9 @@ export function PostCard({ post }: PostCardProps) {
                 setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
               }}
               style={{
-                position: 'absolute',
-                bottom: 10,
-                right: 12,
-                backgroundColor: 'rgba(0,0,0,0.55)',
-                borderRadius: 16,
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
+                position: 'absolute', bottom: 10, right: 12,
+                backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
+                alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
               }}
             >
               <Maximize size={15} color="#ffffff" />
@@ -246,9 +349,16 @@ export function PostCard({ post }: PostCardProps) {
         )
       ) : null}
 
+      {/* Double-tap heart animation overlay */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <Animated.View style={doubleTapHeartStyle}>
+          <Heart size={80} color="#FF4E6A" fill="#FF4E6A" />
+        </Animated.View>
+      </View>
+
       {/* Link */}
       {post.linkUrl ? (
-        <View style={{ marginHorizontal: 16, marginBottom: 10, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#001935' }}>
+        <View style={{ marginHorizontal: 14, marginBottom: 10, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#001935' }}>
           <Text style={{ color: '#00CF35', fontSize: 12 }} numberOfLines={1}>
             {post.linkUrl}
           </Text>
@@ -257,7 +367,7 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Tags */}
       {tags.length > 0 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 6, gap: 4 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingBottom: 6, gap: 4 }}>
           {tags.map((tag: string) => (
             <Text key={tag} style={{ color: '#00CF35', fontSize: 12 }}>
               #{tag}
@@ -267,11 +377,11 @@ export function PostCard({ post }: PostCardProps) {
       ) : null}
 
       {/* Action Bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: '#1a3a5c' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: '#1a3a5c' }}>
         <Pressable
           testID={`like-button-${post.id}`}
-          onPress={handleLike}
-          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 24 }}
+          onPress={(e) => { e.stopPropagation(); handleLike(); }}
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
           <Animated.View style={heartAnimatedStyle}>
             <Heart
@@ -289,12 +399,12 @@ export function PostCard({ post }: PostCardProps) {
 
         <Pressable
           testID={`reblog-button-${post.id}`}
-          onPress={() => reblogMutation.mutate()}
-          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 24 }}
+          onPress={(e) => { e.stopPropagation(); reblogMutation.mutate(); }}
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
-          <Repeat2 size={20} color="#4a6fa5" />
+          <Repeat2 size={20} color={post.reblogCount > 0 ? '#00CF35' : '#4a6fa5'} />
           {post.reblogCount > 0 ? (
-            <Text style={{ marginLeft: 6, fontSize: 12, color: '#4a6fa5' }}>
+            <Text style={{ marginLeft: 6, fontSize: 12, color: '#00CF35' }}>
               {post.reblogCount}
             </Text>
           ) : null}
@@ -302,8 +412,11 @@ export function PostCard({ post }: PostCardProps) {
 
         <Pressable
           testID={`comment-button-${post.id}`}
-          onPress={() => router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id } })}
-          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 24 }}
+          onPress={(e) => {
+            e.stopPropagation();
+            router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id } });
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
           <MessageCircle size={20} color="#4a6fa5" />
           {post.commentCount > 0 ? (
@@ -313,11 +426,12 @@ export function PostCard({ post }: PostCardProps) {
           ) : null}
         </Pressable>
 
-        <Pressable testID={`share-button-${post.id}`} style={{ marginLeft: 'auto' }}>
+        <Pressable testID={`share-button-${post.id}`} style={{ marginLeft: 'auto' }} onPress={(e) => e.stopPropagation()}>
           <Share size={18} color="#4a6fa5" />
         </Pressable>
       </View>
 
+      {/* Media Viewer */}
       {mediaViewer ? (
         <MediaViewer
           visible={mediaViewer.visible}
@@ -326,6 +440,100 @@ export function PostCard({ post }: PostCardProps) {
           onClose={() => setMediaViewer(null)}
         />
       ) : null}
+
+      {/* Options Menu Modal */}
+      <Modal visible={menuVisible} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <TouchableWithoutFeedback>
+              <View style={{
+                backgroundColor: '#0a2d50',
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                paddingBottom: 32,
+                paddingTop: 8,
+              }}>
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                <Pressable
+                  testID="menu-report-button"
+                  onPress={() => {
+                    setMenuVisible(false);
+                    setReportVisible(true);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                >
+                  <Flag size={18} color="#FF4E6A" />
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Report</Text>
+                </Pressable>
+                <Pressable
+                  testID="menu-not-interested-button"
+                  onPress={() => setMenuVisible(false)}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                >
+                  <MoreHorizontal size={18} color="#4a6fa5" />
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Not interested</Text>
+                </Pressable>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Report Modal */}
+      <Modal visible={reportVisible} transparent animationType="slide">
+        <TouchableWithoutFeedback onPress={() => setReportVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <TouchableWithoutFeedback>
+              <View style={{
+                backgroundColor: '#0a2d50',
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                paddingBottom: 32,
+                paddingTop: 8,
+                paddingHorizontal: 24,
+              }}>
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', marginBottom: 16 }}>Report Post</Text>
+                <Text style={{ color: '#4a6fa5', fontSize: 13, marginBottom: 14 }}>Select a reason:</Text>
+                <View style={{ gap: 10, marginBottom: 20 }}>
+                  {REPORT_CATEGORIES.map((cat) => (
+                    <Pressable
+                      key={cat}
+                      testID={`report-category-${cat}`}
+                      onPress={() => setSelectedCategory(cat)}
+                      style={{
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: selectedCategory === cat ? '#00CF35' : '#1a3a5c',
+                        backgroundColor: selectedCategory === cat ? 'rgba(0,207,53,0.08)' : 'transparent',
+                      }}
+                    >
+                      <Text style={{ color: selectedCategory === cat ? '#00CF35' : '#FFFFFF', fontWeight: '500' }}>{cat}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable
+                  testID="submit-report-button"
+                  onPress={() => selectedCategory && reportMutation.mutate(selectedCategory)}
+                  disabled={!selectedCategory || reportMutation.isPending}
+                  style={{
+                    backgroundColor: selectedCategory ? '#00CF35' : '#1a3a5c',
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: selectedCategory ? '#001935' : '#4a6fa5', fontWeight: '700', fontSize: 15 }}>
+                    Submit Report
+                  </Text>
+                </Pressable>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </Pressable>
   );
 }

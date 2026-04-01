@@ -9,6 +9,9 @@ export interface User {
   createdAt: string;
   categories: string | null;
   showExplicit: boolean;
+  contentSensitivity?: string | null; // "safe" | "mature" | "unfiltered"
+  links?: string | null; // JSON string of [{label, url}]
+  pinnedPostIds?: string | null;
   _count?: {
     followers: number;
     following: number;
@@ -50,12 +53,17 @@ export interface Comment {
   content: string;
   userId: string;
   postId: string;
+  parentId: string | null;
+  upvotes: number;
+  downvotes: number;
+  myVote: number; // 1, -1, or 0
   user: {
     id: string;
     name: string;
     username: string | null;
     image: string | null;
   };
+  replies?: Comment[];
   createdAt: string;
 }
 

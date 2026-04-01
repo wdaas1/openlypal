@@ -28,6 +28,9 @@ usersRouter.get("/me", async (c) => {
       createdAt: true,
       categories: true,
       showExplicit: true,
+      links: true,
+      contentSensitivity: true,
+      pinnedPostIds: true,
       _count: { select: { followers: true, following: true, posts: true } },
     },
   });
@@ -132,6 +135,9 @@ const updateProfileSchema = z.object({
   headerImage: z.string().optional(),
   categories: z.string().optional(),
   showExplicit: z.boolean().optional(),
+  links: z.string().optional(),
+  contentSensitivity: z.enum(["safe", "mature", "unfiltered"]).optional(),
+  pinnedPostIds: z.string().optional(),
 });
 
 usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
@@ -163,6 +169,9 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
       ...(body.headerImage !== undefined ? { headerImage: body.headerImage } : {}),
       ...(body.categories !== undefined ? { categories: body.categories } : {}),
       ...(body.showExplicit !== undefined ? { showExplicit: body.showExplicit } : {}),
+      ...(body.links !== undefined ? { links: body.links } : {}),
+      ...(body.contentSensitivity !== undefined ? { contentSensitivity: body.contentSensitivity } : {}),
+      ...(body.pinnedPostIds !== undefined ? { pinnedPostIds: body.pinnedPostIds } : {}),
     },
     select: {
       id: true,
@@ -175,6 +184,9 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
       createdAt: true,
       categories: true,
       showExplicit: true,
+      links: true,
+      contentSensitivity: true,
+      pinnedPostIds: true,
     },
   });
 

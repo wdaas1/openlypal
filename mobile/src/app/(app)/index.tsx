@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
+import { View, Text, RefreshControl, Pressable } from 'react-native';
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -10,13 +10,17 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  withRepeat,
+  withTiming,
+  withSequence,
 } from 'react-native-reanimated';
+import { Search, Bell } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
 import type { Post } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { AdCard } from '@/components/AdCard';
 
-type Tab = 'foryou' | 'following' | 'tags';
+type Tab = 'following' | 'foryou' | 'unfiltered';
 
 type FeedItem =
   | { type: 'post'; data: Post; key: string }
@@ -62,7 +66,62 @@ function EmptyState({ message, sub, action, onAction }: {
   );
 }
 
-function ForYouTab({ onScroll }: { onScroll: (event: any) => void }) {
+function SkeletonCard() {
+  const opacity = useSharedValue(1);
+
+  React.useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 700 }),
+        withTiming(1, { duration: 700 })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View style={[animStyle, {
+      backgroundColor: '#0a2d50',
+      borderRadius: 16,
+      marginHorizontal: 12,
+      marginBottom: 10,
+      padding: 16,
+      overflow: 'hidden',
+    }]}>
+      {/* Header row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#1a3a5c' }} />
+        <View style={{ marginLeft: 12, flex: 1, gap: 6 }}>
+          <View style={{ height: 12, width: '45%', borderRadius: 6, backgroundColor: '#1a3a5c' }} />
+          <View style={{ height: 10, width: '30%', borderRadius: 5, backgroundColor: '#1a3a5c' }} />
+        </View>
+      </View>
+      {/* Content area */}
+      <View style={{ height: 160, borderRadius: 10, backgroundColor: '#1a3a5c', marginBottom: 12 }} />
+      {/* Action buttons */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
+        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
+        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
+      </View>
+    </Animated.View>
+  );
+}
+
+function SkeletonLoader() {
+  return (
+    <View style={{ paddingTop: 8 }}>
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </View>
+  );
+}
+
+function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
@@ -70,6 +129,8 @@ function ForYouTab({ onScroll }: { onScroll: (event: any) => void }) {
   });
 
   const feedItems = buildFeedItems(posts ?? []);
+
+  if (isLoading) return <SkeletonLoader />;
 
   return (
     <FlashList
@@ -81,7 +142,7 @@ function ForYouTab({ onScroll }: { onScroll: (event: any) => void }) {
         return <PostCard post={item.data} />;
       }}
       estimatedItemSize={320}
-      contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
       refreshControl={
@@ -92,18 +153,16 @@ function ForYouTab({ onScroll }: { onScroll: (event: any) => void }) {
         />
       }
       ListEmptyComponent={
-        isLoading ? null : (
-          <EmptyState
-            message="No posts yet"
-            sub="Follow some blogs or create your first post"
-          />
-        )
+        <EmptyState
+          message="No posts yet"
+          sub="Follow some blogs or create your first post"
+        />
       }
     />
   );
 }
 
-function FollowingTab({ onScroll }: { onScroll: (event: any) => void }) {
+function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'following'],
@@ -112,13 +171,7 @@ function FollowingTab({ onScroll }: { onScroll: (event: any) => void }) {
 
   const feedItems = buildFeedItems(posts ?? []);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#00CF35" size="large" />
-      </View>
-    );
-  }
+  if (isLoading) return <SkeletonLoader />;
 
   return (
     <FlashList
@@ -130,7 +183,7 @@ function FollowingTab({ onScroll }: { onScroll: (event: any) => void }) {
         return <PostCard post={item.data} />;
       }}
       estimatedItemSize={320}
-      contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
       refreshControl={
@@ -150,47 +203,20 @@ function FollowingTab({ onScroll }: { onScroll: (event: any) => void }) {
   );
 }
 
-function TagsTab({ onScroll }: { onScroll: (event: any) => void }) {
-  const router = useRouter();
+function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const queryClient = useQueryClient();
-
-  const { data: followedTags, isLoading: loadingTags } = useQuery({
-    queryKey: ['tags', 'following'],
-    queryFn: () => api.get<string[]>('/api/tags/following'),
+  const { data: posts, isLoading, isRefetching } = useQuery({
+    queryKey: ['feed', 'unfiltered'],
+    queryFn: () => api.get<Post[]>('/api/posts/feed/unfiltered'),
   });
-
-  const { data: posts, isLoading: loadingPosts, isRefetching } = useQuery({
-    queryKey: ['feed', 'tags'],
-    queryFn: () => api.get<Post[]>('/api/feed/tags'),
-    enabled: (followedTags ?? []).length > 0,
-  });
-
-  const isLoading = loadingTags || loadingPosts;
-
-  if (isLoading && !posts) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#00CF35" size="large" />
-      </View>
-    );
-  }
-
-  if (!loadingTags && (followedTags ?? []).length === 0) {
-    return (
-      <EmptyState
-        message="You're not following any tags"
-        sub="Follow tags to see posts about topics you love"
-        action="Explore Tags"
-        onAction={() => router.push('/(app)/explore' as any)}
-      />
-    );
-  }
 
   const feedItems = buildFeedItems(posts ?? []);
 
+  if (isLoading) return <SkeletonLoader />;
+
   return (
     <FlashList
-      testID="tags-feed-list"
+      testID="unfiltered-feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
@@ -198,20 +224,20 @@ function TagsTab({ onScroll }: { onScroll: (event: any) => void }) {
         return <PostCard post={item.data} />;
       }}
       estimatedItemSize={320}
-      contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
-          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed', 'tags'] })}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed', 'unfiltered'] })}
           tintColor="#00CF35"
         />
       }
       ListEmptyComponent={
         <EmptyState
-          message="No posts in your tags yet"
-          sub="Posts tagged with topics you follow will appear here"
+          message="No unfiltered posts yet"
+          sub="All posts from the community will appear here"
         />
       }
     />
@@ -219,17 +245,18 @@ function TagsTab({ onScroll }: { onScroll: (event: any) => void }) {
 }
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'foryou', label: 'For You' },
   { id: 'following', label: 'Following' },
-  { id: 'tags', label: 'Tags' },
+  { id: 'foryou', label: 'For You' },
+  { id: 'unfiltered', label: 'Unfiltered 🔥' },
 ];
 
-const HEADER_HEIGHT = 46;
+const HEADER_HEIGHT = 52;
 const TABBAR_HEIGHT = 52;
 const COLLAPSE_TOTAL = HEADER_HEIGHT + TABBAR_HEIGHT;
 
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
+  const router = useRouter();
   const scrollY = useSharedValue(0);
 
   const scrollHandler = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -254,45 +281,67 @@ export default function FeedScreen() {
   return (
     <SafeAreaView testID="feed-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Collapsing header */}
-      <Animated.View style={[{ overflow: 'hidden', borderBottomWidth: 0.5, borderBottomColor: '#1a3a5c' }, headerStyle]}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, alignItems: 'center' }}>
-          <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1 }}>
+      <Animated.View style={[{
+        overflow: 'hidden',
+        backgroundColor: 'rgba(0,25,53,0.95)',
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#1a3a5c',
+      }, headerStyle]}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{
+            color: '#00CF35',
+            fontSize: 26,
+            fontWeight: '900',
+            fontStyle: 'italic',
+            flex: 1,
+            textShadowColor: '#00CF35',
+            textShadowOffset: { width: 0, height: 0 },
+            textShadowRadius: 12,
+          }}>
             Openly
           </Text>
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            <Pressable testID="search-button" onPress={() => router.push('/(app)/explore' as any)}>
+              <Search size={22} color="#FFFFFF" />
+            </Pressable>
+            <Pressable testID="notifications-button" onPress={() => router.push('/(app)/activity' as any)}>
+              <Bell size={22} color="#FFFFFF" />
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
 
       {/* Tab Bar */}
-      <Animated.View style={[{ overflow: 'hidden' }, tabBarStyle]}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 4 }}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              testID={`tab-${tab.id}`}
-              onPress={() => handleTabChange(tab.id)}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                paddingVertical: 8,
-                borderRadius: 20,
-                backgroundColor: isActive ? '#00CF35' : '#0a2d50',
-              }}
-            >
-              <Text
+      <Animated.View style={[{ overflow: 'hidden', backgroundColor: 'rgba(0,25,53,0.95)' }, tabBarStyle]}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4, gap: 6 }}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                testID={`tab-${tab.id}`}
+                onPress={() => handleTabChange(tab.id)}
                 style={{
-                  fontSize: 13,
-                  fontWeight: '700',
-                  color: isActive ? '#001935' : '#4a6fa5',
-                  letterSpacing: 0.1,
+                  flex: 1,
+                  alignItems: 'center',
+                  paddingVertical: 7,
+                  borderRadius: 20,
+                  backgroundColor: isActive ? '#00CF35' : '#0a2d50',
                 }}
               >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: isActive ? '#001935' : '#4a6fa5',
+                    letterSpacing: 0.1,
+                  }}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </Animated.View>
 
@@ -300,7 +349,7 @@ export default function FeedScreen() {
       <View style={{ flex: 1 }}>
         {activeTab === 'foryou' && <ForYouTab onScroll={scrollHandler} />}
         {activeTab === 'following' && <FollowingTab onScroll={scrollHandler} />}
-        {activeTab === 'tags' && <TagsTab onScroll={scrollHandler} />}
+        {activeTab === 'unfiltered' && <UnfilteredTab onScroll={scrollHandler} />}
       </View>
     </SafeAreaView>
   );

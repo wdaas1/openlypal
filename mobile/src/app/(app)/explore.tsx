@@ -10,15 +10,37 @@ import type { Post, User } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { UserAvatar } from '@/components/UserAvatar';
 
+type TrendingType = 'trending' | 'rising' | 'controversial';
+
+const TRENDING_TABS: { id: TrendingType; label: string }[] = [
+  { id: 'trending', label: 'Trending' },
+  { id: 'rising', label: 'Rising' },
+  { id: 'controversial', label: 'Controversial' },
+];
+
+type HashtagItem = { tag: string; count: number };
+
+const POPULAR_HASHTAGS: HashtagItem[] = [
+  { tag: 'art', count: 14200 },
+  { tag: 'photography', count: 9800 },
+  { tag: 'music', count: 8300 },
+  { tag: 'writing', count: 6100 },
+  { tag: 'memes', count: 22400 },
+  { tag: 'aesthetic', count: 11700 },
+  { tag: 'nature', count: 7600 },
+  { tag: 'fashion', count: 5400 },
+];
+
 export default function ExploreScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [trendingType, setTrendingType] = useState<TrendingType>('trending');
 
   const { data: trendingPosts, isLoading: loadingTrending, isRefetching } = useQuery({
-    queryKey: ['explore', 'trending'],
+    queryKey: ['explore', 'trending', trendingType],
     queryFn: async () => {
-      const result = await api.get<Post[]>('/api/explore/trending');
+      const result = await api.get<Post[]>(`/api/explore/trending?type=${trendingType}`);
       return result ?? [];
     },
   });
@@ -50,28 +72,33 @@ export default function ExploreScreen() {
     },
   });
 
-  const popularTags = ['art', 'photography', 'music', 'writing', 'memes', 'aesthetic', 'nature', 'fashion'];
   const displayPosts = searchQuery.length > 2 ? searchResults : trendingPosts;
+  const isSearching = searchQuery.length > 2;
 
   return (
-    <SafeAreaView testID="explore-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="explore-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Search Bar */}
-      <View className="px-4 py-3">
-        <View className="flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#0a2d50' }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center',
+          borderRadius: 14, paddingHorizontal: 14,
+          backgroundColor: '#0a2d50',
+          borderWidth: 1, borderColor: '#1a3a5c',
+        }}>
           <Search size={18} color="#4a6fa5" />
           <TextInput
             testID="search-input"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search Tumblr"
+            placeholder="Search Openly"
             placeholderTextColor="#4a6fa5"
-            className="flex-1 py-3 ml-3 text-white text-sm"
+            style={{ flex: 1, paddingVertical: 12, marginLeft: 10, color: '#FFFFFF', fontSize: 14 }}
           />
         </View>
       </View>
 
       <ScrollView
-        className="flex-1"
+        style={{ flex: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -80,58 +107,91 @@ export default function ExploreScreen() {
           />
         }
       >
-        {/* Popular Tags */}
-        {searchQuery.length <= 2 ? (
-          <View className="px-4 mb-6">
-            <Text className="text-white font-bold text-lg mb-3">Popular Tags</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-              <View className="flex-row gap-2">
-                {popularTags.map((tag) => (
-                  <Pressable
-                    key={tag}
-                    testID={`tag-${tag}`}
-                    onPress={() => setSearchQuery(tag)}
-                    className="rounded-full px-4 py-2"
-                    style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
-                  >
-                    <Text style={{ color: '#00CF35' }} className="text-sm font-medium">
-                      #{tag}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </ScrollView>
+        {/* Trending type tabs — only show when not searching */}
+        {!isSearching ? (
+          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 16, gap: 8 }}>
+            {TRENDING_TABS.map((tab) => (
+              <Pressable
+                key={tab.id}
+                testID={`trending-tab-${tab.id}`}
+                onPress={() => setTrendingType(tab.id)}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                  backgroundColor: trendingType === tab.id ? '#00CF35' : '#0a2d50',
+                }}
+              >
+                <Text style={{
+                  fontSize: 12, fontWeight: '700',
+                  color: trendingType === tab.id ? '#001935' : '#4a6fa5',
+                }}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Trending Hashtags */}
+        {!isSearching ? (
+          <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, marginBottom: 12 }}>Trending Hashtags</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {POPULAR_HASHTAGS.map((item) => (
+                <Pressable
+                  key={item.tag}
+                  testID={`hashtag-${item.tag}`}
+                  onPress={() => setSearchQuery(item.tag)}
+                  style={{
+                    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+                    backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1,
+                  }}
+                >
+                  <Text style={{ color: '#00CF35', fontSize: 13, fontWeight: '600' }}>
+                    #{item.tag}
+                  </Text>
+                  <Text style={{ color: '#4a6fa5', fontSize: 10, marginTop: 2 }}>
+                    {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count} posts
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         ) : null}
 
         {/* Recommended Blogs */}
-        {searchQuery.length <= 2 && recommendedUsers && recommendedUsers.length > 0 ? (
-          <View className="px-4 mb-6">
-            <Text className="text-white font-bold text-lg mb-3">Recommended Blogs</Text>
+        {!isSearching && recommendedUsers && recommendedUsers.length > 0 ? (
+          <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, marginBottom: 12 }}>Recommended Blogs</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-              <View className="flex-row gap-3">
+              <View style={{ flexDirection: 'row', gap: 12 }}>
                 {recommendedUsers.map((user) => (
                   <Pressable
                     key={user.id}
                     testID={`recommended-user-${user.id}`}
                     onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: user.id } })}
-                    className="items-center rounded-2xl p-4"
-                    style={{ backgroundColor: '#0a2d50', width: 140 }}
+                    style={{
+                      alignItems: 'center', borderRadius: 18, padding: 16,
+                      backgroundColor: '#0a2d50', width: 148,
+                    }}
                   >
                     <UserAvatar uri={user.image} name={user.name} size={56} />
-                    <Text className="text-white font-semibold text-sm mt-2" numberOfLines={1}>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13, marginTop: 8 }} numberOfLines={1}>
                       {user.username ?? user.name}
                     </Text>
+                    {user.followerCount !== undefined ? (
+                      <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 2 }}>
+                        {user.followerCount >= 1000 ? `${(user.followerCount / 1000).toFixed(1)}k` : user.followerCount} followers
+                      </Text>
+                    ) : null}
                     <Pressable
                       testID={`follow-user-${user.id}`}
                       onPress={(e) => {
                         e.stopPropagation();
                         followMutation.mutate(user.id);
                       }}
-                      className="rounded-full px-4 py-1.5 mt-2"
-                      style={{ backgroundColor: '#00CF35' }}
+                      style={{ borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginTop: 10, backgroundColor: '#00CF35' }}
                     >
-                      <Text className="text-xs font-bold" style={{ color: '#001935' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#001935' }}>
                         Follow
                       </Text>
                     </Pressable>
@@ -143,17 +203,19 @@ export default function ExploreScreen() {
         ) : null}
 
         {/* Posts */}
-        <View className="px-0">
-          {searchQuery.length > 2 ? (
-            <Text className="text-white font-bold text-lg px-4 mb-3">
+        <View>
+          {isSearching ? (
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}>
               Results for &quot;{searchQuery}&quot;
             </Text>
           ) : (
-            <Text className="text-white font-bold text-lg px-4 mb-3">Trending</Text>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}>
+              {trendingType === 'trending' ? 'Trending' : trendingType === 'rising' ? 'Rising' : 'Controversial'}
+            </Text>
           )}
 
           {loadingTrending || loadingSearch ? (
-            <ActivityIndicator testID="loading-indicator" color="#00CF35" className="mt-8" />
+            <ActivityIndicator testID="loading-indicator" color="#00CF35" style={{ marginTop: 32 }} />
           ) : (
             (displayPosts ?? []).map((post) => (
               <PostCard key={post.id} post={post} />
@@ -161,13 +223,13 @@ export default function ExploreScreen() {
           )}
 
           {!loadingTrending && !loadingSearch && (displayPosts ?? []).length === 0 ? (
-            <Text className="text-center mt-8" style={{ color: '#4a6fa5' }}>
+            <Text style={{ color: '#4a6fa5', textAlign: 'center', marginTop: 32 }}>
               No posts found
             </Text>
           ) : null}
         </View>
 
-        <View className="h-8" />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );

@@ -3,7 +3,7 @@ import { View, Text, Pressable, TextInput, ActivityIndicator, ScrollView, Keyboa
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send } from 'lucide-react-native';
+import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
@@ -13,6 +13,8 @@ import { api } from '@/lib/api/api';
 import type { Post, Comment } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
+
+type CommentSort = 'top' | 'new' | 'controversial';
 
 function VideoPlayer({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => {
@@ -28,6 +30,140 @@ function VideoPlayer({ uri }: { uri: string }) {
   );
 }
 
+function CommentItem({
+  comment,
+  postUserId,
+  onReply,
+  isNested,
+}: {
+  comment: Comment;
+  postUserId: string;
+  onReply: (id: string, username: string) => void;
+  isNested?: boolean;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [myVote, setMyVote] = useState<number>(comment.myVote ?? 0);
+  const [upvotes, setUpvotes] = useState(comment.upvotes ?? 0);
+  const [downvotes, setDownvotes] = useState(comment.downvotes ?? 0);
+  const isCreator = comment.userId === postUserId;
+
+  const voteMutation = useMutation({
+    mutationFn: async (value: number) => {
+      await api.post(`/api/comments/${comment.id}/vote`, { value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+    },
+  });
+
+  const handleVote = (value: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newVote = myVote === value ? 0 : value;
+    if (value === 1) {
+      setUpvotes(prev => prev + (newVote === 1 ? 1 : -1));
+      if (myVote === -1) setDownvotes(prev => prev + 1);
+    } else {
+      setDownvotes(prev => prev + (newVote === -1 ? 1 : -1));
+      if (myVote === 1) setUpvotes(prev => prev - 1);
+    }
+    setMyVote(newVote);
+    voteMutation.mutate(newVote === 0 ? 0 : value);
+  };
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row' }}>
+        {isNested ? (
+          <View style={{ width: 2, backgroundColor: '#1a3a5c', marginRight: 12, borderRadius: 1 }} />
+        ) : null}
+        <Pressable
+          testID={`comment-avatar-${comment.id}`}
+          onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: comment.userId } })}
+        >
+          <UserAvatar uri={comment.user.image} name={comment.user.name} size={32} />
+        </Pressable>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <View style={{ borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#0a2d50' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <Pressable
+                testID={`comment-username-${comment.id}`}
+                onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: comment.userId } })}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>
+                  {comment.user.username ?? comment.user.name}
+                </Text>
+              </Pressable>
+              {isCreator ? (
+                <View style={{ backgroundColor: 'rgba(0,207,53,0.15)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ color: '#00CF35', fontSize: 9, fontWeight: '800' }}>Creator</Text>
+                </View>
+              ) : null}
+              <Text style={{ color: '#4a6fa5', fontSize: 10, marginLeft: 'auto' }}>
+                {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+              </Text>
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 18 }}>
+              {comment.content}
+            </Text>
+          </View>
+          {/* Vote + Reply row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 6, paddingLeft: 4, gap: 12 }}>
+            <Pressable
+              testID={`upvote-${comment.id}`}
+              onPress={() => handleVote(1)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+            >
+              <ChevronUp size={16} color={myVote === 1 ? '#00CF35' : '#4a6fa5'} />
+              {upvotes > 0 ? (
+                <Text style={{ color: myVote === 1 ? '#00CF35' : '#4a6fa5', fontSize: 11, fontWeight: '600' }}>{upvotes}</Text>
+              ) : null}
+            </Pressable>
+            <Pressable
+              testID={`downvote-${comment.id}`}
+              onPress={() => handleVote(-1)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+            >
+              <ChevronDown size={16} color={myVote === -1 ? '#FF4E6A' : '#4a6fa5'} />
+              {downvotes > 0 ? (
+                <Text style={{ color: myVote === -1 ? '#FF4E6A' : '#4a6fa5', fontSize: 11, fontWeight: '600' }}>{downvotes}</Text>
+              ) : null}
+            </Pressable>
+            {!isNested ? (
+              <Pressable
+                testID={`reply-${comment.id}`}
+                onPress={() => onReply(comment.id, comment.user.username ?? comment.user.name)}
+              >
+                <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '500' }}>Reply</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </View>
+      {/* Nested replies */}
+      {(comment.replies ?? []).length > 0 ? (
+        <View style={{ marginLeft: 42, marginTop: 8, gap: 8 }}>
+          {(comment.replies ?? []).map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              postUserId={postUserId}
+              onReply={onReply}
+              isNested
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const SORT_TABS: { id: CommentSort; label: string }[] = [
+  { id: 'top', label: 'Top' },
+  { id: 'new', label: 'New' },
+  { id: 'controversial', label: 'Controversial' },
+];
+
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -35,6 +171,8 @@ export default function PostDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
+  const [commentSort, setCommentSort] = useState<CommentSort>('top');
+  const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
   const heartScale = useSharedValue(1);
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
@@ -48,8 +186,8 @@ export default function PostDetailScreen() {
   });
 
   const { data: comments, isLoading: loadingComments } = useQuery({
-    queryKey: ['comments', id],
-    queryFn: () => api.get<Comment[]>(`/api/posts/${id}/comments`),
+    queryKey: ['comments', id, commentSort],
+    queryFn: () => api.get<Comment[]>(`/api/posts/${id}/comments?sort=${commentSort}`),
     enabled: !!id,
   });
 
@@ -85,11 +223,15 @@ export default function PostDetailScreen() {
 
   const addComment = useMutation({
     mutationFn: async () => {
-      return api.post(`/api/posts/${id}/comments`, { content: commentText });
+      return api.post(`/api/posts/${id}/comments`, {
+        content: commentText,
+        parentId: replyingTo?.id ?? null,
+      });
     },
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setCommentText('');
+      setReplyingTo(null);
       queryClient.invalidateQueries({ queryKey: ['comments', id] });
       queryClient.invalidateQueries({ queryKey: ['post', id] });
     },
@@ -97,7 +239,7 @@ export default function PostDetailScreen() {
 
   if (loadingPost) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: '#001935' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#001935' }}>
         <ActivityIndicator testID="loading-indicator" color="#00CF35" size="large" />
       </SafeAreaView>
     );
@@ -105,7 +247,7 @@ export default function PostDetailScreen() {
 
   if (!post) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center" style={{ backgroundColor: '#001935' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#001935' }}>
         <Text style={{ color: '#4a6fa5' }}>Post not found</Text>
       </SafeAreaView>
     );
@@ -115,42 +257,42 @@ export default function PostDetailScreen() {
   const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   return (
-    <SafeAreaView testID="post-detail-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
         <Pressable testID="back-button" onPress={() => router.back()}>
           <ArrowLeft size={24} color="#FFFFFF" />
         </Pressable>
-        <Text className="text-white font-bold text-lg ml-4">Post</Text>
+        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 17, marginLeft: 16 }}>Post</Text>
       </View>
 
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView className="flex-1">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={{ flex: 1 }}>
           {/* Post */}
-          <View className="px-4 pt-4">
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             {/* User */}
             <Pressable
               testID="post-user-header"
               onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: post.userId } })}
-              className="flex-row items-center mb-4"
+              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
             >
               <UserAvatar uri={post.user.image} name={post.user.name} size={44} />
-              <View className="ml-3">
-                <Text className="text-white font-bold text-base">
+              <View style={{ marginLeft: 12 }}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
                   {post.user.username ?? post.user.name}
                 </Text>
-                <Text className="text-xs" style={{ color: '#4a6fa5' }}>{timeAgo}</Text>
+                <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }}>{timeAgo}</Text>
               </View>
             </Pressable>
 
             {/* Title */}
             {post.title ? (
-              <Text className="text-white font-bold text-2xl mb-3">{post.title}</Text>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 22, marginBottom: 12, lineHeight: 28 }}>{post.title}</Text>
             ) : null}
 
             {/* Content */}
             {post.content ? (
-              <Text className="text-white text-base mb-4 leading-6" style={{ opacity: 0.9 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 15, marginBottom: 16, lineHeight: 22 }}>
                 {post.content}
               </Text>
             ) : null}
@@ -180,103 +322,140 @@ export default function PostDetailScreen() {
 
             {/* Link */}
             {post.linkUrl ? (
-              <View className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: '#0a2d50' }}>
-                <Text style={{ color: '#00CF35' }} className="text-sm">{post.linkUrl}</Text>
+              <View style={{ borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 16, backgroundColor: '#0a2d50' }}>
+                <Text style={{ color: '#00CF35', fontSize: 13 }}>{post.linkUrl}</Text>
               </View>
             ) : null}
 
             {/* Tags */}
             {tags.length > 0 ? (
-              <View className="flex-row flex-wrap gap-2 mb-4">
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                 {tags.map((tag) => (
-                  <Text key={tag} className="text-sm" style={{ color: '#00CF35' }}>#{tag}</Text>
+                  <Text key={tag} style={{ color: '#00CF35', fontSize: 13 }}>#{tag}</Text>
                 ))}
               </View>
             ) : null}
 
             {/* Actions */}
-            <View className="flex-row items-center py-4" style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-              <Pressable testID="detail-like-button" onPress={handleLike} className="flex-row items-center mr-8">
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', paddingVertical: 16,
+              borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
+              borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5,
+            }}>
+              <Pressable testID="detail-like-button" onPress={handleLike} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
                 <Animated.View style={heartAnimatedStyle}>
-                  <Heart
-                    size={22}
-                    color={post.isLiked ? '#FF4E6A' : '#4a6fa5'}
-                    fill={post.isLiked ? '#FF4E6A' : 'transparent'}
-                  />
+                  <Heart size={22} color={post.isLiked ? '#FF4E6A' : '#4a6fa5'} fill={post.isLiked ? '#FF4E6A' : 'transparent'} />
                 </Animated.View>
-                <Text className="ml-2 text-sm" style={{ color: post.isLiked ? '#FF4E6A' : '#4a6fa5' }}>
+                <Text style={{ marginLeft: 8, fontSize: 13, color: post.isLiked ? '#FF4E6A' : '#4a6fa5' }}>
                   {post.likeCount}
                 </Text>
               </Pressable>
-
-              <Pressable testID="detail-reblog-button" onPress={() => reblogMutation.mutate()} className="flex-row items-center mr-8">
+              <Pressable testID="detail-reblog-button" onPress={() => reblogMutation.mutate()} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
                 <Repeat2 size={22} color="#4a6fa5" />
-                <Text className="ml-2 text-sm" style={{ color: '#4a6fa5' }}>{post.reblogCount}</Text>
+                <Text style={{ marginLeft: 8, fontSize: 13, color: '#4a6fa5' }}>{post.reblogCount}</Text>
               </Pressable>
-
-              <Pressable className="flex-row items-center mr-8">
+              <Pressable style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
                 <MessageCircle size={22} color="#4a6fa5" />
-                <Text className="ml-2 text-sm" style={{ color: '#4a6fa5' }}>{post.commentCount}</Text>
+                <Text style={{ marginLeft: 8, fontSize: 13, color: '#4a6fa5' }}>{post.commentCount}</Text>
               </Pressable>
-
-              <Pressable testID="detail-share-button" className="ml-auto">
+              <Pressable testID="detail-share-button" style={{ marginLeft: 'auto' }}>
                 <Share size={20} color="#4a6fa5" />
               </Pressable>
             </View>
           </View>
 
           {/* Comments */}
-          <View className="px-4 pt-4">
-            <Text className="text-white font-bold text-base mb-4">
-              Comments ({comments?.length ?? 0})
-            </Text>
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15, marginRight: 12 }}>
+                Comments ({comments?.length ?? 0})
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
+                {SORT_TABS.map((tab) => (
+                  <Pressable
+                    key={tab.id}
+                    testID={`sort-${tab.id}`}
+                    onPress={() => setCommentSort(tab.id)}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      backgroundColor: commentSort === tab.id ? '#00CF35' : '#0a2d50',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '700',
+                      color: commentSort === tab.id ? '#001935' : '#4a6fa5',
+                    }}>
+                      {tab.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
 
             {loadingComments ? (
-              <ActivityIndicator color="#00CF35" className="mb-4" />
+              <ActivityIndicator color="#00CF35" style={{ marginBottom: 16 }} />
             ) : (comments ?? []).length === 0 ? (
-              <Text className="text-sm mb-4" style={{ color: '#4a6fa5' }}>No comments yet</Text>
+              <Text style={{ color: '#4a6fa5', fontSize: 13, marginBottom: 16 }}>No comments yet</Text>
             ) : (
               (comments ?? []).map((comment) => (
-                <View key={comment.id} testID={`comment-${comment.id}`} className="flex-row mb-4">
-                  <UserAvatar uri={comment.user.image} name={comment.user.name} size={32} />
-                  <View className="flex-1 ml-3 rounded-xl px-3 py-2" style={{ backgroundColor: '#0a2d50' }}>
-                    <View className="flex-row items-center gap-2 mb-1">
-                      <Text className="text-white font-semibold text-xs">
-                        {comment.user.username ?? comment.user.name}
-                      </Text>
-                      <Text className="text-xs" style={{ color: '#4a6fa5' }}>
-                        {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                      </Text>
-                    </View>
-                    <Text className="text-white text-sm" style={{ opacity: 0.9 }}>
-                      {comment.content}
-                    </Text>
-                  </View>
-                </View>
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  postUserId={post.userId}
+                  onReply={(commentId, username) => setReplyingTo({ id: commentId, username })}
+                />
               ))
             )}
           </View>
 
-          <View className="h-20" />
+          <View style={{ height: 100 }} />
         </ScrollView>
 
+        {/* Replying to indicator */}
+        {replyingTo ? (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center',
+            paddingHorizontal: 16, paddingVertical: 8,
+            backgroundColor: '#0a2d50',
+            borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
+          }}>
+            <Text style={{ color: '#4a6fa5', fontSize: 12, flex: 1 }}>
+              Replying to <Text style={{ color: '#00CF35', fontWeight: '600' }}>@{replyingTo.username}</Text>
+            </Text>
+            <Pressable testID="cancel-reply-button" onPress={() => setReplyingTo(null)}>
+              <X size={16} color="#4a6fa5" />
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Comment Input */}
-        <View className="flex-row items-center px-4 py-3" style={{ backgroundColor: '#0a2d50', borderTopColor: '#1a3a5c', borderTopWidth: 0.5 }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+          backgroundColor: '#0a2d50', borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
+        }}>
           <TextInput
             testID="comment-input"
             value={commentText}
             onChangeText={setCommentText}
-            placeholder="Add a comment..."
+            placeholder={replyingTo ? `Reply to @${replyingTo.username}...` : 'Add a comment...'}
             placeholderTextColor="#4a6fa5"
-            className="flex-1 text-white text-sm mr-3 rounded-xl px-4 py-2"
-            style={{ backgroundColor: '#001935', borderColor: '#1a3a5c', borderWidth: 1 }}
+            style={{
+              flex: 1, color: '#FFFFFF', fontSize: 13, marginRight: 12,
+              borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+              backgroundColor: '#001935', borderColor: '#1a3a5c', borderWidth: 1,
+            }}
           />
           <Pressable
             testID="send-comment-button"
             onPress={() => addComment.mutate()}
             disabled={!commentText.trim() || addComment.isPending}
-            className="rounded-full p-2"
-            style={{ backgroundColor: commentText.trim() ? '#00CF35' : '#1a3a5c' }}
+            style={{
+              borderRadius: 22, padding: 10,
+              backgroundColor: commentText.trim() ? '#00CF35' : '#1a3a5c',
+            }}
           >
             {addComment.isPending ? (
               <ActivityIndicator color="#001935" size="small" />

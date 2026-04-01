@@ -8,27 +8,52 @@ type Variables = {
 
 const exploreRouter = new Hono<{ Variables: Variables }>();
 
-// GET /trending - Most liked posts in last 7 days
+// GET /trending - Trending/rising/controversial posts
+// ?type=trending (default) | rising | controversial
 exploreRouter.get("/trending", async (c) => {
   const user = c.get("user");
-  const sevenDaysAgo = new Date();
+  const typeParam = c.req.query("type") ?? "trending";
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const oneDayAgo = new Date(now);
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+  // Time window depends on type
+  const since = typeParam === "rising" ? oneDayAgo : sevenDaysAgo;
 
   const whereClause: Record<string, unknown> = {
-    createdAt: { gte: sevenDaysAgo },
+    createdAt: { gte: since },
+    hidden: false,
+    contentScore: { lt: 1.0 },
   };
 
   // Respect explicit content preference
   if (user) {
-    const userPrefs = await prisma.user.findUnique({ where: { id: user.id }, select: { showExplicit: true } });
-    const showExplicit = userPrefs?.showExplicit ?? false;
-    if (!showExplicit) {
+    const userPrefs = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { showExplicit: true, contentSensitivity: true },
+    });
+    const sensitivity = userPrefs?.contentSensitivity ?? "safe";
+    if (sensitivity === "safe") {
       whereClause.isExplicit = false;
+      whereClause.contentScore = { lte: 0.3 };
+    } else if (sensitivity === "mature") {
+      whereClause.contentScore = { lte: 0.8 };
     }
+    // "unfiltered": already filtered contentScore < 1.0 above
   } else {
-    // Unauthenticated users: hide explicit by default
     whereClause.isExplicit = false;
   }
+
+  // Order: for controversial, we fetch all and sort in JS
+  type PostOrderBy =
+    | { likes: { _count: "desc" } }
+    | { createdAt: "desc" };
+
+  const orderBy: PostOrderBy =
+    typeParam === "rising" ? { createdAt: "desc" } : { likes: { _count: "desc" } };
 
   const posts = await prisma.post.findMany({
     where: whereClause,
@@ -39,32 +64,69 @@ exploreRouter.get("/trending", async (c) => {
         ? { likes: { where: { userId: user.id }, select: { id: true } } }
         : {}),
     },
-    orderBy: { likes: { _count: "desc" } },
-    take: 20,
+    orderBy,
+    take: typeParam === "controversial" ? 100 : 20,
   });
 
-  const data = posts.map((post) => ({
-    id: post.id,
-    type: post.type,
-    title: post.title,
-    content: post.content,
-    imageUrl: post.imageUrl,
-    linkUrl: post.linkUrl,
-    tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
-    isExplicit: post.isExplicit,
-    category: post.category,
-    user: post.user,
-    likeCount: post._count.likes,
-    commentCount: post._count.comments,
-    reblogCount: post._count.reblogs,
-    isLiked: user
-      ? (post as Record<string, unknown>).likes !== undefined &&
-        Array.isArray((post as Record<string, unknown>).likes) &&
-        ((post as Record<string, unknown>).likes as unknown[]).length > 0
-      : false,
-    createdAt: post.createdAt.toISOString(),
-    updatedAt: post.updatedAt.toISOString(),
-  }));
+  type MappedPost = {
+    id: string;
+    type: string;
+    title: string | null;
+    content: string | null;
+    imageUrl: string | null;
+    linkUrl: string | null;
+    tags: string[];
+    isExplicit: boolean;
+    category: string | null;
+    user: { id: string; name: string; username: string | null; image: string | null };
+    likeCount: number;
+    commentCount: number;
+    reblogCount: number;
+    isLiked: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+
+  let data: MappedPost[] = posts.map((post) => {
+    const likesArr = user
+      ? ((post as Record<string, unknown>).likes as { id: string }[] | undefined) ?? []
+      : [];
+    return {
+      id: post.id,
+      type: post.type,
+      title: post.title,
+      content: post.content,
+      imageUrl: post.imageUrl,
+      linkUrl: post.linkUrl,
+      tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
+      isExplicit: post.isExplicit,
+      category: post.category,
+      user: post.user,
+      likeCount: post._count.likes,
+      commentCount: post._count.comments,
+      reblogCount: post._count.reblogs,
+      isLiked: likesArr.length > 0,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+    };
+  });
+
+  // Controversial: high engagement but mixed reactions (comments vs likes ratio)
+  if (typeParam === "controversial") {
+    data = data
+      .filter((p) => p.likeCount + p.commentCount + p.reblogCount > 0)
+      .sort((a, b) => {
+        const totalA = a.likeCount + a.commentCount + a.reblogCount;
+        const totalB = b.likeCount + b.commentCount + b.reblogCount;
+        // Posts with high comments relative to likes are more controversial
+        const ratioA = totalA > 0 ? a.commentCount / (a.likeCount + 1) : 0;
+        const ratioB = totalB > 0 ? b.commentCount / (b.likeCount + 1) : 0;
+        const scoreA = totalA * ratioA;
+        const scoreB = totalB * ratioB;
+        return scoreB - scoreA;
+      })
+      .slice(0, 20);
+  }
 
   return c.json({ data });
 });

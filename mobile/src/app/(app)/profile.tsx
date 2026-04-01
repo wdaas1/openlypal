@@ -7,11 +7,12 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Edit3, Grid3X3, Heart, Play, FileText } from 'lucide-react-native';
+import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
@@ -23,6 +24,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = 2;
 const GRID_COLS = 3;
 const CELL_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+
+type ProfileTab = 'posts' | 'media' | 'liked';
+
+type ProfileLink = { label: string; url: string };
 
 function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
   const hasMedia = !!(post.imageUrl || post.videoUrl);
@@ -43,30 +48,21 @@ function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
           {post.videoUrl ? (
             <View style={{
               position: 'absolute', top: 6, right: 6,
-              backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10,
-              padding: 4,
+              backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: 4,
             }}>
               <Play size={10} color="#FFFFFF" fill="#FFFFFF" />
             </View>
           ) : null}
         </>
       ) : (
-        <View className="flex-1 items-center justify-center p-2">
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 8 }}>
           <FileText size={18} color="#2a4a6a" />
           {post.title ? (
-            <Text
-              className="text-center text-xs mt-1 leading-4"
-              style={{ color: '#4a6fa5' }}
-              numberOfLines={3}
-            >
+            <Text style={{ color: '#4a6fa5', fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }} numberOfLines={3}>
               {post.title}
             </Text>
           ) : post.content ? (
-            <Text
-              className="text-center text-xs mt-1 leading-4"
-              style={{ color: '#4a6fa5' }}
-              numberOfLines={3}
-            >
+            <Text style={{ color: '#4a6fa5', fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }} numberOfLines={3}>
               {post.content}
             </Text>
           ) : null}
@@ -80,7 +76,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts');
+  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
 
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['profile', session?.user?.id],
@@ -99,12 +95,33 @@ export default function ProfileScreen() {
     queryFn: () => api.get<Post[]>('/api/posts?liked=true'),
   });
 
-  const displayPosts = activeTab === 'posts' ? myPosts : likedPosts;
+  const mediaPosts = (myPosts ?? []).filter(p => !!(p.imageUrl || p.videoUrl));
+
+  const displayPosts =
+    activeTab === 'posts' ? myPosts :
+    activeTab === 'media' ? mediaPosts :
+    likedPosts;
+
+  // Parse links from JSON
+  let parsedLinks: ProfileLink[] = [];
+  if (profile?.links) {
+    try {
+      parsedLinks = JSON.parse(profile.links);
+    } catch {
+      parsedLinks = [];
+    }
+  }
+
+  const TABS: { id: ProfileTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'posts', label: 'Posts', icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#FFFFFF' : '#4a6fa5'} /> },
+    { id: 'media', label: 'Media', icon: <Play size={15} color={activeTab === 'media' ? '#FFFFFF' : '#4a6fa5'} /> },
+    { id: 'liked', label: 'Liked', icon: <Heart size={15} color={activeTab === 'liked' ? '#FFFFFF' : '#4a6fa5'} /> },
+  ];
 
   return (
-    <SafeAreaView testID="profile-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="profile-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       <ScrollView
-        className="flex-1"
+        style={{ flex: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -117,7 +134,7 @@ export default function ProfileScreen() {
         }
       >
         {/* Header Banner */}
-        <View style={{ height: 150, backgroundColor: '#0a2d50' }}>
+        <View style={{ height: 180, backgroundColor: '#0a2d50' }}>
           {profile?.headerImage ? (
             <Image
               source={{ uri: profile.headerImage }}
@@ -125,8 +142,13 @@ export default function ProfileScreen() {
               contentFit="cover"
             />
           ) : (
-            <View className="flex-1" style={{ backgroundColor: '#0a2d50' }} />
+            <View style={{ flex: 1, backgroundColor: '#0a2d50' }} />
           )}
+          {/* Gradient overlay at bottom for text readability */}
+          <View style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+            backgroundColor: 'rgba(0,25,53,0.6)',
+          }} />
           {/* Top-right action buttons */}
           <View style={{ position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 8 }}>
             <Pressable
@@ -137,12 +159,8 @@ export default function ProfileScreen() {
               }}
               style={{
                 backgroundColor: 'rgba(0,0,0,0.5)',
-                borderRadius: 20,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
+                borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+                flexDirection: 'row', alignItems: 'center', gap: 5,
               }}
             >
               <Edit3 size={13} color="#FFFFFF" />
@@ -156,11 +174,8 @@ export default function ProfileScreen() {
               }}
               style={{
                 backgroundColor: 'rgba(0,0,0,0.5)',
-                borderRadius: 20,
-                width: 32,
-                height: 32,
-                alignItems: 'center',
-                justifyContent: 'center',
+                borderRadius: 20, width: 32, height: 32,
+                alignItems: 'center', justifyContent: 'center',
               }}
             >
               <Settings size={15} color="#FFFFFF" />
@@ -169,110 +184,126 @@ export default function ProfileScreen() {
         </View>
 
         {/* Avatar + Stats row */}
-        <View className="px-4" style={{ marginTop: -28 }}>
-          <View className="flex-row items-end justify-between">
-            {/* Avatar */}
-            <View style={{ borderColor: '#001935', borderWidth: 3, borderRadius: 44 }}>
-              <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={76} />
+        <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            {/* Avatar with green glow */}
+            <View style={{
+              borderColor: '#001935', borderWidth: 4, borderRadius: 46,
+              shadowColor: '#00CF35', shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.6, shadowRadius: 12, elevation: 8,
+            }}>
+              <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={80} />
             </View>
 
             {/* Stats */}
-            <View className="flex-row gap-5 mb-2">
-              <View className="items-center">
-                <Text className="text-white font-bold text-base">{profile?.postCount ?? 0}</Text>
-                <Text className="text-xs" style={{ color: '#4a6fa5' }}>Posts</Text>
+            <View style={{ flexDirection: 'row', gap: 20, marginBottom: 8 }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.postCount ?? 0}</Text>
+                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Posts</Text>
               </View>
-              <View className="items-center">
-                <Text className="text-white font-bold text-base">{profile?.followerCount ?? 0}</Text>
-                <Text className="text-xs" style={{ color: '#4a6fa5' }}>Followers</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.followerCount ?? 0}</Text>
+                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Followers</Text>
               </View>
-              <View className="items-center">
-                <Text className="text-white font-bold text-base">{profile?.followingCount ?? 0}</Text>
-                <Text className="text-xs" style={{ color: '#4a6fa5' }}>Following</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.followingCount ?? 0}</Text>
+                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Following</Text>
               </View>
             </View>
           </View>
 
           {/* Name & Bio */}
-          <View className="mt-2">
+          <View style={{ marginTop: 10 }}>
             {loadingProfile ? (
               <ActivityIndicator testID="loading-indicator" color="#00CF35" />
             ) : (
               <>
-                <Text className="text-white text-lg font-bold leading-tight">
+                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', lineHeight: 22 }}>
                   {profile?.name ?? ''}
                 </Text>
                 {profile?.username ? (
-                  <Text className="text-sm mt-0.5" style={{ color: '#4a6fa5' }}>
+                  <Text style={{ color: '#4a6fa5', fontSize: 13, marginTop: 2 }}>
                     @{profile.username}
                   </Text>
                 ) : null}
                 {profile?.bio ? (
-                  <Text className="text-sm mt-2 leading-5" style={{ color: '#a0b4c8' }}>
+                  <Text style={{ color: '#a0b4c8', fontSize: 13, marginTop: 8, lineHeight: 18 }}>
                     {profile.bio}
                   </Text>
                 ) : null}
               </>
             )}
           </View>
+
+          {/* Links section */}
+          {parsedLinks.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0, marginTop: 12 }}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {parsedLinks.map((link, idx) => (
+                <Pressable
+                  key={idx}
+                  testID={`profile-link-${idx}`}
+                  onPress={() => Linking.openURL(link.url)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 5,
+                    backgroundColor: '#0a2d50', borderRadius: 12,
+                    paddingHorizontal: 10, paddingVertical: 4,
+                  }}
+                >
+                  <Globe size={12} color="#00CF35" />
+                  <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '500' }}>{link.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
         </View>
 
         {/* Tabs */}
         <View
-          className="flex-row mt-5"
-          style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+          style={{ flexDirection: 'row', marginTop: 20, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
         >
-          <Pressable
-            testID="posts-tab"
-            onPress={() => setActiveTab('posts')}
-            className="flex-1 items-center py-3 flex-row justify-center gap-2"
-            style={activeTab === 'posts' ? { borderBottomColor: '#00CF35', borderBottomWidth: 2 } : undefined}
-          >
-            <Grid3X3 size={15} color={activeTab === 'posts' ? '#FFFFFF' : '#4a6fa5'} />
-            <Text
-              className="font-semibold text-sm"
-              style={{ color: activeTab === 'posts' ? '#FFFFFF' : '#4a6fa5' }}
+          {TABS.map((tab) => (
+            <Pressable
+              key={tab.id}
+              testID={`${tab.id}-tab`}
+              onPress={() => setActiveTab(tab.id)}
+              style={[
+                { flex: 1, alignItems: 'center', paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', gap: 6 },
+                activeTab === tab.id ? { borderBottomColor: '#00CF35', borderBottomWidth: 2 } : undefined,
+              ]}
             >
-              Posts
-            </Text>
-          </Pressable>
-          <Pressable
-            testID="likes-tab"
-            onPress={() => setActiveTab('likes')}
-            className="flex-1 items-center py-3 flex-row justify-center gap-2"
-            style={activeTab === 'likes' ? { borderBottomColor: '#00CF35', borderBottomWidth: 2 } : undefined}
-          >
-            <Heart size={15} color={activeTab === 'likes' ? '#FFFFFF' : '#4a6fa5'} />
-            <Text
-              className="font-semibold text-sm"
-              style={{ color: activeTab === 'likes' ? '#FFFFFF' : '#4a6fa5' }}
-            >
-              Liked
-            </Text>
-          </Pressable>
+              {tab.icon}
+              <Text style={{ fontWeight: '600', fontSize: 13, color: activeTab === tab.id ? '#FFFFFF' : '#4a6fa5' }}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* Gallery Grid */}
         {loadingPosts ? (
-          <ActivityIndicator color="#00CF35" className="mt-12" />
+          <ActivityIndicator color="#00CF35" style={{ marginTop: 48 }} />
         ) : (displayPosts ?? []).length === 0 ? (
-          <View className="items-center mt-16 px-8">
-            <View
-              className="w-16 h-16 rounded-2xl items-center justify-center mb-3"
-              style={{ backgroundColor: '#0a2d50' }}
-            >
-              {activeTab === 'posts' ? (
-                <Grid3X3 size={28} color="#2a4a6a" />
-              ) : (
+          <View style={{ alignItems: 'center', marginTop: 64, paddingHorizontal: 32 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: '#0a2d50' }}>
+              {activeTab === 'liked' ? (
                 <Heart size={28} color="#2a4a6a" />
+              ) : (
+                <Grid3X3 size={28} color="#2a4a6a" />
               )}
             </View>
-            <Text className="text-white font-semibold text-base">
-              {activeTab === 'posts' ? 'No posts yet' : 'No liked posts yet'}
+            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
+              {activeTab === 'posts' ? 'No posts yet' : activeTab === 'media' ? 'No media yet' : 'No liked posts yet'}
             </Text>
-            <Text className="text-sm text-center mt-1" style={{ color: '#4a6fa5' }}>
+            <Text style={{ color: '#4a6fa5', fontSize: 13, textAlign: 'center', marginTop: 6 }}>
               {activeTab === 'posts'
                 ? 'Share your first post to get started'
+                : activeTab === 'media'
+                ? 'Posts with images or videos will appear here'
                 : 'Posts you like will appear here'}
             </Text>
           </View>
@@ -288,7 +319,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <View className="h-8" />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );

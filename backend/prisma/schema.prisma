@@ -21,11 +21,14 @@ model User {
   accounts      Account[]
 
   // Openly-specific
-  username      String?   @unique
-  bio           String?
-  headerImage   String?
-  categories    String?   // comma-separated interest categories
-  showExplicit  Boolean   @default(false)
+  username           String?   @unique
+  bio                String?
+  headerImage        String?
+  categories         String?   // comma-separated interest categories
+  showExplicit       Boolean   @default(false)
+  links              String?   // JSON array of {label, url} objects
+  contentSensitivity String?   @default("safe") // "safe", "mature", "unfiltered"
+  pinnedPostIds      String?   // comma-separated post IDs (max 3)
 
   posts            Post[]
   likes            Like[]
@@ -36,6 +39,8 @@ model User {
   sentMessages     Message[]   @relation("SentMessages")
   receivedMessages Message[]   @relation("ReceivedMessages")
   tagFollows       TagFollow[]
+  commentVotes     CommentVote[]
+  reports          Report[]
 }
 
 model Session {
@@ -79,23 +84,26 @@ model Verification {
 // ─── Tumblr Models ─────────────────────────────────────────
 
 model Post {
-  id         String   @id @default(cuid())
-  type       String   @default("text") // text, photo, quote, link, video
-  title      String?
-  content    String?
-  imageUrl   String?
-  videoUrl   String?
-  linkUrl    String?
-  tags       String?  // comma-separated tags
-  category   String?  // interest category
-  isExplicit Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes     Like[]
-  reblogs   Reblog[]
-  comments  Comment[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  type         String   @default("text") // text, photo, quote, link, video
+  title        String?
+  content      String?
+  imageUrl     String?
+  videoUrl     String?
+  linkUrl      String?
+  tags         String?  // comma-separated tags
+  category     String?  // interest category
+  isExplicit   Boolean  @default(false)
+  contentScore Float    @default(0)  // 0.0-1.0 sensitivity score
+  hidden       Boolean  @default(false)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes        Like[]
+  reblogs      Reblog[]
+  comments     Comment[]
+  reports      Report[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Like {
@@ -124,9 +132,27 @@ model Comment {
   content   String
   userId    String
   postId    String
+  parentId  String?
+  upvotes   Int      @default(0)
+  downvotes Int      @default(0)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  votes     CommentVote[]
   createdAt DateTime @default(now())
+}
+
+model CommentVote {
+  id        String   @id @default(cuid())
+  userId    String
+  commentId String
+  value     Int      // 1 for upvote, -1 for downvote
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
 }
 
 model Follow {
@@ -159,4 +185,17 @@ model TagFollow {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tag])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  category  String   // "illegal", "abuse", "spam", "explicit"
+  reason    String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
 }

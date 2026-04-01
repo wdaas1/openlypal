@@ -10,6 +10,7 @@ import { exploreRouter } from "./routes/explore";
 import { activityRouter } from "./routes/activity";
 import { messagesRouter } from "./routes/messages";
 import { tagFollowsRouter } from "./routes/tagFollows";
+import { commentsRouter } from "./routes/comments";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -115,6 +116,7 @@ app.route("/api/posts", postsRouter);
 app.route("/api/users", usersRouter);
 app.route("/api/explore", exploreRouter);
 app.route("/api/activity", activityRouter);
+app.route("/api/comments", commentsRouter);
 app.route("/api", messagesRouter);
 app.route("/api", tagFollowsRouter);
 
