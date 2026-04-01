@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { expo } from "@better-auth/expo";
+import { bearer } from "better-auth/plugins";
 import { prisma } from "./prisma";
 import { env } from "./env";
 
@@ -25,7 +26,7 @@ export const auth = betterAuth({
     "https://*.vibecode.dev",
     "https://vibecode.dev",
   ],
-  plugins: [expo()],
+  plugins: [expo(), bearer()],
   advanced: {
     trustedProxyHeaders: true,
     disableCSRFCheck: true,
