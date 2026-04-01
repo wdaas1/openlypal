@@ -21,6 +21,7 @@ export interface Post {
   title: string | null;
   content: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   linkUrl: string | null;
   tags: string[];
   userId: string;

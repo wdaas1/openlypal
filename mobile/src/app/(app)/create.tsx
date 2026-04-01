@@ -3,21 +3,22 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Type, ImageIcon, Quote, Link, X } from 'lucide-react-native';
+import { Type, ImageIcon, Quote, Link, X, Video as VideoIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { cn } from '@/lib/cn';
-import { pickImage } from '@/lib/file-picker';
+import { pickImage, pickVideo } from '@/lib/file-picker';
 import { uploadFile } from '@/lib/upload';
 
-type PostType = 'text' | 'photo' | 'quote' | 'link';
+type PostType = 'text' | 'photo' | 'quote' | 'link' | 'video';
 
 const postTypes: { key: PostType; label: string; icon: typeof Type }[] = [
   { key: 'text', label: 'Text', icon: Type },
   { key: 'photo', label: 'Photo', icon: ImageIcon },
   { key: 'quote', label: 'Quote', icon: Quote },
   { key: 'link', label: 'Link', icon: Link },
+  { key: 'video', label: 'Video', icon: VideoIcon },
 ];
 
 export default function CreateScreen() {
@@ -27,6 +28,7 @@ export default function CreateScreen() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState<string>('');
   const [linkUrl, setLinkUrl] = useState('');
   const [tagsInput, setTagsInput] = useState('');
 
@@ -38,6 +40,17 @@ export default function CreateScreen() {
     },
     onSuccess: (result) => {
       if (result) setImageUrl(result.url);
+    },
+  });
+
+  const uploadVideoMutation = useMutation({
+    mutationFn: async () => {
+      const file = await pickVideo();
+      if (!file) return null;
+      return uploadFile(file.uri, file.filename, file.mimeType);
+    },
+    onSuccess: (result) => {
+      if (result) setVideoUrl(result.url);
     },
   });
 
@@ -53,6 +66,7 @@ export default function CreateScreen() {
         title: title || undefined,
         content: content || undefined,
         imageUrl: postType === 'photo' ? imageUrl || undefined : undefined,
+        videoUrl: postType === 'video' ? videoUrl || undefined : undefined,
         linkUrl: postType === 'link' ? linkUrl || undefined : undefined,
         tags: tags.length > 0 ? tags : undefined,
       });
@@ -64,6 +78,7 @@ export default function CreateScreen() {
       setTitle('');
       setContent('');
       setImageUrl('');
+      setVideoUrl('');
       setLinkUrl('');
       setTagsInput('');
       router.navigate('/(app)' as any);
@@ -75,7 +90,7 @@ export default function CreateScreen() {
     .map((t) => t.trim())
     .filter(Boolean);
 
-  const canPost = content.trim().length > 0 || imageUrl.trim().length > 0;
+  const canPost = content.trim().length > 0 || imageUrl.trim().length > 0 || videoUrl.trim().length > 0;
 
   return (
     <SafeAreaView testID="create-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
@@ -104,7 +119,7 @@ export default function CreateScreen() {
 
       <ScrollView className="flex-1 px-4 pt-4">
         {/* Post Type Selector */}
-        <View className="flex-row gap-2 mb-6">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 24 }}>
           {postTypes.map((pt) => {
             const isActive = postType === pt.key;
             const IconComponent = pt.icon;
@@ -117,12 +132,13 @@ export default function CreateScreen() {
                   setPostType(pt.key);
                 }}
                 className={cn(
-                  'flex-1 items-center py-3 rounded-xl',
+                  'items-center py-3 rounded-xl px-4',
                 )}
                 style={{
                   backgroundColor: isActive ? '#00CF35' : '#0a2d50',
                   borderColor: '#1a3a5c',
                   borderWidth: isActive ? 0 : 1,
+                  minWidth: 64,
                 }}
               >
                 <IconComponent size={20} color={isActive ? '#001935' : '#4a6fa5'} />
@@ -135,7 +151,7 @@ export default function CreateScreen() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         {/* Title */}
         {(postType === 'text' || postType === 'link') ? (
@@ -214,6 +230,61 @@ export default function CreateScreen() {
             {uploadMutation.isError ? (
               <Text className="text-red-400 text-xs mt-2 text-center">
                 {uploadMutation.error.message}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Video picker for video posts */}
+        {postType === 'video' ? (
+          <View className="mb-4">
+            {videoUrl ? (
+              <View className="rounded-xl overflow-hidden items-center justify-center" style={{ backgroundColor: '#0a2d50', height: 120, position: 'relative' }}>
+                <VideoIcon size={28} color="#00CF35" />
+                <Text className="text-sm mt-2 px-4 text-center" style={{ color: '#4a6fa5' }} numberOfLines={1}>
+                  {videoUrl}
+                </Text>
+                <Pressable
+                  testID="remove-video-button"
+                  onPress={() => setVideoUrl('')}
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    borderRadius: 16,
+                    width: 32,
+                    height: 32,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <X size={16} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                testID="pick-video-button"
+                onPress={() => uploadVideoMutation.mutate()}
+                disabled={uploadVideoMutation.isPending}
+                className="rounded-xl items-center justify-center py-8"
+                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+              >
+                {uploadVideoMutation.isPending ? (
+                  <ActivityIndicator testID="upload-video-loading-indicator" color="#00CF35" />
+                ) : (
+                  <>
+                    <VideoIcon size={28} color="#4a6fa5" />
+                    <Text className="text-sm mt-2" style={{ color: '#4a6fa5' }}>
+                      Pick video from library
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
+            {uploadVideoMutation.isError ? (
+              <Text className="text-red-400 text-xs mt-2 text-center">
+                {uploadVideoMutation.error.message}
               </Text>
             ) : null}
           </View>

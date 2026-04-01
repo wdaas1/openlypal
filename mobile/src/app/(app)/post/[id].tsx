@@ -5,12 +5,27 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api/api';
 import type { Post, Comment } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+
+function VideoPlayer({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ width: '100%', height: 240, borderRadius: 12, marginBottom: 16 }}
+      contentFit="contain"
+      nativeControls
+    />
+  );
+}
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -144,6 +159,11 @@ export default function PostDetailScreen() {
                 style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12, marginBottom: 16 }}
                 contentFit="cover"
               />
+            ) : null}
+
+            {/* Video */}
+            {post.type === 'video' && post.videoUrl ? (
+              <VideoPlayer uri={post.videoUrl} />
             ) : null}
 
             {/* Link */}

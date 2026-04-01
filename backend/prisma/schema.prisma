@@ -79,6 +79,7 @@ model Post {
   title     String?
   content   String?
   imageUrl  String?
+  videoUrl  String?
   linkUrl   String?
   tags      String?  // comma-separated tags
   userId    String

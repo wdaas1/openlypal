@@ -59,6 +59,7 @@ postsRouter.get("/", async (c) => {
     title: post.title,
     content: post.content,
     imageUrl: post.imageUrl,
+    videoUrl: post.videoUrl ?? null,
     linkUrl: post.linkUrl,
     tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
     user: post.user,
@@ -99,6 +100,7 @@ postsRouter.get("/:id", async (c) => {
     title: post.title,
     content: post.content,
     imageUrl: post.imageUrl,
+    videoUrl: post.videoUrl ?? null,
     linkUrl: post.linkUrl,
     tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
     user: post.user,
@@ -115,10 +117,11 @@ postsRouter.get("/:id", async (c) => {
 
 // POST / - Create post
 const createPostSchema = z.object({
-  type: z.enum(["text", "photo", "quote", "link"]).default("text"),
+  type: z.enum(["text", "photo", "quote", "link", "video"]).default("text"),
   title: z.string().optional(),
   content: z.string().optional(),
   imageUrl: z.string().optional(),
+  videoUrl: z.string().optional(),
   linkUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -135,6 +138,7 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
       title: body.title,
       content: body.content,
       imageUrl: body.imageUrl,
+      videoUrl: body.videoUrl,
       linkUrl: body.linkUrl,
       tags: body.tags?.join(", "),
       userId: user.id,

@@ -18,3 +18,20 @@ export async function pickImage(): Promise<PickedFile | null> {
     mimeType: a.mimeType ?? "image/jpeg",
   };
 }
+
+export async function pickVideo(): Promise<PickedFile | null> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return null;
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+    quality: 1,
+    videoMaxDuration: 60,
+  });
+  if (result.canceled) return null;
+  const a = result.assets[0];
+  return {
+    uri: a.uri,
+    filename: a.fileName ?? `video-${Date.now()}.mp4`,
+    mimeType: a.mimeType ?? "video/mp4",
+  };
+}

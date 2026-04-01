@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Heart, Repeat2, MessageCircle, Share } from 'lucide-react-native';
+import { Heart, Repeat2, MessageCircle, Share, Play } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -104,6 +104,18 @@ export function PostCard({ post }: PostCardProps) {
           contentFit="cover"
           testID={`post-image-${post.id}`}
         />
+      ) : null}
+
+      {/* Video */}
+      {post.type === 'video' && post.videoUrl ? (
+        <View className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', height: 200, alignItems: 'center', justifyContent: 'center' }}>
+          <View className="items-center gap-2">
+            <View className="rounded-full items-center justify-center" style={{ width: 56, height: 56, backgroundColor: 'rgba(0,207,53,0.2)' }}>
+              <Play size={28} color="#00CF35" fill="#00CF35" />
+            </View>
+            <Text className="text-sm font-medium" style={{ color: '#4a6fa5' }}>Tap to watch</Text>
+          </View>
+        </View>
       ) : null}
 
       {/* Link */}
