@@ -51,10 +51,10 @@ export default function SignUpScreen() {
                 className="font-black text-white"
                 style={{ fontSize: 80, fontStyle: 'italic', lineHeight: 90 }}
               >
-                t
+                O
               </Text>
               <Text className="text-white text-xl font-semibold mt-2">
-                Join today.
+                Join Openly.
               </Text>
             </View>
 

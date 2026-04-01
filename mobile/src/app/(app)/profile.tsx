@@ -3,7 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl, T
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, LogOut, Edit3, Check, X } from 'lucide-react-native';
+import { Settings, LogOut, Edit3, Check, X, Camera } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
@@ -12,6 +12,8 @@ import { useSession, useInvalidateSession } from '@/lib/auth/use-session';
 import type { Post, User } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { UserAvatar } from '@/components/UserAvatar';
+import { pickImage } from '@/lib/file-picker';
+import { uploadFile } from '@/lib/upload';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -22,6 +24,8 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingHeader, setIsUploadingHeader] = useState(false);
 
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['profile', session?.user?.id],
@@ -51,6 +55,36 @@ export default function ProfileScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+
+  const updateAvatarMutation = useMutation({
+    mutationFn: async () => {
+      const file = await pickImage();
+      if (!file) return null;
+      const result = await uploadFile(file.uri, file.filename, file.mimeType);
+      return api.patch(`/api/users/${session?.user?.id}`, { image: result.url });
+    },
+    onSuccess: (result) => {
+      if (result) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      }
+    },
+  });
+
+  const updateHeaderMutation = useMutation({
+    mutationFn: async () => {
+      const file = await pickImage();
+      if (!file) return null;
+      const result = await uploadFile(file.uri, file.filename, file.mimeType);
+      return api.patch(`/api/users/${session?.user?.id}`, { headerImage: result.url });
+    },
+    onSuccess: (result) => {
+      if (result) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      }
     },
   });
 
@@ -87,7 +121,12 @@ export default function ProfileScreen() {
         }
       >
         {/* Header Image */}
-        <View style={{ height: 160, backgroundColor: '#0a2d50' }}>
+        <Pressable
+          testID="header-image-button"
+          onPress={() => updateHeaderMutation.mutate()}
+          disabled={updateHeaderMutation.isPending}
+          style={{ height: 160, backgroundColor: '#0a2d50' }}
+        >
           {profile?.headerImage ? (
             <Image
               source={{ uri: profile.headerImage }}
@@ -101,14 +140,37 @@ export default function ProfileScreen() {
               </View>
             </View>
           )}
-        </View>
+          {updateHeaderMutation.isPending ? (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+              <ActivityIndicator testID="header-upload-indicator" color="#00CF35" />
+            </View>
+          ) : (
+            <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16, padding: 6 }}>
+              <Camera size={16} color="#FFFFFF" />
+            </View>
+          )}
+        </Pressable>
 
         {/* Profile Info */}
         <View className="px-4 -mt-10">
           <View className="flex-row items-end justify-between">
-            <View style={{ borderColor: '#001935', borderWidth: 4, borderRadius: 44 }}>
+            <Pressable
+              testID="avatar-button"
+              onPress={() => updateAvatarMutation.mutate()}
+              disabled={updateAvatarMutation.isPending}
+              style={{ borderColor: '#001935', borderWidth: 4, borderRadius: 44, position: 'relative' }}
+            >
               <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={80} />
-            </View>
+              {updateAvatarMutation.isPending ? (
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                  <ActivityIndicator testID="avatar-upload-indicator" color="#00CF35" size="small" />
+                </View>
+              ) : (
+                <View style={{ position: 'absolute', bottom: 2, right: 2, backgroundColor: '#00CF35', borderRadius: 12, width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+                  <Camera size={12} color="#001935" />
+                </View>
+              )}
+            </Pressable>
             <View className="flex-row gap-2 mb-1">
               {isEditing ? (
                 <>

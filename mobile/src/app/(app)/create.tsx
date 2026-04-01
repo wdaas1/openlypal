@@ -3,10 +3,13 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Type, ImageIcon, Quote, Link } from 'lucide-react-native';
+import { Type, ImageIcon, Quote, Link, X } from 'lucide-react-native';
+import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { cn } from '@/lib/cn';
+import { pickImage } from '@/lib/file-picker';
+import { uploadFile } from '@/lib/upload';
 
 type PostType = 'text' | 'photo' | 'quote' | 'link';
 
@@ -26,6 +29,17 @@ export default function CreateScreen() {
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+
+  const uploadMutation = useMutation({
+    mutationFn: async () => {
+      const file = await pickImage();
+      if (!file) return null;
+      return uploadFile(file.uri, file.filename, file.mimeType);
+    },
+    onSuccess: (result) => {
+      if (result) setImageUrl(result.url);
+    },
+  });
 
   const createPost = useMutation({
     mutationFn: async () => {
@@ -150,17 +164,60 @@ export default function CreateScreen() {
           style={{ lineHeight: 22 }}
         />
 
-        {/* Image URL for photo posts */}
+        {/* Image picker for photo posts */}
         {postType === 'photo' ? (
-          <TextInput
-            testID="image-url-input"
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholder="Image URL"
-            placeholderTextColor="#4a6fa5"
-            className="rounded-xl px-4 py-3 text-white text-sm mb-4"
-            style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
-          />
+          <View className="mb-4">
+            {imageUrl ? (
+              <View className="rounded-xl overflow-hidden" style={{ position: 'relative' }}>
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={{ width: '100%', height: 200, borderRadius: 12 }}
+                  contentFit="cover"
+                />
+                <Pressable
+                  testID="remove-image-button"
+                  onPress={() => setImageUrl('')}
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    borderRadius: 16,
+                    width: 32,
+                    height: 32,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <X size={16} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                testID="pick-image-button"
+                onPress={() => uploadMutation.mutate()}
+                disabled={uploadMutation.isPending}
+                className="rounded-xl items-center justify-center py-8"
+                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+              >
+                {uploadMutation.isPending ? (
+                  <ActivityIndicator testID="upload-loading-indicator" color="#00CF35" />
+                ) : (
+                  <>
+                    <ImageIcon size={28} color="#4a6fa5" />
+                    <Text className="text-sm mt-2" style={{ color: '#4a6fa5' }}>
+                      Pick from library
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
+            {uploadMutation.isError ? (
+              <Text className="text-red-400 text-xs mt-2 text-center">
+                {uploadMutation.error.message}
+              </Text>
+            ) : null}
+          </View>
         ) : null}
 
         {/* Link URL for link posts */}

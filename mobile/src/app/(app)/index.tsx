@@ -20,7 +20,7 @@ export default function FeedScreen() {
       {/* Header */}
       <View className="px-4 py-3 items-center" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
         <Text className="text-white text-2xl font-black" style={{ fontStyle: 'italic', letterSpacing: -1 }}>
-          tumblr
+          Openly
         </Text>
       </View>
 
