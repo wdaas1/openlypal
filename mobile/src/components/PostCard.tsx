@@ -2,16 +2,17 @@ import React, { useState, useRef } from 'react';
 import { View, Text, Pressable, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Heart, Repeat2, MessageCircle, Share, EyeOff, Volume2, VolumeX, Maximize } from 'lucide-react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Heart, Repeat2, MessageCircle, Share, Volume2, VolumeX, Maximize, ShieldAlert } from 'lucide-react-native';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { formatDistanceToNow } from 'date-fns';
 import { Video, ResizeMode } from 'expo-av';
 import { api } from '@/lib/api/api';
-import type { Post } from '@/lib/types';
+import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
+import { useSession } from '@/lib/auth/use-session';
 
 interface PostCardProps {
   post: Post;
@@ -26,6 +27,18 @@ export function PostCard({ post }: PostCardProps) {
   const [muted, setMuted] = useState(true);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const videoRef = useRef<Video>(null);
+  const { data: session } = useSession();
+
+  // Read user's explicit content preference from cache
+  const { data: profile } = useQuery({
+    queryKey: ['profile', session?.user?.id],
+    queryFn: () => api.get<User>('/api/users/me'),
+    enabled: !!session?.user?.id,
+    staleTime: 60_000,
+  });
+  const userAllowsExplicit = profile?.showExplicit ?? false;
+  // Explicit content is hidden unless user opts in globally or reveals individually
+  const showContent = !post.isExplicit || userAllowsExplicit || revealed;
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
@@ -106,16 +119,21 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Image - full width */}
       {post.imageUrl ? (
-        post.isExplicit && !revealed ? (
-          <View style={{ width, aspectRatio: 16 / 9, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center' }}>
-            <EyeOff size={32} color="#4a6fa5" />
-            <Text style={{ fontSize: 14, fontWeight: '500', marginTop: 8, color: '#4a6fa5' }}>Sensitive content</Text>
+        !showContent ? (
+          <View style={{ width, aspectRatio: 16 / 9, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldAlert size={24} color="#FF4E6A" />
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
+            <Text style={{ fontSize: 11, color: '#4a6fa5', textAlign: 'center', paddingHorizontal: 24 }}>
+              This post may contain explicit material.
+            </Text>
             <Pressable
               testID={`reveal-image-button-${post.id}`}
-              onPress={() => setRevealed(true)}
-              style={{ marginTop: 12, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c' }}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRevealed(true); }}
+              style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#ffffff' }}>Show</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Show Anyway</Text>
             </Pressable>
           </View>
         ) : (
@@ -138,16 +156,21 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Video - full width inline */}
       {post.type === 'video' && post.videoUrl ? (
-        post.isExplicit && !revealed ? (
-          <View style={{ width, height: videoHeight, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center' }}>
-            <EyeOff size={32} color="#4a6fa5" />
-            <Text style={{ fontSize: 14, fontWeight: '500', marginTop: 8, color: '#4a6fa5' }}>Sensitive content</Text>
+        !showContent ? (
+          <View style={{ width, height: videoHeight, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldAlert size={24} color="#FF4E6A" />
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
+            <Text style={{ fontSize: 11, color: '#4a6fa5', textAlign: 'center', paddingHorizontal: 24 }}>
+              This video may contain explicit material.
+            </Text>
             <Pressable
               testID={`reveal-video-button-${post.id}`}
-              onPress={() => setRevealed(true)}
-              style={{ marginTop: 12, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c' }}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRevealed(true); }}
+              style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#ffffff' }}>Show</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Show Anyway</Text>
             </Pressable>
           </View>
         ) : (

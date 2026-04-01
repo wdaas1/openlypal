@@ -5,6 +5,9 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { View, AppState, AppStateStatus } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useSession } from '@/lib/auth/use-session';
 
 export const unstable_settings = {
@@ -27,8 +30,46 @@ const TumblrDark = {
   },
 };
 
+/** Blurs the screen in the app switcher to protect private content */
+function PrivacyShield({ children }: { children: React.ReactNode }) {
+  const [obscured, setObscured] = useState(false);
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'background' || next === 'inactive') {
+        setObscured(true);
+      } else if (next === 'active') {
+        setObscured(false);
+      }
+      appState.current = next;
+    });
+    return () => sub.remove();
+  }, []);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {obscured ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: '#001935',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          pointerEvents="none"
+        />
+      ) : null}
+    </View>
+  );
+}
+
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
+  // Prevent screenshots and screen recording across the entire app
+  usePreventScreenCapture();
 
   if (isLoading) return null;
 
@@ -53,7 +94,9 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <KeyboardProvider>
           <StatusBar style="light" />
-          <RootLayoutNav />
+          <PrivacyShield>
+            <RootLayoutNav />
+          </PrivacyShield>
         </KeyboardProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
