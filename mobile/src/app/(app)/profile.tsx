@@ -29,7 +29,7 @@ export default function ProfileScreen() {
 
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['profile', session?.user?.id],
-    queryFn: () => api.get<User>(`/api/users/${session?.user?.id}`),
+    queryFn: () => api.get<User>('/api/users/me'),
     enabled: !!session?.user?.id,
   });
 
@@ -46,7 +46,7 @@ export default function ProfileScreen() {
 
   const updateProfile = useMutation({
     mutationFn: async () => {
-      return api.patch(`/api/users/${session?.user?.id}`, {
+      return api.patch('/api/users/me', {
         name: editName,
         bio: editBio,
       });
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
       const file = await pickImage();
       if (!file) return null;
       const result = await uploadFile(file.uri, file.filename, file.mimeType);
-      return api.patch(`/api/users/${session?.user?.id}`, { image: result.url });
+      return api.patch('/api/users/me', { image: result.url });
     },
     onSuccess: (result) => {
       if (result) {
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
       const file = await pickImage();
       if (!file) return null;
       const result = await uploadFile(file.uri, file.filename, file.mimeType);
-      return api.patch(`/api/users/${session?.user?.id}`, { headerImage: result.url });
+      return api.patch('/api/users/me', { headerImage: result.url });
     },
     onSuccess: (result) => {
       if (result) {
@@ -270,15 +270,15 @@ export default function ProfileScreen() {
           {/* Stats */}
           <View className="flex-row mt-4 gap-6">
             <View>
-              <Text className="text-white font-bold text-base">{profile?._count?.posts ?? 0}</Text>
+              <Text className="text-white font-bold text-base">{profile?.postCount ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Posts</Text>
             </View>
             <View>
-              <Text className="text-white font-bold text-base">{profile?._count?.followers ?? 0}</Text>
+              <Text className="text-white font-bold text-base">{profile?.followerCount ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Followers</Text>
             </View>
             <View>
-              <Text className="text-white font-bold text-base">{profile?._count?.following ?? 0}</Text>
+              <Text className="text-white font-bold text-base">{profile?.followingCount ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Following</Text>
             </View>
           </View>

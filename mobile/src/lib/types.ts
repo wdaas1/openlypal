@@ -14,6 +14,9 @@ export interface User {
     following: number;
     posts: number;
   };
+  followerCount?: number;
+  followingCount?: number;
+  postCount?: number;
   isFollowing?: boolean;
 }
 
