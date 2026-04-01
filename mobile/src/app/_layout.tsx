@@ -1,5 +1,5 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -73,20 +73,29 @@ function NativeScreenCaptureGuard() {
 
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
+  const router = useRouter();
 
-  if (isLoading) return null;
+  useEffect(() => {
+    if (isLoading) return;
+    SplashScreen.hideAsync();
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (session?.user) {
+      router.replace('/(app)' as any);
+    } else {
+      router.replace('/sign-in' as any);
+    }
+  }, [session, isLoading]);
 
   return (
     <ThemeProvider value={TumblrDark}>
       {Platform.OS !== 'web' && <NativeScreenCaptureGuard />}
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session?.user}>
-          <Stack.Screen name="(app)" />
-        </Stack.Protected>
-        <Stack.Protected guard={!session?.user}>
-          <Stack.Screen name="sign-in" />
-          <Stack.Screen name="sign-up" />
-        </Stack.Protected>
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="sign-in" />
+        <Stack.Screen name="sign-up" />
       </Stack>
     </ThemeProvider>
   );
