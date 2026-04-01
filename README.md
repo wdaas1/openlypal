@@ -9,7 +9,9 @@ A full-featured Tumblr clone built with React Native (Expo) and a Hono backend.
 - **Post Types**: Text, photo, quote, and link posts
 - **Social**: Like, reblog, comment on posts
 - **Explore**: Discover trending posts, popular tags, and recommended users
-- **Profiles**: Customizable profiles with header images, bios, and post/like tabs
+- **Profiles**: Gallery grid layout for posts, separate Edit Profile & Settings screens
+- **Edit Profile**: Name, username, bio, contact details (website, location), avatar/header upload
+- **Settings**: Interests, explicit content toggle, support, legal links, account deletion (GDPR)
 - **Follow System**: Follow/unfollow users to curate your feed
 - **Search**: Find users by name or username
 

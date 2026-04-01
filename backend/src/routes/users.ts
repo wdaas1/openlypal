@@ -275,6 +275,17 @@ usersRouter.get("/:id/posts", async (c) => {
   return c.json({ data });
 });
 
+// DELETE /me - Delete current user account (GDPR compliance)
+usersRouter.delete("/me", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  // Delete all user data (cascades via Prisma relations)
+  await prisma.user.delete({ where: { id: user.id } });
+
+  return c.json({ data: { deleted: true } });
+});
+
 // POST /:id/follow - Toggle follow/unfollow
 usersRouter.post("/:id/follow", async (c) => {
   const user = c.get("user");
