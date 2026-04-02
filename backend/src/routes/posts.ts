@@ -637,13 +637,16 @@ postsRouter.post("/:id/report", zValidator("json", reportSchema), async (c) => {
     data: { userId: user.id, postId, category: body.category, reason: body.reason },
   });
 
-  // Auto-hide post if it reaches 5+ reports
-  const reportCount = await prisma.report.count({ where: { postId } });
-  if (reportCount >= 5 && !post.hidden) {
-    await prisma.post.update({ where: { id: postId }, data: { hidden: true } });
-  }
+  // Increment reportCount and auto-hide if >= 5
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: {
+      reportCount: { increment: 1 },
+      hidden: post.reportCount + 1 >= 5 ? true : undefined,
+    },
+  });
 
-  return c.json({ data: { success: true } });
+  return c.json({ data: { success: true, hidden: updated.hidden } });
 });
 
 export { postsRouter };
