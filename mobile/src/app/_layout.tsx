@@ -4,8 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, AppState, AppStateStatus, Platform } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { View, AppState, AppStateStatus, Platform, ActivityIndicator } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useSession } from '@/lib/auth/use-session';
 
@@ -73,24 +73,40 @@ function NativeScreenCaptureGuard() {
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
   const router = useRouter();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
+
+  console.log('[Auth] isLoading:', isLoading, 'session:', session?.user ? 'logged in' : 'no session');
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading) {
+      console.log('[Auth] Still loading session...');
+      return;
+    }
+
     if (session?.user) {
+      console.log('[Auth] User found, navigating to app');
       router.replace('/(app)' as any);
     } else {
+      console.log('[Auth] No user, navigating to sign-in');
       router.replace('/sign-in' as any);
     }
-    SplashScreen.hideAsync();
-  }, [session, isLoading]);
 
-  if (isLoading) {
-    return null;
-  }
+    // Small delay to let navigation complete before revealing
+    setTimeout(() => {
+      setIsNavigationReady(true);
+      SplashScreen.hideAsync();
+      console.log('[Auth] Splash hidden, navigation ready');
+    }, 100);
+  }, [session, isLoading]);
 
   return (
     <ThemeProvider value={TumblrDark}>
       {Platform.OS !== 'web' && <NativeScreenCaptureGuard />}
+      {!isNavigationReady && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#001935', zIndex: 999, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color="#00CF35" size="large" />
+        </View>
+      )}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="sign-in" />
