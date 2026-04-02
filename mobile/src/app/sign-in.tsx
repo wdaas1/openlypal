@@ -34,7 +34,7 @@ export default function SignInScreen() {
   const isValid = email.includes('@') && password.length >= 6;
 
   return (
-    <SafeAreaView testID="sign-in-screen" className="flex-1" style={{ backgroundColor: '#001935' }}>
+    <SafeAreaView testID="sign-in-screen" className="flex-1" style={{ backgroundColor: '#001935' }} onTouchStart={() => console.log('[SignIn] Screen touched')}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -89,7 +89,7 @@ export default function SignInScreen() {
             {/* Log In Button */}
             <Pressable
               testID="login-button"
-              onPress={() => signIn.mutate()}
+              onPress={() => { console.log('[SignIn] Login button pressed'); signIn.mutate(); }}
               disabled={!isValid || signIn.isPending}
               className="rounded-xl py-4 items-center mb-4"
               style={{ backgroundColor: isValid ? '#00CF35' : '#0a2d50' }}

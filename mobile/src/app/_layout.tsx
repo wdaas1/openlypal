@@ -46,6 +46,8 @@ function PrivacyShield({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, []);
 
+  console.log('[PrivacyShield] obscured:', obscured, 'appState:', appState.current);
+
   return (
     <View style={{ flex: 1 }}>
       {children}
