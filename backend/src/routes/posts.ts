@@ -313,6 +313,11 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
+  const profile = await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } });
+  if (profile?.status === "banned") {
+    return c.json({ error: { message: "Your account has been suspended.", code: "BANNED" } }, 403);
+  }
+
   const body = c.req.valid("json");
 
   const post = await prisma.post.create({
@@ -561,6 +566,11 @@ const commentSchema = z.object({
 postsRouter.post("/:id/comments", zValidator("json", commentSchema), async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const commentProfile = await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } });
+  if (commentProfile?.status === "banned") {
+    return c.json({ error: { message: "Your account has been suspended.", code: "BANNED" } }, 403);
+  }
 
   const postId = c.req.param("id");
   const post = await prisma.post.findUnique({ where: { id: postId } });

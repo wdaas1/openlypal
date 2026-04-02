@@ -27,6 +27,15 @@ type ReportedPost = {
   reports: { category: string; reason: string | null; createdAt: string }[];
 };
 
+type HiddenPost = {
+  id: string;
+  content: string | null;
+  imageUrl: string | null;
+  reportCount: number;
+  createdAt: string;
+  user: { id: string; name: string; username: string | null; image: string | null };
+};
+
 type AdminUser = {
   id: string;
   name: string;
@@ -58,6 +67,12 @@ export default function AdminScreen() {
     enabled: admin,
   });
 
+  const { data: hiddenPosts, isLoading: hiddenLoading } = useQuery({
+    queryKey: ['admin', 'hidden'],
+    queryFn: () => api.get<HiddenPost[]>('/api/admin/hidden'),
+    enabled: admin,
+  });
+
   const hidePost = useMutation({
     mutationFn: (postId: string) => api.patch(`/api/admin/posts/${postId}/hide`, {}),
     onSuccess: () => {
@@ -70,7 +85,16 @@ export default function AdminScreen() {
     mutationFn: (postId: string) => api.delete(`/api/admin/posts/${postId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'hidden'] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    },
+  });
+
+  const unhidePost = useMutation({
+    mutationFn: (postId: string) => api.patch(`/api/admin/posts/${postId}/unhide`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'hidden'] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
 
@@ -134,6 +158,36 @@ export default function AdminScreen() {
                 onHide={() => hidePost.mutate(post.id)}
                 onDelete={() => deletePost.mutate(post.id)}
                 isHiding={hidePost.isPending === true && hidePost.variables === post.id}
+                isDeleting={deletePost.isPending === true && deletePost.variables === post.id}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Hidden Posts section */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 28, paddingBottom: 8 }}>
+          <Text style={{ color: '#4a6fa5', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Hidden Posts
+          </Text>
+        </View>
+
+        {hiddenLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+            <ActivityIndicator color="#00CF35" />
+          </View>
+        ) : !hiddenPosts?.length ? (
+          <View style={{ alignItems: 'center', padding: 24 }}>
+            <Text style={{ color: '#4a6fa5', fontSize: 13 }}>No hidden posts.</Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16, gap: 12 }}>
+            {hiddenPosts.map((post) => (
+              <HiddenPostCard
+                key={post.id}
+                post={post}
+                onUnhide={() => unhidePost.mutate(post.id)}
+                onDelete={() => deletePost.mutate(post.id)}
+                isUnhiding={unhidePost.isPending === true && unhidePost.variables === post.id}
                 isDeleting={deletePost.isPending === true && deletePost.variables === post.id}
               />
             ))}
@@ -227,6 +281,63 @@ function FlaggedPostCard({
           testID={`admin-delete-${post.id}`}
           onPress={onDelete}
           disabled={isDeleting || isHiding}
+          style={({ pressed }) => ({
+            flex: 1, alignItems: 'center', justifyContent: 'center',
+            paddingVertical: 13,
+            opacity: pressed || isDeleting ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ color: '#FF4E6A', fontWeight: '600', fontSize: 14 }}>
+            {isDeleting ? 'Deleting…' : 'Delete'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function HiddenPostCard({
+  post, onUnhide, onDelete, isUnhiding, isDeleting,
+}: {
+  post: HiddenPost;
+  onUnhide: () => void;
+  onDelete: () => void;
+  isUnhiding: boolean;
+  isDeleting: boolean;
+}) {
+  return (
+    <View
+      testID={`admin-hidden-post-${post.id}`}
+      style={{ backgroundColor: '#071e38', borderRadius: 16, borderWidth: 0.5, borderColor: '#1a3a5c', overflow: 'hidden', opacity: 0.85 }}
+    >
+      <Text
+        style={{ color: '#4a6fa5', fontSize: 14, lineHeight: 20, padding: 14, paddingBottom: 8 }}
+        numberOfLines={4}
+      >
+        {post.content ?? '(no text)'}
+      </Text>
+      <Text style={{ color: '#4a6fa5', fontSize: 12, paddingHorizontal: 14, paddingBottom: 14 }}>
+        Reports: {post.reportCount}
+      </Text>
+      <View style={{ flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: '#1a3a5c' }}>
+        <Pressable
+          testID={`admin-unhide-${post.id}`}
+          onPress={onUnhide}
+          disabled={isUnhiding || isDeleting}
+          style={({ pressed }) => ({
+            flex: 1, alignItems: 'center', justifyContent: 'center',
+            paddingVertical: 13, borderRightWidth: 0.5, borderRightColor: '#1a3a5c',
+            opacity: pressed || isUnhiding ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ color: '#00CF35', fontWeight: '600', fontSize: 14 }}>
+            {isUnhiding ? 'Unhiding…' : 'Unhide'}
+          </Text>
+        </Pressable>
+        <Pressable
+          testID={`admin-hidden-delete-${post.id}`}
+          onPress={onDelete}
+          disabled={isDeleting || isUnhiding}
           style={({ pressed }) => ({
             flex: 1, alignItems: 'center', justifyContent: 'center',
             paddingVertical: 13,

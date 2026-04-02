@@ -47,7 +47,38 @@ adminRouter.get("/reports", async (c) => {
   return c.json({ data: posts });
 });
 
-// PATCH /api/admin/posts/:id/hide — set hidden = true
+// GET /api/admin/hidden — posts where hidden = true
+adminRouter.get("/hidden", async (c) => {
+  const posts = await prisma.post.findMany({
+    where: { hidden: true },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      content: true,
+      imageUrl: true,
+      reportCount: true,
+      createdAt: true,
+      user: { select: { id: true, name: true, username: true, image: true } },
+    },
+  });
+
+  return c.json({ data: posts });
+});
+
+// PATCH /api/admin/posts/:id/unhide — set hidden = false
+adminRouter.patch("/posts/:id/unhide", async (c) => {
+  const postId = c.req.param("id");
+  const post = await prisma.post.findUnique({ where: { id: postId } });
+  if (!post) return c.json({ error: { message: "Post not found" } }, 404);
+
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: { hidden: false },
+    select: { id: true, hidden: true },
+  });
+
+  return c.json({ data: updated });
+});
 adminRouter.patch("/posts/:id/hide", async (c) => {
   const postId = c.req.param("id");
   const post = await prisma.post.findUnique({ where: { id: postId } });

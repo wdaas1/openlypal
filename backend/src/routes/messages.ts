@@ -120,6 +120,11 @@ messagesRouter.post(
     const user = c.get("user");
     if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
+    const senderProfile = await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } });
+    if (senderProfile?.status === "banned") {
+      return c.json({ error: { message: "Your account has been suspended.", code: "BANNED" } }, 403);
+    }
+
     const receiverId = c.req.param("userId");
 
     if (receiverId === user.id) {
