@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Flag, Eye, EyeOff, Trash2, Users, ShieldOff, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Flag, Eye, EyeOff, Trash2, ShieldOff, ShieldCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
@@ -46,13 +46,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   explicit: 'Explicit',
 };
 
-type Tab = 'posts' | 'users';
-
 export default function AdminScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<Tab>('posts');
 
   const admin = isAdmin(session?.user);
 
@@ -65,7 +62,7 @@ export default function AdminScreen() {
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => api.get<AdminUser[]>('/api/admin/users'),
-    enabled: admin && activeTab === 'users',
+    enabled: admin,
   });
 
   const hidePost = useMutation({
@@ -112,57 +109,23 @@ export default function AdminScreen() {
         >
           <ArrowLeft size={18} color="#FFFFFF" />
         </Pressable>
-        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, flex: 1 }}>Admin Panel</Text>
+        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, flex: 1 }}>🛡️ Admin Panel</Text>
       </View>
 
-      {/* Tabs */}
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
-        <Pressable
-          testID="admin-tab-posts"
-          onPress={() => setActiveTab('posts')}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 6,
-            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-            backgroundColor: activeTab === 'posts' ? '#FF4E6A' : '#071e38',
-          }}
-        >
-          <Flag size={13} color={activeTab === 'posts' ? '#FFFFFF' : '#4a6fa5'} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: activeTab === 'posts' ? '#FFFFFF' : '#4a6fa5' }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
+        {/* Flagged Posts section */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 }}>
+          <Text style={{ color: '#4a6fa5', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
             Flagged Posts
           </Text>
-          {(reportedPosts?.length ?? 0) > 0 ? (
-            <View style={{ backgroundColor: activeTab === 'posts' ? 'rgba(255,255,255,0.3)' : 'rgba(255,78,106,0.2)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8 }}>
-              <Text style={{ color: activeTab === 'posts' ? '#FFFFFF' : '#FF4E6A', fontSize: 11, fontWeight: '700' }}>
-                {reportedPosts?.length}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
+        </View>
 
-        <Pressable
-          testID="admin-tab-users"
-          onPress={() => setActiveTab('users')}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 6,
-            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-            backgroundColor: activeTab === 'users' ? '#4a6fa5' : '#071e38',
-          }}
-        >
-          <Users size={13} color={activeTab === 'users' ? '#FFFFFF' : '#4a6fa5'} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: activeTab === 'users' ? '#FFFFFF' : '#4a6fa5' }}>
-            Users
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Content */}
-      {activeTab === 'posts' ? (
-        postsLoading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        {postsLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 32 }}>
             <ActivityIndicator color="#00CF35" />
           </View>
         ) : !reportedPosts?.length ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <View style={{ alignItems: 'center', padding: 32 }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,207,53,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
               <Flag size={24} color="#00CF35" />
             </View>
@@ -170,7 +133,7 @@ export default function AdminScreen() {
             <Text style={{ color: '#4a6fa5', fontSize: 13, textAlign: 'center' }}>No posts with 3+ reports.</Text>
           </View>
         ) : (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+          <View style={{ paddingHorizontal: 16, gap: 12 }}>
             {reportedPosts.map((post) => (
               <FlaggedPostCard
                 key={post.id}
@@ -181,20 +144,26 @@ export default function AdminScreen() {
                 isDeleting={deletePost.isPending === true && deletePost.variables === post.id}
               />
             ))}
-            <View style={{ height: 80 }} />
-          </ScrollView>
-        )
-      ) : (
-        usersLoading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          </View>
+        )}
+
+        {/* Users section */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 28, paddingBottom: 8 }}>
+          <Text style={{ color: '#4a6fa5', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Users
+          </Text>
+        </View>
+
+        {usersLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 32 }}>
             <ActivityIndicator color="#00CF35" />
           </View>
         ) : !users?.length ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <View style={{ alignItems: 'center', padding: 32 }}>
             <Text style={{ color: '#4a6fa5', fontSize: 14 }}>No users found.</Text>
           </View>
         ) : (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 10 }}>
+          <View style={{ paddingHorizontal: 16, gap: 10 }}>
             {users.map((user) => (
               <UserRow
                 key={user.id}
@@ -203,10 +172,9 @@ export default function AdminScreen() {
                 isLoading={banUser.isPending === true && banUser.variables === user.id}
               />
             ))}
-            <View style={{ height: 80 }} />
-          </ScrollView>
-        )
-      )}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
