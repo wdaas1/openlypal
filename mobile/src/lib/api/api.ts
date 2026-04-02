@@ -1,4 +1,3 @@
-import { fetch } from "expo/fetch";
 import { getAuthToken } from "../auth/auth-client";
 
 const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
