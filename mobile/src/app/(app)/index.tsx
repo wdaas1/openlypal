@@ -16,11 +16,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, Bell } from 'lucide-react-native';
+import { Search, Bell, ShieldAlert } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
 import type { Post } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { AdCard } from '@/components/AdCard';
+import { useSession } from '@/lib/auth/use-session';
+import { isAdmin } from '@/lib/auth/is-admin';
 
 type Tab = 'following' | 'foryou' | 'unfiltered';
 
@@ -282,6 +284,8 @@ const TAB_INDICATOR_WIDTH = 40;
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
   const router = useRouter();
+  const { data: session } = useSession();
+  const admin = isAdmin(session?.user);
   const scrollY = useSharedValue(0);
   const { width: screenWidth } = useWindowDimensions();
 
@@ -344,6 +348,11 @@ export default function FeedScreen() {
           {/* Separator */}
           <View style={{ width: 1, height: 20, backgroundColor: 'rgba(26,58,92,0.6)', marginRight: 12 }} />
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            {admin ? (
+              <Pressable testID="admin-button" onPress={() => router.push('/(app)/admin' as any)}>
+                <ShieldAlert size={22} color="#FF4E6A" />
+              </Pressable>
+            ) : null}
             <Pressable testID="search-button" onPress={() => router.push('/(app)/explore' as any)}>
               <Search size={22} color="#FFFFFF" />
             </Pressable>

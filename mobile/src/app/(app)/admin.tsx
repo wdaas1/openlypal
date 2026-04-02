@@ -181,11 +181,18 @@ function FlaggedPostCard({
   isHiding: boolean;
   isDeleting: boolean;
 }) {
+  const borderColor = post.reportCount >= 5 ? 'rgba(255,78,106,0.6)' : post.reportCount >= 2 ? 'rgba(255,159,28,0.5)' : '#1a3a5c';
+  const bgTint = post.reportCount >= 5 ? 'rgba(255,78,106,0.07)' : post.reportCount >= 2 ? 'rgba(255,159,28,0.05)' : 'transparent';
+
   return (
     <View
       testID={`admin-post-${post.id}`}
-      style={{ backgroundColor: '#071e38', borderRadius: 16, borderWidth: 0.5, borderColor: '#1a3a5c', overflow: 'hidden' }}
+      style={{ backgroundColor: '#071e38', borderRadius: 16, borderWidth: 0.5, borderColor, overflow: 'hidden' }}
     >
+      {/* color tint strip */}
+      {bgTint !== 'transparent' ? (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: bgTint, pointerEvents: 'none' }} />
+      ) : null}
       {/* post.content */}
       <Text
         style={{ color: '#FFFFFF', fontSize: 14, lineHeight: 20, padding: 14, paddingBottom: 8 }}
