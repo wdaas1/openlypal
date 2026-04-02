@@ -207,6 +207,8 @@ usersRouter.get("/:id", async (c) => {
       bio: true,
       image: true,
       headerImage: true,
+      categories: true,
+      links: true,
       createdAt: true,
       _count: { select: { followers: true, following: true, posts: true } },
       ...(user
@@ -237,6 +239,8 @@ usersRouter.get("/:id", async (c) => {
       bio: profile.bio,
       image: profile.image,
       headerImage: profile.headerImage,
+      categories: profile.categories,
+      links: profile.links,
       createdAt: profile.createdAt,
       followerCount: profile._count.followers,
       followingCount: profile._count.following,
