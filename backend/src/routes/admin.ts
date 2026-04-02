@@ -24,10 +24,10 @@ adminRouter.use("/*", async (c, next) => {
   await next();
 });
 
-// GET /api/admin/reports — posts with at least 1 report
+// GET /api/admin/reports — posts with report_count > 3
 adminRouter.get("/reports", async (c) => {
   const posts = await prisma.post.findMany({
-    where: { reportCount: { gt: 0 } },
+    where: { reportCount: { gt: 3 } },
     orderBy: { reportCount: "desc" },
     select: {
       id: true,
@@ -48,7 +48,7 @@ adminRouter.get("/reports", async (c) => {
   return c.json({ data: posts });
 });
 
-// PATCH /api/admin/posts/:id/hide — toggle hidden
+// PATCH /api/admin/posts/:id/hide — set hidden = true
 adminRouter.patch("/posts/:id/hide", async (c) => {
   const postId = c.req.param("id");
   const post = await prisma.post.findUnique({ where: { id: postId } });
@@ -56,14 +56,45 @@ adminRouter.patch("/posts/:id/hide", async (c) => {
 
   const updated = await prisma.post.update({
     where: { id: postId },
-    data: { hidden: !post.hidden },
+    data: { hidden: true },
     select: { id: true, hidden: true },
   });
 
   return c.json({ data: updated });
 });
 
-// PATCH /api/admin/users/:id/ban — toggle banned
+// DELETE /api/admin/posts/:id — delete post
+adminRouter.delete("/posts/:id", async (c) => {
+  const postId = c.req.param("id");
+  const post = await prisma.post.findUnique({ where: { id: postId } });
+  if (!post) return c.json({ error: { message: "Post not found" } }, 404);
+
+  await prisma.post.delete({ where: { id: postId } });
+
+  return c.json({ data: { success: true } });
+});
+
+// GET /api/admin/users — list all users
+adminRouter.get("/users", async (c) => {
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      image: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      _count: { select: { posts: true, reports: true } },
+    },
+  });
+
+  return c.json({ data: users });
+});
+
+// PATCH /api/admin/users/:id/ban — set status = "banned"
 adminRouter.patch("/users/:id/ban", async (c) => {
   const userId = c.req.param("id");
   const target = await prisma.user.findUnique({ where: { id: userId } });
