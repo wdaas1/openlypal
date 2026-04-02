@@ -409,6 +409,7 @@ export default function AppLayout() {
         <Tabs.Screen name="legal" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="edit-profile" options={{ href: null }} />
+        <Tabs.Screen name="admin" options={{ href: null }} />
       </Tabs>
       <FloatingTabBar />
       <FloatingChatButton />

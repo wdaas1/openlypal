@@ -23,6 +23,7 @@ import {
   Globe,
   FileText,
   Bell,
+  ShieldAlert,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
@@ -203,6 +204,22 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* Admin Panel — only shown to admins */}
+        {profile?.role === 'admin' ? (
+          <>
+            <SectionHeader title="Admin" />
+            <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+              <SettingRow
+                testId="admin-panel-button"
+                icon={<ShieldAlert size={18} color="#FF4E6A" />}
+                label="Admin Panel"
+                sublabel="Manage reported posts"
+                onPress={() => router.push('/(app)/admin' as any)}
+              />
+            </View>
+          </>
+        ) : null}
 
         {/* Support */}
         <SectionHeader title="Support" />

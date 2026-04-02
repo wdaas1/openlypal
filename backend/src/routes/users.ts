@@ -31,6 +31,8 @@ usersRouter.get("/me", async (c) => {
       links: true,
       contentSensitivity: true,
       pinnedPostIds: true,
+      role: true,
+      status: true,
       _count: { select: { followers: true, following: true, posts: true } },
     },
   });

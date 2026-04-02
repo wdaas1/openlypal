@@ -12,6 +12,8 @@ export interface User {
   contentSensitivity?: string | null; // "safe" | "mature" | "unfiltered"
   links?: string | null; // JSON string of [{label, url}]
   pinnedPostIds?: string | null;
+  role?: string;
+  status?: string;
   _count?: {
     followers: number;
     following: number;
