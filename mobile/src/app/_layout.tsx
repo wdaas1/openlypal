@@ -76,17 +76,17 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isLoading) return;
-    SplashScreen.hideAsync();
-  }, [isLoading]);
-
-  useEffect(() => {
-    if (isLoading) return;
     if (session?.user) {
       router.replace('/(app)' as any);
     } else {
       router.replace('/sign-in' as any);
     }
+    SplashScreen.hideAsync();
   }, [session, isLoading]);
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={TumblrDark}>
