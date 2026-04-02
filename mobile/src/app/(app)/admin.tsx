@@ -93,7 +93,13 @@ export default function AdminScreen() {
   });
 
   if (!session) return null;
-  if (!admin) return null;
+  if (!admin) {
+    return (
+      <SafeAreaView testID="admin-access-denied" style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#FF4E6A', fontSize: 16, fontWeight: '700' }}>Access denied</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView testID="admin-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
