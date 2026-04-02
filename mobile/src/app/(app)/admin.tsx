@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Flag, Eye, EyeOff, AlertTriangle, Trash2, Users, ShieldOff, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Flag, Eye, EyeOff, Trash2, Users, ShieldOff, ShieldCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
@@ -93,33 +93,8 @@ export default function AdminScreen() {
     },
   });
 
-  if (!session) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#00CF35" />
-      </SafeAreaView>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <SafeAreaView testID="admin-blocked-screen" style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,78,106,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-          <AlertTriangle size={28} color="#FF4E6A" />
-        </View>
-        <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Access Denied</Text>
-        <Text style={{ color: '#4a6fa5', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-          You don't have permission to view this page.
-        </Text>
-        <Pressable
-          onPress={() => router.back()}
-          style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#071e38', borderRadius: 12 }}
-        >
-          <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Go Back</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
+  if (!session) return null;
+  if (!isAdmin) return null;
 
   return (
     <SafeAreaView testID="admin-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>

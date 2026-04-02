@@ -31,12 +31,16 @@ import { authClient } from '@/lib/auth/auth-client';
 import { useSession, useInvalidateSession } from '@/lib/auth/use-session';
 import type { User } from '@/lib/types';
 
+const ADMIN_EMAIL = "your@email.com";
+
 export default function SettingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const invalidateSession = useInvalidateSession();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const isAdmin = session?.user?.email === ADMIN_EMAIL;
 
   const { data: profile } = useQuery({
     queryKey: ['profile', session?.user?.id],
@@ -206,7 +210,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Admin Panel — only shown to admins */}
-        {profile?.role === 'admin' ? (
+        {isAdmin ? (
           <>
             <SectionHeader title="Admin" />
             <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
