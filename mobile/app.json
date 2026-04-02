@@ -1,21 +1,31 @@
 {
   "expo": {
-    "name": "vibecode",
-    "slug": "vibecode",
+    "name": "Openly",
+    "slug": "openly",
     "scheme": "vibecode",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vibecode.openly-fsp5b4",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Openly uses the camera to capture photos inside the app before you publish them.",
+        "NSPhotoLibraryUsageDescription": "Openly accesses your photo library to let you choose videos that appear in the app.",
+        "NSMicrophoneUsageDescription": "Openly uses the microphone to record audio tracks that the app attaches to your creations."
+      }
     },
     "android": {
       "edgeToEdgeEnabled": true
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "icon": "./icon.png"
   }
 }
