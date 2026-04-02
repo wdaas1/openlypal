@@ -23,10 +23,10 @@ adminRouter.use("/*", async (c, next) => {
   await next();
 });
 
-// GET /api/admin/reports — posts with report_count > 3
+// GET /api/admin/reports — posts with report_count >= 1, sorted by most reported
 adminRouter.get("/reports", async (c) => {
   const posts = await prisma.post.findMany({
-    where: { reportCount: { gt: 3 } },
+    where: { reportCount: { gte: 1 } },
     orderBy: { reportCount: "desc" },
     select: {
       id: true,
