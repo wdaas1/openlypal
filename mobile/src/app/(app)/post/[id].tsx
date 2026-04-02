@@ -3,7 +3,7 @@ import { View, Text, Pressable, TextInput, ActivityIndicator, ScrollView, Keyboa
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X } from 'lucide-react-native';
+import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X, TrendingUp } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
@@ -48,6 +48,10 @@ function CommentItem({
   const [downvotes, setDownvotes] = useState(comment.downvotes ?? 0);
   const isCreator = comment.userId === postUserId;
 
+  const replyCount = comment.replies?.length ?? 0;
+  const defaultCollapsed = replyCount > 2;
+  const [repliesCollapsed, setRepliesCollapsed] = useState<boolean>(defaultCollapsed);
+
   const voteMutation = useMutation({
     mutationFn: async (value: number) => {
       await api.post(`/api/comments/${comment.id}/vote`, { value });
@@ -75,23 +79,66 @@ function CommentItem({
   const netScoreColor = netScore > 0 ? '#00CF35' : netScore < 0 ? '#FF4E6A' : '#4a6fa5';
   const bubbleBg = isNested ? 'rgba(0,20,45,0.8)' : '#0a2d50';
 
+  // Deleted comment — simplified greyed-out bubble, still show replies
+  if (comment.isDeleted === true) {
+    return (
+      <View style={{ marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row' }}>
+          {isNested ? (
+            <View style={{
+              width: 2,
+              backgroundColor: 'rgba(0,207,53,0.25)',
+              marginRight: 10,
+            }} />
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <View style={{
+              borderRadius: 12,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              backgroundColor: bubbleBg,
+              opacity: 0.5,
+            }}>
+              <Text style={{
+                color: 'rgba(255,255,255,0.3)',
+                fontSize: 13,
+                fontStyle: 'italic',
+                lineHeight: 18,
+              }}>
+                [deleted]
+              </Text>
+            </View>
+          </View>
+        </View>
+        {/* Still render replies even for deleted comments */}
+        {replyCount > 0 ? (
+          <View style={{ marginLeft: 42, marginTop: 8, gap: 8 }}>
+            {(comment.replies ?? []).map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                postUserId={postUserId}
+                onReply={onReply}
+                isNested
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  // Effective reply count for toggle label: prefer replyCount field, fall back to replies array length
+  const effectiveReplyCount = comment.replyCount ?? replyCount;
+
   return (
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row' }}>
         {isNested ? (
-          <View style={{ width: 2, backgroundColor: '#00CF35', opacity: 0.3, marginRight: 12, borderRadius: 1 }} />
-        ) : null}
-        {isNested ? (
           <View style={{
-            width: 12,
-            height: 12,
-            borderBottomLeftRadius: 8,
-            borderLeftWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: 'rgba(0,207,53,0.25)',
-            marginRight: 6,
-            alignSelf: 'flex-start',
-            marginTop: 8,
+            width: 2,
+            backgroundColor: 'rgba(0,207,53,0.25)',
+            marginRight: 10,
           }} />
         ) : null}
         <Pressable
@@ -123,9 +170,14 @@ function CommentItem({
                   <Text style={{ color: '#00CF35', fontSize: 9, fontWeight: '800' }}>Creator</Text>
                 </View>
               ) : null}
-              <Text style={{ color: '#4a6fa5', fontSize: 10, marginLeft: 'auto' }}>
-                {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+                <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
+                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                </Text>
+                {comment.editedAt ? (
+                  <Text style={{ color: '#4a6fa5', fontSize: 10 }}>(edited)</Text>
+                ) : null}
+              </View>
             </View>
             <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 18 }}>
               {comment.content}
@@ -161,25 +213,44 @@ function CommentItem({
           </View>
         </View>
       </View>
-      {/* Nested replies */}
-      {(comment.replies ?? []).length > 0 ? (
-        <View style={{ marginLeft: 42, marginTop: 8, gap: 8 }}>
-          {(comment.replies ?? []).map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              postUserId={postUserId}
-              onReply={onReply}
-              isNested
-            />
-          ))}
+
+      {/* Replies toggle + nested replies */}
+      {replyCount > 0 ? (
+        <View style={{ marginLeft: 42, marginTop: 6 }}>
+          <Pressable
+            testID={`toggle-replies-${comment.id}`}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setRepliesCollapsed(prev => !prev);
+            }}
+            style={{ paddingVertical: 4, paddingHorizontal: 2, alignSelf: 'flex-start' }}
+          >
+            <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600' }}>
+              {repliesCollapsed
+                ? `View ${effectiveReplyCount > 0 ? effectiveReplyCount : replyCount} ${effectiveReplyCount === 1 ? 'reply' : 'replies'}`
+                : 'Hide replies'}
+            </Text>
+          </Pressable>
+          {!repliesCollapsed ? (
+            <View style={{ marginTop: 6, gap: 8 }}>
+              {(comment.replies ?? []).map((reply) => (
+                <CommentItem
+                  key={reply.id}
+                  comment={reply}
+                  postUserId={postUserId}
+                  onReply={onReply}
+                  isNested
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
     </View>
   );
 }
 
-const SORT_TABS: { id: CommentSort; label: string }[] = [
+const SORT_TABS: { id: CommentSort; label: string; icon?: React.ReactNode }[] = [
   { id: 'top', label: 'Top' },
   { id: 'new', label: 'New' },
   { id: 'controversial', label: 'Hot' },
@@ -278,6 +349,7 @@ export default function PostDetailScreen() {
   const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
   const commentCount = comments?.length ?? 0;
   const isSendActive = commentText.trim().length > 0;
+  const hasMoreComments = (post.commentCount ?? 0) > commentCount;
 
   return (
     <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
@@ -405,27 +477,37 @@ export default function PostDetailScreen() {
                 borderRadius: 20,
                 padding: 3,
               }}>
-                {SORT_TABS.map((tab) => (
-                  <Pressable
-                    key={tab.id}
-                    testID={`sort-${tab.id}`}
-                    onPress={() => setCommentSort(tab.id)}
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 17,
-                      backgroundColor: commentSort === tab.id ? '#00CF35' : 'transparent',
-                    }}
-                  >
-                    <Text style={{
-                      fontSize: 11,
-                      fontWeight: '700',
-                      color: commentSort === tab.id ? '#001935' : '#4a6fa5',
-                    }}>
-                      {tab.label}
-                    </Text>
-                  </Pressable>
-                ))}
+                {SORT_TABS.map((tab) => {
+                  const isActive = commentSort === tab.id;
+                  const textColor = isActive ? '#001935' : '#4a6fa5';
+                  return (
+                    <Pressable
+                      key={tab.id}
+                      testID={`sort-${tab.id}`}
+                      onPress={() => setCommentSort(tab.id)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 17,
+                        backgroundColor: isActive ? '#00CF35' : 'transparent',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      {tab.id === 'controversial' ? (
+                        <TrendingUp size={11} color={textColor} />
+                      ) : null}
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: textColor,
+                      }}>
+                        {tab.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
@@ -446,6 +528,24 @@ export default function PostDetailScreen() {
                 />
               ))
             )}
+
+            {/* Load more comments */}
+            {!loadingComments && hasMoreComments ? (
+              <Pressable
+                testID="load-more-comments"
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#1a3a5c',
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  marginHorizontal: 16,
+                  marginTop: 8,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#4a6fa5', fontSize: 13, fontWeight: '600' }}>Load more comments</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={{ height: 100 }} />

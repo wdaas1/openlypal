@@ -3,10 +3,10 @@ import { View, Text, TextInput, Pressable, ScrollView, RefreshControl } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, X, TrendingUp } from 'lucide-react-native';
+import { Search, X, TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
-import type { Post, User } from '@/lib/types';
+import type { Post, User, TrendingHashtag } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { UserAvatar } from '@/components/UserAvatar';
 
@@ -18,20 +18,29 @@ const TRENDING_TABS: { id: TrendingType; label: string }[] = [
   { id: 'controversial', label: 'Controversial' },
 ];
 
-type HashtagItem = { tag: string; count: number };
-
-const POPULAR_HASHTAGS: HashtagItem[] = [
-  { tag: 'art', count: 14200 },
-  { tag: 'photography', count: 9800 },
-  { tag: 'music', count: 8300 },
-  { tag: 'writing', count: 6100 },
-  { tag: 'memes', count: 22400 },
-  { tag: 'aesthetic', count: 11700 },
-  { tag: 'nature', count: 7600 },
-  { tag: 'fashion', count: 5400 },
+const POPULAR_HASHTAGS: TrendingHashtag[] = [
+  { tag: 'art', count: 14200, trend: 'up' },
+  { tag: 'photography', count: 9800, trend: 'stable' },
+  { tag: 'music', count: 8300, trend: 'up' },
+  { tag: 'writing', count: 6100, trend: 'down' },
+  { tag: 'memes', count: 22400, trend: 'up' },
+  { tag: 'aesthetic', count: 11700, trend: 'stable' },
+  { tag: 'nature', count: 7600, trend: 'down' },
+  { tag: 'fashion', count: 5400, trend: 'up' },
 ];
 
 const SORTED_HASHTAGS = [...POPULAR_HASHTAGS].sort((a, b) => b.count - a.count);
+
+const CATEGORIES = ['All', 'Art', 'Music', 'Tech', 'Gaming', 'Fashion', 'Food', 'Travel'];
+
+function TrendIcon({ trend }: { trend?: 'up' | 'down' | 'stable' }) {
+  if (trend === 'up') return <TrendingUp size={10} color="#00CF35" />;
+  if (trend === 'down') return <TrendingDown size={10} color="#FF4E6A" />;
+  if (trend === 'stable') return <Minus size={10} color="#4a6fa5" />;
+  return null;
+}
+
+const SKELETON_HEIGHTS = [120, 80, 140];
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -39,11 +48,13 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingType, setTrendingType] = useState<TrendingType>('trending');
   const [focused, setFocused] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   const { data: trendingPosts, isLoading: loadingTrending, isRefetching } = useQuery({
-    queryKey: ['explore', 'trending', trendingType],
+    queryKey: ['explore', 'trending', trendingType, selectedCategory],
     queryFn: async () => {
-      const result = await api.get<Post[]>(`/api/explore/trending?type=${trendingType}`);
+      const categoryParam = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
+      const result = await api.get<Post[]>(`/api/explore/trending?type=${trendingType}${categoryParam}`);
       return result ?? [];
     },
   });
@@ -60,6 +71,15 @@ export default function ExploreScreen() {
     queryKey: ['search', searchQuery],
     queryFn: async () => {
       const result = await api.get<Post[]>(`/api/posts?tag=${encodeURIComponent(searchQuery)}`);
+      return result ?? [];
+    },
+    enabled: searchQuery.length > 2,
+  });
+
+  const { data: userSearchResults } = useQuery({
+    queryKey: ['search', 'users', searchQuery],
+    queryFn: async () => {
+      const result = await api.get<User[]>(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
       return result ?? [];
     },
     enabled: searchQuery.length > 2,
@@ -158,6 +178,40 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
+        {/* Category filter tabs */}
+        {!isSearching ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, marginBottom: 16 }}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+          >
+            {CATEGORIES.map((cat) => (
+              <Pressable
+                key={cat}
+                testID={`category-filter-${cat.toLowerCase()}`}
+                onPress={() => setSelectedCategory(cat)}
+                style={{
+                  borderRadius: 20,
+                  paddingHorizontal: 14,
+                  paddingVertical: 7,
+                  backgroundColor: selectedCategory === cat ? '#00CF35' : '#0a2d50',
+                  borderWidth: 1,
+                  borderColor: selectedCategory === cat ? '#00CF35' : '#1a3a5c',
+                }}
+              >
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: selectedCategory === cat ? '#001935' : '#7a9fc0',
+                }}>
+                  {cat}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
+
         {/* Trending Hashtags */}
         {!isSearching ? (
           <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
@@ -175,21 +229,46 @@ export default function ExploreScreen() {
                   testID={`hashtag-${item.tag}`}
                   onPress={() => setSearchQuery(item.tag)}
                   style={{
-                    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10,
-                    backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1,
+                    borderRadius: 16,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    minWidth: 80,
+                    backgroundColor: '#0a2d50',
+                    borderColor: '#1a3a5c',
+                    borderWidth: 1,
+                    overflow: 'hidden',
                   }}
                 >
+                  {/* Watermark rank number */}
+                  <Text style={{
+                    position: 'absolute',
+                    right: 8,
+                    bottom: 4,
+                    fontSize: 32,
+                    fontWeight: '900',
+                    color: '#00CF35',
+                    opacity: 0.15,
+                  }}>
+                    {index + 1}
+                  </Text>
+
+                  {/* Rank + tag */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ color: '#00CF35', fontWeight: '800', fontSize: 10 }}>
+                    <Text style={{ color: '#00CF35', fontWeight: '900', fontSize: 14 }}>
                       {index + 1}
                     </Text>
                     <Text style={{ color: '#00CF35', fontSize: 13, fontWeight: '600' }}>
                       #{item.tag}
                     </Text>
                   </View>
-                  <Text style={{ color: '#4a6fa5', fontSize: 10, marginTop: 2 }}>
-                    {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count} posts
-                  </Text>
+
+                  {/* Count + trend icon */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                    <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
+                      {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count} posts
+                    </Text>
+                    <TrendIcon trend={item.trend} />
+                  </View>
                 </Pressable>
               ))}
             </View>
@@ -260,11 +339,74 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
+        {/* People search results */}
+        {isSearching && userSearchResults && userSearchResults.length > 0 ? (
+          <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, marginBottom: 12 }}>
+              People
+            </Text>
+            {userSearchResults.map((user) => (
+              <Pressable
+                key={user.id}
+                testID={`search-user-${user.id}`}
+                onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: user.id } })}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  backgroundColor: '#0a2d50',
+                  borderRadius: 14,
+                  marginBottom: 8,
+                  borderWidth: 0.5,
+                  borderColor: '#1a3a5c',
+                }}
+              >
+                <UserAvatar uri={user.image} name={user.name} size={40} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  {user.username ? (
+                    <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+                      @{user.username}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  testID={`follow-search-user-${user.id}`}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    followMutation.mutate(user.id);
+                  }}
+                  style={user.isFollowing ? {
+                    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5,
+                    backgroundColor: 'transparent',
+                    borderWidth: 1,
+                    borderColor: '#00CF35',
+                  } : {
+                    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5,
+                    backgroundColor: '#00CF35',
+                  }}
+                >
+                  <Text style={user.isFollowing ? {
+                    fontSize: 12, fontWeight: '700', color: '#00CF35',
+                  } : {
+                    fontSize: 12, fontWeight: '700', color: '#001935',
+                  }}>
+                    {user.isFollowing ? 'Following' : 'Follow'}
+                  </Text>
+                </Pressable>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         {/* Posts */}
         <View>
           {isSearching ? (
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}>
-              Results for &quot;{searchQuery}&quot;
+              Posts
             </Text>
           ) : (
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, paddingHorizontal: 16, marginBottom: 12 }}>
@@ -274,13 +416,13 @@ export default function ExploreScreen() {
 
           {loadingTrending || loadingSearch ? (
             <View testID="loading-indicator">
-              {[0, 1, 2].map((i) => (
+              {SKELETON_HEIGHTS.map((h, i) => (
                 <View
                   key={i}
                   style={{
                     backgroundColor: '#0a2d50',
                     borderRadius: 16,
-                    height: 120,
+                    height: h,
                     marginHorizontal: 12,
                     marginBottom: 10,
                     opacity: 0.5,

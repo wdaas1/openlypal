@@ -15,6 +15,8 @@ import {
   MoreHorizontal,
   Flag,
   ExternalLink,
+  Bookmark,
+  Clock,
 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -42,6 +44,13 @@ const REPORT_CATEGORIES = ['Spam', 'Abuse', 'Illegal', 'Explicit'];
 
 function isRecent(createdAt: string, thresholdMs: number): boolean {
   return Date.now() - new Date(createdAt).getTime() < thresholdMs;
+}
+
+function formatCount(n: number): string {
+  if (n >= 1000) {
+    return `${(n / 1000).toFixed(1)}k`;
+  }
+  return n.toString();
 }
 
 export function PostCard({ post }: PostCardProps) {
@@ -106,6 +115,16 @@ export function PostCard({ post }: PostCardProps) {
     },
   });
 
+  const bookmarkMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/api/posts/${post.id}/bookmark`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+    },
+  });
+
   const handleLike = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     heartScale.value = withSequence(
@@ -155,6 +174,15 @@ export function PostCard({ post }: PostCardProps) {
   const tags = Array.isArray(post.tags) ? post.tags : [];
 
   const videoHeight = Math.round(width * 9 / 16);
+
+  // Repost/reblog combined count and active state
+  const repostTotal = (post.reblogCount ?? 0) + (post.repostCount ?? 0);
+  const repostActive = post.isReposted ?? repostTotal > 0;
+
+  // Poll helpers
+  const pollTotalVotes = post.poll
+    ? post.poll.options.reduce((sum, o) => sum + o.votes, 0)
+    : 0;
 
   const renderRightActions = () => (
     <Pressable
@@ -246,6 +274,22 @@ export function PostCard({ post }: PostCardProps) {
                 </Text>
               </View>
             ) : null}
+            {post.readTime != null && post.readTime > 0 ? (
+              <View style={{
+                backgroundColor: 'rgba(74,111,165,0.12)',
+                borderRadius: 8,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 3,
+              }}>
+                <Clock size={10} color="#4a6fa5" />
+                <Text style={{ color: '#4a6fa5', fontSize: 10, fontWeight: '500' }}>
+                  {post.readTime} min read
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
         {/* More options button */}
@@ -274,6 +318,68 @@ export function PostCard({ post }: PostCardProps) {
         <Text style={{ color: 'rgba(255,255,255,0.88)', paddingHorizontal: 14, paddingBottom: 10, fontSize: 14, lineHeight: 20 }}>
           {post.content}
         </Text>
+      ) : null}
+
+      {/* Poll */}
+      {post.poll != null ? (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 14, marginBottom: 10, lineHeight: 20 }}>
+            {post.poll.question}
+          </Text>
+          <View style={{ gap: 8 }}>
+            {post.poll.options.map((option, index) => {
+              const pct = pollTotalVotes > 0 ? (option.votes / pollTotalVotes) * 100 : 0;
+              return (
+                <View
+                  key={index}
+                  style={{
+                    height: 40,
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: 'rgba(0,207,53,0.4)',
+                    position: 'relative',
+                  }}
+                >
+                  {/* Fill bar */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      width: `${pct}%` as any,
+                      backgroundColor: 'rgba(0,207,53,0.2)',
+                    }}
+                  />
+                  {/* Option row */}
+                  <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 12,
+                  }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '500', flex: 1 }} numberOfLines={1}>
+                      {option.text}
+                    </Text>
+                    <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600', marginLeft: 8 }}>
+                      {option.votes}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+          <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 8 }}>
+            {formatCount(pollTotalVotes)} votes{' '}
+            {post.poll.endsAt ? `· ends ${formatDistanceToNow(new Date(post.poll.endsAt), { addSuffix: true })}` : null}
+          </Text>
+        </View>
       ) : null}
 
       {/* Image - full width */}
@@ -470,6 +576,7 @@ export function PostCard({ post }: PostCardProps) {
         borderBottomLeftRadius: 16,
         borderBottomRightRadius: 16,
       }}>
+        {/* Like */}
         <Pressable
           testID={`like-button-${post.id}`}
           onPress={(e) => { e.stopPropagation(); handleLike(); }}
@@ -505,19 +612,21 @@ export function PostCard({ post }: PostCardProps) {
           ) : null}
         </Pressable>
 
+        {/* Repost / Reblog */}
         <Pressable
           testID={`reblog-button-${post.id}`}
           onPress={(e) => { e.stopPropagation(); reblogMutation.mutate(); }}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
-          <Repeat2 size={20} color={post.reblogCount > 0 ? '#00CF35' : '#4a6fa5'} />
-          {post.reblogCount > 0 ? (
+          <Repeat2 size={20} color={repostActive ? '#00CF35' : '#4a6fa5'} />
+          {repostTotal > 0 ? (
             <Text style={{ marginLeft: 6, fontSize: 12, color: '#00CF35' }}>
-              {post.reblogCount}
+              {repostTotal}
             </Text>
           ) : null}
         </Pressable>
 
+        {/* Comment */}
         <Pressable
           testID={`comment-button-${post.id}`}
           onPress={(e) => {
@@ -534,6 +643,7 @@ export function PostCard({ post }: PostCardProps) {
           ) : null}
         </Pressable>
 
+        {/* DM */}
         <Pressable
           testID={`dm-button-${post.id}`}
           onPress={(e) => {
@@ -546,7 +656,37 @@ export function PostCard({ post }: PostCardProps) {
           <MessageSquare size={18} color="#4a6fa5" />
         </Pressable>
 
-        <Pressable testID={`share-button-${post.id}`} style={{ marginLeft: 'auto' }} onPress={(e) => e.stopPropagation()}>
+        {/* Bookmark */}
+        <Pressable
+          testID={`bookmark-button-${post.id}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            bookmarkMutation.mutate();
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 'auto' }}
+        >
+          <Bookmark
+            size={18}
+            color={post.isBookmarked ? '#00CF35' : '#4a6fa5'}
+            fill={post.isBookmarked ? '#00CF35' : 'transparent'}
+          />
+          {post.bookmarkCount != null && post.bookmarkCount > 0 ? (
+            <Text style={{ marginLeft: 5, fontSize: 12, color: '#00CF35' }}>
+              {post.bookmarkCount}
+            </Text>
+          ) : null}
+        </Pressable>
+
+        {/* View count */}
+        {post.viewCount != null && post.viewCount > 0 ? (
+          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginRight: 14 }}>
+            {formatCount(post.viewCount)} views
+          </Text>
+        ) : null}
+
+        {/* Share */}
+        <Pressable testID={`share-button-${post.id}`} onPress={(e) => e.stopPropagation()}>
           <Share size={18} color="#4a6fa5" />
         </Pressable>
       </View>

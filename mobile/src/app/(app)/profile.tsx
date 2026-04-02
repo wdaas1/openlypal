@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon } from 'lucide-react-native';
+import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon, Check, MapPin, Pin } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -115,11 +115,30 @@ export default function ProfileScreen() {
 
   const followerCount = profile?.followerCount ?? 0;
 
+  // Tab count badges
+  const postsCount = myPosts?.length ?? 0;
+  const mediaCount = mediaPosts.length;
+  const likedCount = likedPosts?.length ?? 0;
+
+  const tabLabel = (id: ProfileTab, base: string) => {
+    const count = id === 'posts' ? postsCount : id === 'media' ? mediaCount : likedCount;
+    return count > 0 ? `${base} (${count})` : base;
+  };
+
   const TABS: { id: ProfileTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'posts', label: 'Posts', icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
-    { id: 'media', label: 'Media', icon: <Play size={15} color={activeTab === 'media' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
-    { id: 'liked', label: 'Liked', icon: <Heart size={15} color={activeTab === 'liked' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
+    { id: 'posts', label: tabLabel('posts', 'Posts'), icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
+    { id: 'media', label: tabLabel('media', 'Media'), icon: <Play size={15} color={activeTab === 'media' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
+    { id: 'liked', label: tabLabel('liked', 'Liked'), icon: <Heart size={15} color={activeTab === 'liked' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
   ];
+
+  const statNumberStyle = {
+    color: '#FFFFFF' as const,
+    fontWeight: '900' as const,
+    fontSize: 22,
+    shadowColor: '#00CF35',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  };
 
   return (
     <SafeAreaView testID="profile-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
@@ -199,41 +218,41 @@ export default function ProfileScreen() {
             </View>
 
             {/* Stats */}
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
               <View style={{
                 alignItems: 'center',
                 backgroundColor: 'rgba(10,45,80,0.6)',
                 borderRadius: 14,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
                 borderWidth: 0.5,
                 borderColor: 'rgba(255,255,255,0.07)',
               }}>
-                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.postCount ?? 0}</Text>
+                <Text style={statNumberStyle}>{profile?.postCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Posts</Text>
               </View>
               <View style={{
                 alignItems: 'center',
                 backgroundColor: 'rgba(10,45,80,0.6)',
                 borderRadius: 14,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
                 borderWidth: 0.5,
                 borderColor: 'rgba(255,255,255,0.07)',
               }}>
-                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.followerCount ?? 0}</Text>
+                <Text style={statNumberStyle}>{profile?.followerCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Followers</Text>
               </View>
               <View style={{
                 alignItems: 'center',
                 backgroundColor: 'rgba(10,45,80,0.6)',
                 borderRadius: 14,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
                 borderWidth: 0.5,
                 borderColor: 'rgba(255,255,255,0.07)',
               }}>
-                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.followingCount ?? 0}</Text>
+                <Text style={statNumberStyle}>{profile?.followingCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Following</Text>
               </View>
             </View>
@@ -245,9 +264,23 @@ export default function ProfileScreen() {
               <ActivityIndicator testID="loading-indicator" color="#00CF35" />
             ) : (
               <>
-                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', lineHeight: 22 }}>
-                  {profile?.name ?? ''}
-                </Text>
+                {/* Display name + verified badge */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', lineHeight: 22 }}>
+                    {profile?.name ?? ''}
+                  </Text>
+                  {profile?.verified === true ? (
+                    <View style={{
+                      width: 16, height: 16, borderRadius: 8,
+                      backgroundColor: '#00CF35',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Check size={10} color="#001935" strokeWidth={3} />
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Username + pronouns */}
                 {profile?.username ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
                     <Text style={{ color: '#4a6fa5', fontSize: 13 }}>
@@ -256,12 +289,42 @@ export default function ProfileScreen() {
                     {followerCount > 0 ? (
                       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#00CF35' }} />
                     ) : null}
+                    {profile?.pronouns ? (
+                      <>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>·</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                          {profile.pronouns}
+                        </Text>
+                      </>
+                    ) : null}
                   </View>
                 ) : null}
+
+                {/* Bio */}
                 {profile?.bio ? (
                   <Text style={{ color: '#a0b4c8', fontSize: 13, marginTop: 8, lineHeight: 18 }}>
                     {profile.bio}
                   </Text>
+                ) : null}
+
+                {/* Location */}
+                {profile?.location ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                    <MapPin size={12} color="#4a6fa5" />
+                    <Text style={{ color: '#4a6fa5', fontSize: 12 }}>{profile.location}</Text>
+                  </View>
+                ) : null}
+
+                {/* Website */}
+                {profile?.website ? (
+                  <Pressable
+                    testID="profile-website"
+                    onPress={() => Linking.openURL(profile.website!)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}
+                  >
+                    <Globe size={12} color="#00CF35" />
+                    <Text style={{ color: '#00CF35', fontSize: 12 }}>{profile.website}</Text>
+                  </Pressable>
                 ) : null}
               </>
             )}
@@ -293,6 +356,32 @@ export default function ProfileScreen() {
             </ScrollView>
           ) : null}
         </View>
+
+        {/* Pinned Post */}
+        {profile?.pinnedPost ? (
+          <Pressable
+            testID="pinned-post-card"
+            onPress={() => router.push(`/(app)/post/${profile.pinnedPost!.id}` as any)}
+            style={{
+              backgroundColor: 'rgba(10,45,80,0.7)',
+              borderRadius: 14,
+              borderWidth: 0.5,
+              borderColor: 'rgba(255,255,255,0.08)',
+              marginHorizontal: 16,
+              marginTop: 12,
+              marginBottom: 8,
+              padding: 12,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+              <Pin size={12} color="#00CF35" />
+              <Text style={{ color: '#00CF35', fontSize: 11, fontWeight: '700' }}>Pinned Post</Text>
+            </View>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+              {profile.pinnedPost.title ?? profile.pinnedPost.content ?? ''}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* Tabs — pill segmented control */}
         <View style={{
