@@ -309,7 +309,7 @@ export default function AppLayout() {
         <Tabs.Screen name="create" options={{ title: 'Create' }} />
         <Tabs.Screen name="activity" options={{ href: null, title: 'Activity' }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-        <Tabs.Screen name="messenger" options={{ title: 'Chat' }} />
+        <Tabs.Screen name="messenger/index" options={{ title: 'Chat' }} />
         <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
         <Tabs.Screen name="post/[id]" options={{ href: null }} />
         <Tabs.Screen name="user/[id]" options={{ href: null }} />
