@@ -7,6 +7,8 @@ import { authClient } from '@/lib/auth/auth-client';
 import { useInvalidateSession } from '@/lib/auth/use-session';
 import * as Haptics from 'expo-haptics';
 import { Logo } from '@/components/Logo';
+import { api } from '@/lib/api/api';
+import type { User } from '@/lib/types';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -22,6 +24,12 @@ export default function SignInScreen() {
       });
       if (result.error) {
         throw new Error(result.error.message ?? 'Invalid email or password');
+      }
+      // Check if account is banned
+      const profile = await api.get<User>('/api/users/me');
+      if (profile?.status === 'banned') {
+        await authClient.signOut();
+        throw new Error('Account suspended');
       }
       return result;
     },
@@ -81,9 +89,28 @@ export default function SignInScreen() {
 
             {/* Error */}
             {signIn.isError ? (
-              <Text className="text-red-400 text-sm text-center mb-4">
-                {signIn.error.message}
-              </Text>
+              <View
+                style={{
+                  backgroundColor: signIn.error.message === 'Account suspended'
+                    ? 'rgba(255,78,106,0.12)'
+                    : 'transparent',
+                  borderRadius: 10,
+                  paddingVertical: signIn.error.message === 'Account suspended' ? 12 : 0,
+                  paddingHorizontal: signIn.error.message === 'Account suspended' ? 14 : 0,
+                  marginBottom: 12,
+                }}
+              >
+                {signIn.error.message === 'Account suspended' ? (
+                  <Text style={{ color: '#FF4E6A', fontWeight: '700', fontSize: 14, textAlign: 'center', marginBottom: 2 }}>
+                    Account suspended
+                  </Text>
+                ) : null}
+                <Text style={{ color: '#FF4E6A', fontSize: 13, textAlign: 'center' }}>
+                  {signIn.error.message === 'Account suspended'
+                    ? 'Your account has been suspended. Contact support if you think this is a mistake.'
+                    : signIn.error.message}
+                </Text>
+              </View>
             ) : null}
 
             {/* Log In Button */}
