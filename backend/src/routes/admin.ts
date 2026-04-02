@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../prisma";
 
-const ADMIN_EMAIL = "your@email.com";
+const ADMIN_EMAIL = "wdaas@me.com";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
