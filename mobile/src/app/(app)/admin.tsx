@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Flag, Eye, EyeOff, Trash2, ShieldOff, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Flag, ShieldOff, ShieldCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
@@ -37,13 +37,6 @@ type AdminUser = {
   status: string;
   createdAt: string;
   _count: { posts: number; reports: number };
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  illegal: 'Illegal',
-  abuse: 'Abuse',
-  spam: 'Spam',
-  explicit: 'Explicit',
 };
 
 export default function AdminScreen() {
@@ -188,98 +181,52 @@ function FlaggedPostCard({
   isHiding: boolean;
   isDeleting: boolean;
 }) {
-  const topCategories = [...new Set(post.reports.map((r) => r.category))].slice(0, 3);
-
   return (
     <View
       testID={`admin-post-${post.id}`}
-      style={{ backgroundColor: '#071e38', borderRadius: 16, borderWidth: 0.5, borderColor: post.hidden ? '#1a3a5c' : '#FF4E6A33', overflow: 'hidden' }}
+      style={{ backgroundColor: '#071e38', borderRadius: 16, borderWidth: 0.5, borderColor: '#1a3a5c', overflow: 'hidden' }}
     >
-      {/* User + report count */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
-        {post.user.image ? (
-          <Image source={{ uri: post.user.image }} style={{ width: 34, height: 34, borderRadius: 17 }} />
-        ) : (
-          <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#112847', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#4a6fa5', fontWeight: '700', fontSize: 13 }}>{post.user.name[0]}</Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13 }}>{post.user.name}</Text>
-          {post.user.username ? (
-            <Text style={{ color: '#4a6fa5', fontSize: 11 }}>@{post.user.username}</Text>
-          ) : null}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,78,106,0.18)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-          <Flag size={11} color="#FF4E6A" />
-          <Text style={{ color: '#FF4E6A', fontWeight: '800', fontSize: 13 }}>{post.reportCount}</Text>
-        </View>
-      </View>
+      {/* post.content */}
+      <Text
+        style={{ color: '#FFFFFF', fontSize: 14, lineHeight: 20, padding: 14, paddingBottom: 8 }}
+        numberOfLines={4}
+      >
+        {post.content ?? '(no text)'}
+      </Text>
 
-      {/* Content */}
-      {post.content ? (
-        <Text style={{ color: post.hidden ? '#4a6fa5' : '#c8d9f0', fontSize: 13, lineHeight: 19, paddingHorizontal: 12, paddingBottom: 10 }} numberOfLines={4}>
-          {post.content}
-        </Text>
-      ) : null}
-      {post.imageUrl ? (
-        <Image source={{ uri: post.imageUrl }} style={{ width: '100%', height: 130, opacity: post.hidden ? 0.25 : 1 }} resizeMode="cover" />
-      ) : null}
+      {/* Reports: N */}
+      <Text style={{ color: '#FF4E6A', fontSize: 12, fontWeight: '700', paddingHorizontal: 14, paddingBottom: 14 }}>
+        Reports: {post.reportCount}
+      </Text>
 
-      {/* Category chips */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10 }}>
-        {topCategories.map((cat) => (
-          <View key={cat} style={{ backgroundColor: 'rgba(255,78,106,0.12)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: '#FF4E6A', fontSize: 11 }}>{CATEGORY_LABELS[cat] ?? cat}</Text>
-          </View>
-        ))}
-        {post.hidden ? (
-          <View style={{ backgroundColor: '#112847', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: '#4a6fa5', fontSize: 11, fontWeight: '600' }}>Hidden</Text>
-          </View>
-        ) : null}
-      </View>
-
-      {/* Actions */}
+      {/* Buttons */}
       <View style={{ flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: '#1a3a5c' }}>
-        {!post.hidden ? (
-          <Pressable
-            testID={`admin-hide-${post.id}`}
-            onPress={onHide}
-            disabled={isHiding || isDeleting}
-            style={({ pressed }) => ({
-              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-              gap: 5, paddingVertical: 12,
-              borderRightWidth: 0.5, borderRightColor: '#1a3a5c',
-              opacity: pressed || isHiding ? 0.6 : 1,
-              backgroundColor: 'rgba(255,78,106,0.06)',
-            })}
-          >
-            <EyeOff size={14} color="#FF4E6A" />
-            <Text style={{ color: '#FF4E6A', fontWeight: '600', fontSize: 13 }}>
-              {isHiding ? 'Hiding…' : 'Hide'}
-            </Text>
-          </Pressable>
-        ) : (
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 12, borderRightWidth: 0.5, borderRightColor: '#1a3a5c' }}>
-            <Eye size={14} color="#4a6fa5" />
-            <Text style={{ color: '#4a6fa5', fontSize: 13 }}>Hidden</Text>
-          </View>
-        )}
+        <Pressable
+          testID={`admin-hide-${post.id}`}
+          onPress={onHide}
+          disabled={isHiding || isDeleting}
+          style={({ pressed }) => ({
+            flex: 1, alignItems: 'center', justifyContent: 'center',
+            paddingVertical: 13, borderRightWidth: 0.5, borderRightColor: '#1a3a5c',
+            opacity: pressed || isHiding ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ color: post.hidden ? '#4a6fa5' : '#FF4E6A', fontWeight: '600', fontSize: 14 }}>
+            {isHiding ? 'Hiding…' : post.hidden ? 'Hidden' : 'Hide'}
+          </Text>
+        </Pressable>
 
         <Pressable
           testID={`admin-delete-${post.id}`}
           onPress={onDelete}
           disabled={isDeleting || isHiding}
           style={({ pressed }) => ({
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            gap: 5, paddingVertical: 12,
+            flex: 1, alignItems: 'center', justifyContent: 'center',
+            paddingVertical: 13,
             opacity: pressed || isDeleting ? 0.6 : 1,
-            backgroundColor: 'rgba(255,78,106,0.06)',
           })}
         >
-          <Trash2 size={14} color="#FF4E6A" />
-          <Text style={{ color: '#FF4E6A', fontWeight: '600', fontSize: 13 }}>
+          <Text style={{ color: '#FF4E6A', fontWeight: '600', fontSize: 14 }}>
             {isDeleting ? 'Deleting…' : 'Delete'}
           </Text>
         </Pressable>
