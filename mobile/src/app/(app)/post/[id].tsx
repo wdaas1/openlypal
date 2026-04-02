@@ -71,11 +71,28 @@ function CommentItem({
     voteMutation.mutate(newVote === 0 ? 0 : value);
   };
 
+  const netScore = upvotes - downvotes;
+  const netScoreColor = netScore > 0 ? '#00CF35' : netScore < 0 ? '#FF4E6A' : '#4a6fa5';
+  const bubbleBg = isNested ? 'rgba(0,20,45,0.8)' : '#0a2d50';
+
   return (
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row' }}>
         {isNested ? (
-          <View style={{ width: 2, backgroundColor: '#1a3a5c', marginRight: 12, borderRadius: 1 }} />
+          <View style={{ width: 2, backgroundColor: '#00CF35', opacity: 0.3, marginRight: 12, borderRadius: 1 }} />
+        ) : null}
+        {isNested ? (
+          <View style={{
+            width: 12,
+            height: 12,
+            borderBottomLeftRadius: 8,
+            borderLeftWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: 'rgba(0,207,53,0.25)',
+            marginRight: 6,
+            alignSelf: 'flex-start',
+            marginTop: 8,
+          }} />
         ) : null}
         <Pressable
           testID={`comment-avatar-${comment.id}`}
@@ -84,7 +101,7 @@ function CommentItem({
           <UserAvatar uri={comment.user.image} name={comment.user.name} size={32} />
         </Pressable>
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <View style={{ borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#0a2d50' }}>
+          <View style={{ borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: bubbleBg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <Pressable
                 testID={`comment-username-${comment.id}`}
@@ -95,7 +112,14 @@ function CommentItem({
                 </Text>
               </Pressable>
               {isCreator ? (
-                <View style={{ backgroundColor: 'rgba(0,207,53,0.15)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                <View style={{
+                  backgroundColor: 'rgba(0,207,53,0.2)',
+                  borderRadius: 6,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderWidth: 0.5,
+                  borderColor: '#00CF35',
+                }}>
                   <Text style={{ color: '#00CF35', fontSize: 9, fontWeight: '800' }}>Creator</Text>
                 </View>
               ) : null}
@@ -109,26 +133,23 @@ function CommentItem({
           </View>
           {/* Vote + Reply row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 6, paddingLeft: 4, gap: 12 }}>
-            <Pressable
-              testID={`upvote-${comment.id}`}
-              onPress={() => handleVote(1)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
-            >
-              <ChevronUp size={16} color={myVote === 1 ? '#00CF35' : '#4a6fa5'} />
-              {upvotes > 0 ? (
-                <Text style={{ color: myVote === 1 ? '#00CF35' : '#4a6fa5', fontSize: 11, fontWeight: '600' }}>{upvotes}</Text>
-              ) : null}
-            </Pressable>
-            <Pressable
-              testID={`downvote-${comment.id}`}
-              onPress={() => handleVote(-1)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
-            >
-              <ChevronDown size={16} color={myVote === -1 ? '#FF4E6A' : '#4a6fa5'} />
-              {downvotes > 0 ? (
-                <Text style={{ color: myVote === -1 ? '#FF4E6A' : '#4a6fa5', fontSize: 11, fontWeight: '600' }}>{downvotes}</Text>
-              ) : null}
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Pressable
+                testID={`upvote-${comment.id}`}
+                onPress={() => handleVote(1)}
+              >
+                <ChevronUp size={16} color={myVote === 1 ? '#00CF35' : '#4a6fa5'} />
+              </Pressable>
+              <Text style={{ color: netScoreColor, fontSize: 11, fontWeight: '700', minWidth: 16, textAlign: 'center' }}>
+                {netScore}
+              </Text>
+              <Pressable
+                testID={`downvote-${comment.id}`}
+                onPress={() => handleVote(-1)}
+              >
+                <ChevronDown size={16} color={myVote === -1 ? '#FF4E6A' : '#4a6fa5'} />
+              </Pressable>
+            </View>
             {!isNested ? (
               <Pressable
                 testID={`reply-${comment.id}`}
@@ -161,7 +182,7 @@ function CommentItem({
 const SORT_TABS: { id: CommentSort; label: string }[] = [
   { id: 'top', label: 'Top' },
   { id: 'new', label: 'New' },
-  { id: 'controversial', label: 'Controversial' },
+  { id: 'controversial', label: 'Hot' },
 ];
 
 export default function PostDetailScreen() {
@@ -255,6 +276,8 @@ export default function PostDetailScreen() {
 
   const tags = Array.isArray(post.tags) ? post.tags : [];
   const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
+  const commentCount = comments?.length ?? 0;
+  const isSendActive = commentText.trim().length > 0;
 
   return (
     <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
@@ -366,11 +389,22 @@ export default function PostDetailScreen() {
 
           {/* Comments */}
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            {/* Comment section header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15, marginRight: 12 }}>
-                Comments ({comments?.length ?? 0})
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MessageCircle size={16} color="#4a6fa5" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
+                  Comments ({commentCount})
+                </Text>
+              </View>
+              {/* Sort tab glass pill */}
+              <View style={{
+                flexDirection: 'row',
+                marginLeft: 'auto',
+                backgroundColor: 'rgba(10,45,80,0.8)',
+                borderRadius: 20,
+                padding: 3,
+              }}>
                 {SORT_TABS.map((tab) => (
                   <Pressable
                     key={tab.id}
@@ -379,8 +413,8 @@ export default function PostDetailScreen() {
                     style={{
                       paddingHorizontal: 10,
                       paddingVertical: 4,
-                      borderRadius: 12,
-                      backgroundColor: commentSort === tab.id ? '#00CF35' : '#0a2d50',
+                      borderRadius: 17,
+                      backgroundColor: commentSort === tab.id ? '#00CF35' : 'transparent',
                     }}
                   >
                     <Text style={{
@@ -398,7 +432,10 @@ export default function PostDetailScreen() {
             {loadingComments ? (
               <ActivityIndicator color="#00CF35" style={{ marginBottom: 16 }} />
             ) : (comments ?? []).length === 0 ? (
-              <Text style={{ color: '#4a6fa5', fontSize: 13, marginBottom: 16 }}>No comments yet</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+                <MessageCircle size={48} color="#1a3a5c" />
+                <Text style={{ color: '#4a6fa5', fontSize: 14, fontWeight: '500' }}>Be the first to comment</Text>
+              </View>
             ) : (
               (comments ?? []).map((comment) => (
                 <CommentItem
@@ -419,8 +456,9 @@ export default function PostDetailScreen() {
           <View style={{
             flexDirection: 'row', alignItems: 'center',
             paddingHorizontal: 16, paddingVertical: 8,
-            backgroundColor: '#0a2d50',
-            borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
+            backgroundColor: 'rgba(0,207,53,0.08)',
+            borderTopColor: 'rgba(0,207,53,0.2)', borderTopWidth: 0.5,
+            borderBottomColor: 'rgba(0,207,53,0.2)', borderBottomWidth: 0.5,
           }}>
             <Text style={{ color: '#4a6fa5', fontSize: 12, flex: 1 }}>
               Replying to <Text style={{ color: '#00CF35', fontWeight: '600' }}>@{replyingTo.username}</Text>
@@ -431,10 +469,11 @@ export default function PostDetailScreen() {
           </View>
         ) : null}
 
-        {/* Comment Input */}
+        {/* Comment Input — floating glass bar */}
         <View style={{
           flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
-          backgroundColor: '#0a2d50', borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
+          backgroundColor: 'rgba(0,18,40,0.92)',
+          borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
         }}>
           <TextInput
             testID="comment-input"
@@ -451,16 +490,21 @@ export default function PostDetailScreen() {
           <Pressable
             testID="send-comment-button"
             onPress={() => addComment.mutate()}
-            disabled={!commentText.trim() || addComment.isPending}
+            disabled={!isSendActive || addComment.isPending}
             style={{
               borderRadius: 22, padding: 10,
-              backgroundColor: commentText.trim() ? '#00CF35' : '#1a3a5c',
+              backgroundColor: isSendActive ? '#00CF35' : '#1a3a5c',
+              shadowColor: isSendActive ? '#00CF35' : 'transparent',
+              shadowOffset: { width: 0, height: 0 },
+              shadowRadius: isSendActive ? 8 : 0,
+              shadowOpacity: isSendActive ? 0.6 : 0,
+              elevation: isSendActive ? 8 : 0,
             }}
           >
             {addComment.isPending ? (
               <ActivityIndicator color="#001935" size="small" />
             ) : (
-              <Send size={18} color={commentText.trim() ? '#001935' : '#4a6fa5'} />
+              <Send size={18} color={isSendActive ? '#001935' : '#4a6fa5'} />
             )}
           </Pressable>
         </View>

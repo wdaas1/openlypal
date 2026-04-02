@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
@@ -21,7 +22,7 @@ import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_GAP = 2;
+const GRID_GAP = 3;
 const GRID_COLS = 3;
 const CELL_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
@@ -36,7 +37,7 @@ function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
     <Pressable
       testID={`gallery-cell-${post.id}`}
       onPress={onPress}
-      style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: '#0a2d50' }}
+      style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: '#0a2d50', borderRadius: 4, overflow: 'hidden' }}
     >
       {hasMedia ? (
         <>
@@ -112,10 +113,12 @@ export default function ProfileScreen() {
     }
   }
 
+  const followerCount = profile?.followerCount ?? 0;
+
   const TABS: { id: ProfileTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'posts', label: 'Posts', icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#FFFFFF' : '#4a6fa5'} /> },
-    { id: 'media', label: 'Media', icon: <Play size={15} color={activeTab === 'media' ? '#FFFFFF' : '#4a6fa5'} /> },
-    { id: 'liked', label: 'Liked', icon: <Heart size={15} color={activeTab === 'liked' ? '#FFFFFF' : '#4a6fa5'} /> },
+    { id: 'posts', label: 'Posts', icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
+    { id: 'media', label: 'Media', icon: <Play size={15} color={activeTab === 'media' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
+    { id: 'liked', label: 'Liked', icon: <Heart size={15} color={activeTab === 'liked' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
   ];
 
   return (
@@ -134,7 +137,7 @@ export default function ProfileScreen() {
         }
       >
         {/* Header Banner */}
-        <View style={{ height: 180, backgroundColor: '#0a2d50' }}>
+        <View style={{ height: 220, backgroundColor: '#0a2d50' }}>
           {profile?.headerImage ? (
             <Image
               source={{ uri: profile.headerImage }}
@@ -144,11 +147,11 @@ export default function ProfileScreen() {
           ) : (
             <View style={{ flex: 1, backgroundColor: '#0a2d50' }} />
           )}
-          {/* Gradient overlay at bottom for text readability */}
-          <View style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
-            backgroundColor: 'rgba(0,25,53,0.6)',
-          }} />
+          {/* Linear gradient overlay fading into background */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,18,40,0.8)', '#001935']}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+          />
           {/* Top-right action buttons */}
           <View style={{ position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 8 }}>
             <Pressable
@@ -186,26 +189,50 @@ export default function ProfileScreen() {
         {/* Avatar + Stats row */}
         <View style={{ paddingHorizontal: 16, marginTop: -36 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            {/* Avatar with green glow */}
+            {/* Avatar with premium ring and green glow */}
             <View style={{
-              borderColor: '#001935', borderWidth: 4, borderRadius: 46,
+              borderColor: '#001935', borderWidth: 4, borderRadius: 50,
               shadowColor: '#00CF35', shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6, shadowRadius: 12, elevation: 8,
+              shadowOpacity: 0.7, shadowRadius: 16, elevation: 8,
             }}>
-              <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={80} />
+              <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={88} />
             </View>
 
             {/* Stats */}
-            <View style={{ flexDirection: 'row', gap: 20, marginBottom: 8 }}>
-              <View style={{ alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <View style={{
+                alignItems: 'center',
+                backgroundColor: 'rgba(10,45,80,0.6)',
+                borderRadius: 14,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderWidth: 0.5,
+                borderColor: 'rgba(255,255,255,0.07)',
+              }}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.postCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Posts</Text>
               </View>
-              <View style={{ alignItems: 'center' }}>
+              <View style={{
+                alignItems: 'center',
+                backgroundColor: 'rgba(10,45,80,0.6)',
+                borderRadius: 14,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderWidth: 0.5,
+                borderColor: 'rgba(255,255,255,0.07)',
+              }}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.followerCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Followers</Text>
               </View>
-              <View style={{ alignItems: 'center' }}>
+              <View style={{
+                alignItems: 'center',
+                backgroundColor: 'rgba(10,45,80,0.6)',
+                borderRadius: 14,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderWidth: 0.5,
+                borderColor: 'rgba(255,255,255,0.07)',
+              }}>
                 <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>{profile?.followingCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Following</Text>
               </View>
@@ -222,9 +249,14 @@ export default function ProfileScreen() {
                   {profile?.name ?? ''}
                 </Text>
                 {profile?.username ? (
-                  <Text style={{ color: '#4a6fa5', fontSize: 13, marginTop: 2 }}>
-                    @{profile.username}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                    <Text style={{ color: '#4a6fa5', fontSize: 13 }}>
+                      @{profile.username}
+                    </Text>
+                    {followerCount > 0 ? (
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#00CF35' }} />
+                    ) : null}
+                  </View>
                 ) : null}
                 {profile?.bio ? (
                   <Text style={{ color: '#a0b4c8', fontSize: 13, marginTop: 8, lineHeight: 18 }}>
@@ -262,22 +294,26 @@ export default function ProfileScreen() {
           ) : null}
         </View>
 
-        {/* Tabs */}
-        <View
-          style={{ flexDirection: 'row', marginTop: 20, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
-        >
+        {/* Tabs — pill segmented control */}
+        <View style={{
+          flexDirection: 'row',
+          backgroundColor: 'rgba(10,45,80,0.7)',
+          borderRadius: 22,
+          padding: 4,
+          margin: 16,
+        }}>
           {TABS.map((tab) => (
             <Pressable
               key={tab.id}
               testID={`${tab.id}-tab`}
               onPress={() => setActiveTab(tab.id)}
               style={[
-                { flex: 1, alignItems: 'center', paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', gap: 6 },
-                activeTab === tab.id ? { borderBottomColor: '#00CF35', borderBottomWidth: 2 } : undefined,
+                { flex: 1, alignItems: 'center', paddingVertical: 9, flexDirection: 'row', justifyContent: 'center', gap: 6, borderRadius: 18 },
+                activeTab === tab.id ? { backgroundColor: '#00CF35' } : undefined,
               ]}
             >
               {tab.icon}
-              <Text style={{ fontWeight: '600', fontSize: 13, color: activeTab === tab.id ? '#FFFFFF' : '#4a6fa5' }}>
+              <Text style={{ fontWeight: '600', fontSize: 13, color: activeTab === tab.id ? '#001935' : 'rgba(255,255,255,0.4)' }}>
                 {tab.label}
               </Text>
             </Pressable>
@@ -289,7 +325,13 @@ export default function ProfileScreen() {
           <ActivityIndicator color="#00CF35" style={{ marginTop: 48 }} />
         ) : (displayPosts ?? []).length === 0 ? (
           <View style={{ alignItems: 'center', marginTop: 64, paddingHorizontal: 32 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: '#0a2d50' }}>
+            <View style={{
+              width: 64, height: 64, borderRadius: 18,
+              alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+              backgroundColor: '#0a2d50',
+              borderWidth: 0.5,
+              borderColor: 'rgba(255,255,255,0.06)',
+            }}>
               {activeTab === 'liked' ? (
                 <Heart size={28} color="#2a4a6a" />
               ) : (

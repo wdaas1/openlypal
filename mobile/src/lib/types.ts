@@ -21,6 +21,11 @@ export interface User {
   followingCount?: number;
   postCount?: number;
   isFollowing?: boolean;
+  verified?: boolean;
+  pronouns?: string | null;
+  location?: string | null;
+  website?: string | null;
+  pinnedPost?: Post | null;
 }
 
 export interface Post {
@@ -46,6 +51,17 @@ export interface Post {
   isExplicit: boolean;
   category: string | null;
   createdAt: string;
+  repostCount?: number;
+  bookmarkCount?: number;
+  isReposted?: boolean;
+  isBookmarked?: boolean;
+  viewCount?: number;
+  readTime?: number;
+  poll?: {
+    question: string;
+    options: { text: string; votes: number }[];
+    endsAt: string;
+  } | null;
 }
 
 export interface Comment {
@@ -65,6 +81,9 @@ export interface Comment {
   };
   replies?: Comment[];
   createdAt: string;
+  replyCount?: number;
+  isDeleted?: boolean;
+  editedAt?: string | null;
 }
 
 export type Conversation = {
@@ -83,3 +102,39 @@ export type Message = {
   createdAt: string;
   sender: { id: string; name: string; username: string; image: string | null };
 };
+
+export type NotificationType = 'like' | 'comment' | 'follow' | 'reblog' | 'mention' | 'reply';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  read: boolean;
+  createdAt: string;
+  actor: {
+    id: string;
+    name: string;
+    username: string | null;
+    image: string | null;
+  };
+  post?: {
+    id: string;
+    title: string | null;
+    content: string | null;
+  } | null;
+  comment?: {
+    id: string;
+    content: string;
+  } | null;
+}
+
+export interface TrendingHashtag {
+  tag: string;
+  count: number;
+  trend?: 'up' | 'down' | 'stable';
+}
+
+export interface SearchResult {
+  posts: Post[];
+  users: User[];
+  tags: TrendingHashtag[];
+}

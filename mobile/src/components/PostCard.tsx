@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   MoreHorizontal,
   Flag,
+  ExternalLink,
 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -23,7 +24,6 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
-  withRepeat,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,6 +39,10 @@ interface PostCardProps {
 }
 
 const REPORT_CATEGORIES = ['Spam', 'Abuse', 'Illegal', 'Explicit'];
+
+function isRecent(createdAt: string, thresholdMs: number): boolean {
+  return Date.now() - new Date(createdAt).getTime() < thresholdMs;
+}
 
 export function PostCard({ post }: PostCardProps) {
   const router = useRouter();
@@ -66,6 +70,11 @@ export function PostCard({ post }: PostCardProps) {
   });
   const userAllowsExplicit = profile?.showExplicit ?? false;
   const showContent = !post.isExplicit || userAllowsExplicit || revealed;
+
+  // Derived time state
+  const isWithin24Hours = isRecent(post.createdAt, 24 * 60 * 60 * 1000);
+  const isWithin1Hour = isRecent(post.createdAt, 60 * 60 * 1000);
+  const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
@@ -144,7 +153,6 @@ export function PostCard({ post }: PostCardProps) {
   });
 
   const tags = Array.isArray(post.tags) ? post.tags : [];
-  const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   const videoHeight = Math.round(width * 9 / 16);
 
@@ -175,13 +183,15 @@ export function PostCard({ post }: PostCardProps) {
       testID={`post-card-${post.id}`}
       onPress={handleTap}
       style={{
-        backgroundColor: '#0a2d50',
+        backgroundColor: 'rgba(10,30,60,0.95)',
         borderRadius: 16,
         marginHorizontal: 12,
         marginBottom: 10,
         overflow: 'hidden',
-        borderLeftColor: post.isExplicit ? '#FF4E6A' : 'transparent',
-        borderLeftWidth: post.isExplicit ? 3 : 0,
+        borderWidth: 0.5,
+        borderColor: post.isExplicit ? '#FF4E6A' : 'rgba(255,255,255,0.06)',
+        borderLeftColor: post.isExplicit ? '#FF4E6A' : 'rgba(255,255,255,0.06)',
+        borderLeftWidth: post.isExplicit ? 3 : 0.5,
       }}
     >
       {/* Header */}
@@ -189,6 +199,12 @@ export function PostCard({ post }: PostCardProps) {
         <Pressable
           testID={`post-user-avatar-${post.id}`}
           onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: post.userId } })}
+          style={isWithin24Hours ? {
+            borderRadius: 22,
+            borderWidth: 2,
+            borderColor: '#00CF35',
+            padding: 1,
+          } : undefined}
         >
           <UserAvatar uri={post.user.image} name={post.user.name} size={38} />
         </Pressable>
@@ -208,9 +224,29 @@ export function PostCard({ post }: PostCardProps) {
               </View>
             ) : null}
           </View>
-          <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 1 }}>
-            {timeAgo}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 }}>
+            {isWithin1Hour ? (
+              <Text style={{ color: '#00CF35', fontSize: 11 }}>
+                {'• '}{timeAgo}
+              </Text>
+            ) : (
+              <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                {timeAgo}
+              </Text>
+            )}
+            {post.category != null ? (
+              <View style={{
+                backgroundColor: 'rgba(74,111,165,0.15)',
+                borderRadius: 8,
+                paddingHorizontal: 7,
+                paddingVertical: 2,
+              }}>
+                <Text style={{ color: '#4a6fa5', fontSize: 10, fontWeight: '600' }}>
+                  {'#'}{post.category}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
         {/* More options button */}
         <Pressable
@@ -382,8 +418,19 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Link */}
       {post.linkUrl ? (
-        <View style={{ marginHorizontal: 14, marginBottom: 10, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#001935' }}>
-          <Text style={{ color: '#00CF35', fontSize: 12 }} numberOfLines={1}>
+        <View style={{
+          marginHorizontal: 14,
+          marginBottom: 10,
+          borderRadius: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          backgroundColor: '#001935',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <ExternalLink size={12} color="#00CF35" />
+          <Text style={{ color: '#00CF35', fontSize: 12, flex: 1 }} numberOfLines={1}>
             {post.linkUrl}
           </Text>
         </View>
@@ -391,23 +438,52 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Tags */}
       {tags.length > 0 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingBottom: 6, gap: 4 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingBottom: 6, gap: 6 }}>
           {tags.map((tag: string) => (
-            <Text key={tag} style={{ color: '#00CF35', fontSize: 12 }}>
-              #{tag}
-            </Text>
+            <View
+              key={tag}
+              style={{
+                backgroundColor: 'rgba(0,207,53,0.08)',
+                borderRadius: 10,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderWidth: 0.5,
+                borderColor: 'rgba(0,207,53,0.2)',
+              }}
+            >
+              <Text style={{ color: '#00CF35', fontSize: 12 }}>
+                {'#'}{tag}
+              </Text>
+            </View>
           ))}
         </View>
       ) : null}
 
       {/* Action Bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: '#1a3a5c' }}>
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderTopWidth: 0.5,
+        borderTopColor: '#1a3a5c',
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+      }}>
         <Pressable
           testID={`like-button-${post.id}`}
           onPress={(e) => { e.stopPropagation(); handleLike(); }}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
-          <Animated.View style={heartAnimatedStyle}>
+          <Animated.View style={[
+            heartAnimatedStyle,
+            post.isLiked ? {
+              shadowColor: '#FF4E6A',
+              shadowOpacity: 0.8,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 0 },
+            } : undefined,
+          ]}>
             <Heart
               size={20}
               color={post.isLiked ? '#FF4E6A' : '#4a6fa5'}
@@ -415,7 +491,15 @@ export function PostCard({ post }: PostCardProps) {
             />
           </Animated.View>
           {post.likeCount > 0 ? (
-            <Text style={{ marginLeft: 6, fontSize: 12, color: post.isLiked ? '#FF4E6A' : '#4a6fa5' }}>
+            <Text style={[
+              { marginLeft: 6, fontSize: 12, color: post.isLiked ? '#FF4E6A' : '#4a6fa5' },
+              post.isLiked ? {
+                shadowColor: '#FF4E6A',
+                shadowOpacity: 0.8,
+                shadowRadius: 6,
+                shadowOffset: { width: 0, height: 0 },
+              } : undefined,
+            ]}>
               {post.likeCount}
             </Text>
           ) : null}
@@ -442,9 +526,9 @@ export function PostCard({ post }: PostCardProps) {
           }}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
-          <MessageCircle size={20} color="#4a6fa5" />
+          <MessageCircle size={20} color={post.commentCount > 0 ? 'rgba(255,255,255,0.5)' : '#4a6fa5'} />
           {post.commentCount > 0 ? (
-            <Text style={{ marginLeft: 6, fontSize: 12, color: '#4a6fa5' }}>
+            <Text style={{ marginLeft: 6, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
               {post.commentCount}
             </Text>
           ) : null}
