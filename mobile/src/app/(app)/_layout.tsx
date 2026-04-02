@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text } from 'react-native';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Home, Compass, PlusCircle, MessageSquare, User } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
@@ -296,6 +297,7 @@ function FloatingChatButton() {
 
 export default function AppLayout() {
   return (
+    <KeyboardProvider>
     <View style={{ flex: 1 }}>
       <Tabs
         tabBar={() => null}
@@ -322,5 +324,6 @@ export default function AppLayout() {
       <FloatingTabBar />
       <FloatingChatButton />
     </View>
+    </KeyboardProvider>
   );
 }
