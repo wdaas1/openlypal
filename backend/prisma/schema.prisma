@@ -29,6 +29,8 @@ model User {
   links              String?   // JSON array of {label, url} objects
   contentSensitivity String?   @default("safe") // "safe", "mature", "unfiltered"
   pinnedPostIds      String?   // comma-separated post IDs (max 3)
+  role               String    @default("user")   // "user" or "admin"
+  status             String    @default("active") // "active" or "banned"
 
   posts            Post[]
   likes            Like[]
@@ -96,6 +98,7 @@ model Post {
   isExplicit   Boolean  @default(false)
   contentScore Float    @default(0)  // 0.0-1.0 sensitivity score
   hidden       Boolean  @default(false)
+  reportCount  Int      @default(0)
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes        Like[]
