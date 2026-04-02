@@ -14,8 +14,7 @@ import { ArrowLeft, Flag, Eye, EyeOff, Trash2, Users, ShieldOff, ShieldCheck } f
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
-
-const ADMIN_EMAIL = "your@email.com";
+import { isAdmin } from '@/lib/auth/is-admin';
 
 type ReportedPost = {
   id: string;
@@ -55,18 +54,18 @@ export default function AdminScreen() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<Tab>('posts');
 
-  const isAdmin = session?.user?.email === ADMIN_EMAIL;
+  const admin = isAdmin(session?.user);
 
   const { data: reportedPosts, isLoading: postsLoading } = useQuery({
     queryKey: ['admin', 'reports'],
     queryFn: () => api.get<ReportedPost[]>('/api/admin/reports'),
-    enabled: isAdmin,
+    enabled: admin,
   });
 
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => api.get<AdminUser[]>('/api/admin/users'),
-    enabled: isAdmin && activeTab === 'users',
+    enabled: admin && activeTab === 'users',
   });
 
   const hidePost = useMutation({
@@ -94,7 +93,7 @@ export default function AdminScreen() {
   });
 
   if (!session) return null;
-  if (!isAdmin) return null;
+  if (!admin) return null;
 
   return (
     <SafeAreaView testID="admin-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
