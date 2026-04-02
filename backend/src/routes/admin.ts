@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { prisma } from "../prisma";
 
+const ADMIN_EMAIL = "your@email.com";
+
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
   session: { id: string } | null;
@@ -13,11 +15,8 @@ adminRouter.use("/*", async (c, next) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
-  const profile = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true },
-  });
-  if (profile?.role !== "admin") {
+  const isAdmin = user.email === ADMIN_EMAIL;
+  if (!isAdmin) {
     return c.json({ error: { message: "Forbidden" } }, 403);
   }
 

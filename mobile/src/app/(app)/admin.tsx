@@ -14,7 +14,8 @@ import { ArrowLeft, Flag, Eye, EyeOff, AlertTriangle, Trash2, Users, ShieldOff, 
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
-import type { User } from '@/lib/types';
+
+const ADMIN_EMAIL = "your@email.com";
 
 type ReportedPost = {
   id: string;
@@ -54,22 +55,18 @@ export default function AdminScreen() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<Tab>('posts');
 
-  const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: ['profile', session?.user?.id],
-    queryFn: () => api.get<User>('/api/users/me'),
-    enabled: !!session?.user?.id,
-  });
+  const isAdmin = session?.user?.email === ADMIN_EMAIL;
 
   const { data: reportedPosts, isLoading: postsLoading } = useQuery({
     queryKey: ['admin', 'reports'],
     queryFn: () => api.get<ReportedPost[]>('/api/admin/reports'),
-    enabled: profile?.role === 'admin',
+    enabled: isAdmin,
   });
 
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => api.get<AdminUser[]>('/api/admin/users'),
-    enabled: profile?.role === 'admin' && activeTab === 'users',
+    enabled: isAdmin && activeTab === 'users',
   });
 
   const hidePost = useMutation({
@@ -96,7 +93,7 @@ export default function AdminScreen() {
     },
   });
 
-  if (profileLoading) {
+  if (!session) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color="#00CF35" />
@@ -104,7 +101,7 @@ export default function AdminScreen() {
     );
   }
 
-  if (profile?.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <SafeAreaView testID="admin-blocked-screen" style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,78,106,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
