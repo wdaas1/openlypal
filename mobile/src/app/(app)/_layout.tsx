@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { View, Pressable, Text } from 'react-native';
+import { View, Pressable, Text, LayoutChangeEvent } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Home, Compass, PlusCircle, MessageSquare, User } from 'lucide-react-native';
 import Animated, {
@@ -14,6 +14,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { BlurView } from 'expo-blur';
 import { api } from '@/lib/api/api';
 import type { Conversation } from '@/lib/types';
 
@@ -99,10 +100,6 @@ function TabButton({
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    shadowColor: '#00CF35',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: isActive ? 0.6 : 0,
-    shadowRadius: isActive ? 8 : 0,
   }));
 
   const handlePress = () => {
@@ -132,9 +129,9 @@ function TabButton({
               justifyContent: 'center',
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.7,
-              shadowRadius: 12,
-              elevation: 8,
+              shadowOpacity: 0.9,
+              shadowRadius: 18,
+              elevation: 10,
             },
           ]}
         >
@@ -144,7 +141,7 @@ function TabButton({
     );
   }
 
-  const iconColor = isActive ? '#00CF35' : '#4a6fa5';
+  const iconColor = isActive ? '#00CF35' : 'rgba(255,255,255,0.38)';
 
   return (
     <Pressable
@@ -156,12 +153,11 @@ function TabButton({
         style={[
           animStyle,
           {
-            width: 40,
-            height: 40,
-            borderRadius: 20,
+            width: 46,
+            height: 46,
+            borderRadius: 23,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: isActive ? 'rgba(0,207,53,0.15)' : 'transparent',
           },
         ]}
       >
@@ -176,6 +172,10 @@ function FloatingTabBar() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const barWidth = useSharedValue(0);
+  const pillLeft = useSharedValue(0);
+  const pillOpacity = useSharedValue(0);
+
   const getActiveIndex = () => {
     if (pathname === '/' || pathname === '/index' || pathname.endsWith('/(app)')) return 0;
     if (pathname.includes('/explore')) return 1;
@@ -188,44 +188,133 @@ function FloatingTabBar() {
   const activeIndex = getActiveIndex();
   const bottomOffset = Math.max(insets.bottom, 12);
 
+  const PILL_WIDTH = 46;
+  const BAR_HEIGHT = 68;
+
+  React.useEffect(() => {
+    const isCenter = activeIndex === 2;
+    const isValid = activeIndex !== -1 && !isCenter;
+
+    if (isValid && barWidth.value > 0) {
+      const slotWidth = barWidth.value / 5;
+      const targetLeft = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
+      pillLeft.value = withSpring(targetLeft, { damping: 20, stiffness: 200 });
+      pillOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
+    } else {
+      pillOpacity.value = withSpring(0, { damping: 20, stiffness: 200 });
+    }
+  }, [activeIndex, barWidth.value]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    top: (BAR_HEIGHT - PILL_WIDTH) / 2,
+    left: pillLeft.value,
+    width: PILL_WIDTH,
+    height: PILL_WIDTH,
+    borderRadius: PILL_WIDTH / 2,
+    backgroundColor: 'rgba(0,207,53,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,207,53,0.28)',
+    opacity: pillOpacity.value,
+  }));
+
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const width = e.nativeEvent.layout.width;
+    barWidth.value = width;
+    const isCenter = activeIndex === 2;
+    const isValid = activeIndex !== -1 && !isCenter;
+    if (isValid && width > 0) {
+      const slotWidth = width / 5;
+      pillLeft.value = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
+      pillOpacity.value = 1;
+    }
+  };
+
   return (
     <View
+      onLayout={handleLayout}
       style={{
         position: 'absolute',
         bottom: bottomOffset,
         left: 16,
         right: 16,
-        height: 64,
-        borderRadius: 28,
-        backgroundColor: 'rgba(13, 13, 13, 0.85)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 20,
+        height: BAR_HEIGHT,
+        borderRadius: 34,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.5,
+        shadowRadius: 24,
+        elevation: 24,
       }}
     >
-      {TABS.map((tab, index) => (
-        <TabButton
-          key={tab.route}
-          config={tab}
-          isActive={activeIndex === index}
-          onPress={() => {
-            const routeMap: Record<string, string> = {
-              '/(app)/index': '/',
-              '/(app)/explore': '/(app)/explore',
-              '/(app)/create': '/(app)/create',
-              '/(app)/messenger': '/(app)/messenger',
-              '/(app)/profile': '/(app)/profile',
-            };
-            router.push(routeMap[tab.route] as any);
-          }}
-        />
-      ))}
+      {/* Blur layer */}
+      <BlurView
+        intensity={90}
+        tint="dark"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+      {/* Glass tint overlay */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,18,40,0.55)',
+        }}
+      />
+      {/* Top specular highlight */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 1,
+          backgroundColor: 'rgba(255,255,255,0.18)',
+        }}
+      />
+      {/* Bottom edge highlight */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 1,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+        }}
+      />
+      {/* Sliding pill indicator */}
+      <Animated.View style={pillStyle} />
+      {/* Tab buttons */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', height: '100%' }}>
+        {TABS.map((tab, index) => (
+          <TabButton
+            key={tab.route}
+            config={tab}
+            isActive={activeIndex === index}
+            onPress={() => {
+              const routeMap: Record<string, string> = {
+                '/(app)/index': '/',
+                '/(app)/explore': '/(app)/explore',
+                '/(app)/create': '/(app)/create',
+                '/(app)/messenger': '/(app)/messenger',
+                '/(app)/profile': '/(app)/profile',
+              };
+              router.push(routeMap[tab.route] as any);
+            }}
+          />
+        ))}
+      </View>
     </View>
   );
 }

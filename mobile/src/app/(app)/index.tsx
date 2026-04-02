@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, RefreshControl, Pressable } from 'react-native';
+import { View, Text, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -13,7 +13,9 @@ import Animated, {
   withRepeat,
   withTiming,
   withSequence,
+  withSpring,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Search, Bell } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
 import type { Post } from '@/lib/types';
@@ -67,30 +69,51 @@ function EmptyState({ message, sub, action, onAction }: {
 }
 
 function SkeletonCard() {
-  const opacity = useSharedValue(1);
+  const { width } = useWindowDimensions();
+  const translateX = useSharedValue(-width);
 
   React.useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.4, { duration: 700 }),
-        withTiming(1, { duration: 700 })
-      ),
+    translateX.value = withRepeat(
+      withTiming(width, { duration: 1200 }),
       -1,
       false
     );
-  }, []);
+  }, [width]);
 
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   return (
-    <Animated.View style={[animStyle, {
+    <View style={{
       backgroundColor: '#0a2d50',
       borderRadius: 16,
       marginHorizontal: 12,
       marginBottom: 10,
       padding: 16,
       overflow: 'hidden',
-    }]}>
+    }}>
+      {/* Shimmer overlay */}
+      <Animated.View
+        style={[
+          shimmerStyle,
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1,
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['transparent', 'rgba(255,255,255,0.07)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ flex: 1 }}
+        />
+      </Animated.View>
       {/* Header row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
         <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#1a3a5c' }} />
@@ -107,7 +130,7 @@ function SkeletonCard() {
         <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
         <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -254,10 +277,17 @@ const HEADER_HEIGHT = 52;
 const TABBAR_HEIGHT = 52;
 const COLLAPSE_TOTAL = HEADER_HEIGHT + TABBAR_HEIGHT;
 
+const TAB_INDICATOR_WIDTH = 40;
+
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
   const router = useRouter();
   const scrollY = useSharedValue(0);
+  const { width: screenWidth } = useWindowDimensions();
+
+  // For underline indicator
+  const tabWidth = screenWidth / TABS.length;
+  const indicatorX = useSharedValue(tabWidth * TABS.findIndex(t => t.id === 'foryou'));
 
   const scrollHandler = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollY.value = e.nativeEvent.contentOffset.y;
@@ -273,7 +303,13 @@ export default function FeedScreen() {
     opacity: interpolate(scrollY.value, [HEADER_HEIGHT, COLLAPSE_TOTAL * 0.8], [1, 0], Extrapolation.CLAMP),
   }));
 
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value + (tabWidth / 2) - (TAB_INDICATOR_WIDTH / 2) }],
+  }));
+
   const handleTabChange = (tab: Tab) => {
+    const idx = TABS.findIndex(t => t.id === tab);
+    indicatorX.value = withSpring(tabWidth * idx, { damping: 20, stiffness: 200 });
     setActiveTab(tab);
     scrollY.value = 0;
   };
@@ -281,13 +317,18 @@ export default function FeedScreen() {
   return (
     <SafeAreaView testID="feed-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Collapsing header */}
-      <Animated.View style={[{
-        overflow: 'hidden',
-        backgroundColor: 'rgba(0,25,53,0.95)',
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#1a3a5c',
-      }, headerStyle]}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, flexDirection: 'row', alignItems: 'center' }}>
+      <Animated.View style={[{ overflow: 'hidden' }, headerStyle]}>
+        <LinearGradient
+          colors={['rgba(0,25,53,0.98)', 'rgba(0,25,53,0.85)']}
+          style={{
+            paddingHorizontal: 16,
+            paddingTop: 8,
+            paddingBottom: 4,
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+          }}
+        >
           <Text style={{
             color: '#00CF35',
             fontSize: 26,
@@ -300,6 +341,8 @@ export default function FeedScreen() {
           }}>
             Openly
           </Text>
+          {/* Separator */}
+          <View style={{ width: 1, height: 20, backgroundColor: 'rgba(26,58,92,0.6)', marginRight: 12 }} />
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <Pressable testID="search-button" onPress={() => router.push('/(app)/explore' as any)}>
               <Search size={22} color="#FFFFFF" />
@@ -308,12 +351,17 @@ export default function FeedScreen() {
               <Bell size={22} color="#FFFFFF" />
             </Pressable>
           </View>
-        </View>
+        </LinearGradient>
       </Animated.View>
 
       {/* Tab Bar */}
-      <Animated.View style={[{ overflow: 'hidden', backgroundColor: 'rgba(0,25,53,0.95)' }, tabBarStyle]}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4, gap: 6 }}>
+      <Animated.View style={[{
+        overflow: 'hidden',
+        backgroundColor: 'rgba(0,25,53,0.98)',
+        borderBottomWidth: 1,
+        borderBottomColor: '#1a3a5c',
+      }, tabBarStyle]}>
+        <View style={{ flexDirection: 'row', paddingTop: 8 }}>
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -324,16 +372,15 @@ export default function FeedScreen() {
                 style={{
                   flex: 1,
                   alignItems: 'center',
-                  paddingVertical: 7,
-                  borderRadius: 20,
-                  backgroundColor: isActive ? '#00CF35' : '#0a2d50',
+                  paddingBottom: 10,
+                  paddingTop: 2,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 12,
-                    fontWeight: '700',
-                    color: isActive ? '#001935' : '#4a6fa5',
+                    fontSize: 13,
+                    fontWeight: isActive ? '800' : '600',
+                    color: isActive ? '#FFFFFF' : '#4a6fa5',
                     letterSpacing: 0.1,
                   }}
                 >
@@ -343,6 +390,20 @@ export default function FeedScreen() {
             );
           })}
         </View>
+        {/* Sliding underline */}
+        <Animated.View
+          style={[
+            indicatorStyle,
+            {
+              position: 'absolute',
+              bottom: 0,
+              width: TAB_INDICATOR_WIDTH,
+              height: 3,
+              borderRadius: 2,
+              backgroundColor: '#00CF35',
+            },
+          ]}
+        />
       </Animated.View>
 
       {/* Tab Content */}
