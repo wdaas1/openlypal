@@ -40,7 +40,12 @@ interface PostCardProps {
   post: Post;
 }
 
-const REPORT_CATEGORIES = ['Spam', 'Abuse', 'Illegal', 'Explicit'];
+const REPORT_REASONS: { label: string; category: string }[] = [
+  { label: 'Illegal content', category: 'illegal' },
+  { label: 'Abuse / harassment', category: 'abuse' },
+  { label: 'Spam', category: 'spam' },
+  { label: 'Explicit content', category: 'explicit' },
+];
 
 function isRecent(createdAt: string, thresholdMs: number): boolean {
   return Date.now() - new Date(createdAt).getTime() < thresholdMs;
@@ -66,6 +71,8 @@ export function PostCard({ post }: PostCardProps) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportError, setReportError] = useState(false);
   const lastTapRef = useRef<number>(0);
   const videoRef = useRef<Video>(null);
   const { data: session } = useSession();
@@ -106,12 +113,17 @@ export function PostCard({ post }: PostCardProps) {
 
   const reportMutation = useMutation({
     mutationFn: async (category: string) => {
-      await api.post(`/api/posts/${post.id}/report`, { category });
+      const reason = REPORT_REASONS.find((r) => r.category === category)?.label;
+      await api.post('/api/reports', { postId: post.id, category, reason });
     },
     onSuccess: () => {
-      setReportVisible(false);
+      setReportSubmitted(true);
+      setReportError(false);
       setSelectedCategory(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: () => {
+      setReportError(true);
     },
   });
 
@@ -740,8 +752,23 @@ export function PostCard({ post }: PostCardProps) {
       </Modal>
 
       {/* Report Modal */}
-      <Modal visible={reportVisible} transparent animationType="slide">
-        <TouchableWithoutFeedback onPress={() => setReportVisible(false)}>
+      <Modal
+        visible={reportVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setReportVisible(false);
+          setReportSubmitted(false);
+          setReportError(false);
+          setSelectedCategory(null);
+        }}
+      >
+        <TouchableWithoutFeedback onPress={() => {
+          setReportVisible(false);
+          setReportSubmitted(false);
+          setReportError(false);
+          setSelectedCategory(null);
+        }}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
             <TouchableWithoutFeedback>
               <View style={{
@@ -753,42 +780,80 @@ export function PostCard({ post }: PostCardProps) {
                 paddingHorizontal: 24,
               }}>
                 <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
-                <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', marginBottom: 16 }}>Report Post</Text>
-                <Text style={{ color: '#4a6fa5', fontSize: 13, marginBottom: 14 }}>Select a reason:</Text>
-                <View style={{ gap: 10, marginBottom: 20 }}>
-                  {REPORT_CATEGORIES.map((cat) => (
+
+                {reportSubmitted ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 24, gap: 12 }}>
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,207,53,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Flag size={26} color="#00CF35" />
+                    </View>
+                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700' }}>Post reported</Text>
+                    <Text style={{ color: '#4a6fa5', fontSize: 13, textAlign: 'center' }}>
+                      Thanks for letting us know. We'll review this post.
+                    </Text>
                     <Pressable
-                      key={cat}
-                      testID={`report-category-${cat}`}
-                      onPress={() => setSelectedCategory(cat)}
+                      testID="report-done-button"
+                      onPress={() => {
+                        setReportVisible(false);
+                        setReportSubmitted(false);
+                        setSelectedCategory(null);
+                      }}
                       style={{
+                        marginTop: 8,
+                        backgroundColor: '#00CF35',
+                        borderRadius: 14,
                         paddingVertical: 12,
-                        paddingHorizontal: 16,
-                        borderRadius: 12,
-                        borderWidth: 1.5,
-                        borderColor: selectedCategory === cat ? '#00CF35' : '#1a3a5c',
-                        backgroundColor: selectedCategory === cat ? 'rgba(0,207,53,0.08)' : 'transparent',
+                        paddingHorizontal: 40,
+                        alignItems: 'center',
                       }}
                     >
-                      <Text style={{ color: selectedCategory === cat ? '#00CF35' : '#FFFFFF', fontWeight: '500' }}>{cat}</Text>
+                      <Text style={{ color: '#001935', fontWeight: '700', fontSize: 15 }}>Done</Text>
                     </Pressable>
-                  ))}
-                </View>
-                <Pressable
-                  testID="submit-report-button"
-                  onPress={() => selectedCategory && reportMutation.mutate(selectedCategory)}
-                  disabled={!selectedCategory || reportMutation.isPending}
-                  style={{
-                    backgroundColor: selectedCategory ? '#00CF35' : '#1a3a5c',
-                    borderRadius: 14,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: selectedCategory ? '#001935' : '#4a6fa5', fontWeight: '700', fontSize: 15 }}>
-                    Submit Report
-                  </Text>
-                </Pressable>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', marginBottom: 16 }}>Report Post</Text>
+                    <Text style={{ color: '#4a6fa5', fontSize: 13, marginBottom: 14 }}>Select a reason:</Text>
+                    <View style={{ gap: 10, marginBottom: 20 }}>
+                      {REPORT_REASONS.map((item) => (
+                        <Pressable
+                          key={item.category}
+                          testID={`report-category-${item.category}`}
+                          onPress={() => setSelectedCategory(item.category)}
+                          style={{
+                            paddingVertical: 12,
+                            paddingHorizontal: 16,
+                            borderRadius: 12,
+                            borderWidth: 1.5,
+                            borderColor: selectedCategory === item.category ? '#00CF35' : '#1a3a5c',
+                            backgroundColor: selectedCategory === item.category ? 'rgba(0,207,53,0.08)' : 'transparent',
+                          }}
+                        >
+                          <Text style={{ color: selectedCategory === item.category ? '#00CF35' : '#FFFFFF', fontWeight: '500' }}>{item.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    {reportError ? (
+                      <Text style={{ color: '#FF4E6A', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>
+                        Something went wrong. Please try again.
+                      </Text>
+                    ) : null}
+                    <Pressable
+                      testID="submit-report-button"
+                      onPress={() => selectedCategory && reportMutation.mutate(selectedCategory)}
+                      disabled={!selectedCategory || reportMutation.isPending}
+                      style={{
+                        backgroundColor: selectedCategory ? '#00CF35' : '#1a3a5c',
+                        borderRadius: 14,
+                        paddingVertical: 14,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: selectedCategory ? '#001935' : '#4a6fa5', fontWeight: '700', fontSize: 15 }}>
+                        {reportMutation.isPending ? 'Submitting...' : 'Submit Report'}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
             </TouchableWithoutFeedback>
           </View>
