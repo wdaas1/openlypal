@@ -566,7 +566,7 @@ export default function PostDetailScreen() {
     mutationFn: async () => {
       return api.post(`/api/posts/${id}/comments`, {
         content: commentText,
-        parentId: replyingTo?.id ?? null,
+        ...(replyingTo?.id ? { parentId: replyingTo.id } : {}),
       });
     },
     onSuccess: () => {
