@@ -75,12 +75,9 @@ function NativeScreenCaptureGuard() {
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
   const router = useRouter();
-  const navigated = useRef(false);
 
   useEffect(() => {
     if (isLoading) return;
-    if (navigated.current) return;
-    navigated.current = true;
 
     if (session?.user) {
       router.replace('/(app)' as any);
