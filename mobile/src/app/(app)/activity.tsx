@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Repeat2, MessageCircle } from 'lucide-react-native';
+import { Heart, Repeat2, MessageCircle, Users } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
+import { useRouter } from 'expo-router';
 import { api } from '@/lib/api/api';
 import { UserAvatar } from '@/components/UserAvatar';
 
@@ -54,6 +55,7 @@ function getActivityText(type: string) {
 
 export default function ActivityScreen() {
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: activities, isLoading, isRefetching } = useQuery({
     queryKey: ['activity'],
@@ -85,6 +87,49 @@ export default function ActivityScreen() {
             />
           }
         >
+          {/* Relationship Map Banner — always visible */}
+          <Pressable
+            testID="relationship-map-banner"
+            onPress={() => router.push('/(app)/relationships' as any)}
+            style={{
+              marginHorizontal: 16,
+              marginTop: 16,
+              marginBottom: 8,
+              borderRadius: 16,
+              backgroundColor: '#011e3d',
+              borderWidth: 1,
+              borderColor: 'rgba(0,207,53,0.25)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              padding: 14,
+              gap: 14,
+            }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: 'rgba(0,207,53,0.12)',
+                borderWidth: 1.5,
+                borderColor: 'rgba(0,207,53,0.4)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Users size={20} color="#00CF35" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 14 }}>
+                Relationship Map
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: 2 }}>
+                See your friendship strength and who you're drifting from
+              </Text>
+            </View>
+            <Text style={{ color: '#00CF35', fontSize: 18 }}>{'›'}</Text>
+          </Pressable>
+
           {(activities ?? []).length === 0 ? (
             <View className="items-center justify-center pt-32">
               <Text className="text-lg font-semibold" style={{ color: '#4a6fa5' }}>

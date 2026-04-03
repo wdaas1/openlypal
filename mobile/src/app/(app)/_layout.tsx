@@ -422,6 +422,7 @@ export default function AppLayout() {
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="edit-profile" options={{ href: null }} />
         <Tabs.Screen name="admin" options={{ href: null }} />
+        <Tabs.Screen name="relationships/index" options={{ href: null }} />
       </Tabs>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
         <FloatingTabBar />
