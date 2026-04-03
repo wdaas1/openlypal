@@ -4,9 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, AppState, AppStateStatus } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
-import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useSession } from '@/lib/auth/use-session';
 
 export const unstable_settings = {
@@ -67,11 +66,6 @@ function PrivacyShield({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NativeScreenCaptureGuard() {
-  usePreventScreenCapture();
-  return null;
-}
-
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
   const router = useRouter();
@@ -90,7 +84,6 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={TumblrDark}>
-      {Platform.OS !== 'web' && <NativeScreenCaptureGuard />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="sign-in" />
