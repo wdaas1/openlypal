@@ -261,9 +261,12 @@ usersRouter.get("/:id/posts", async (c) => {
     where: { userId: id, hidden: false },
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
-      _count: { select: { likes: true, comments: true, reblogs: true } },
+      _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
       ...(currentUser
-        ? { likes: { where: { userId: currentUser.id }, select: { id: true } } }
+        ? {
+            likes: { where: { userId: currentUser.id }, select: { id: true } },
+            bookmarks: { where: { userId: currentUser.id }, select: { id: true } },
+          }
         : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -281,10 +284,16 @@ usersRouter.get("/:id/posts", async (c) => {
     likeCount: post._count.likes,
     commentCount: post._count.comments,
     reblogCount: post._count.reblogs,
+    bookmarkCount: (post._count as Record<string, number>).bookmarks ?? 0,
     isLiked: currentUser
       ? (post as Record<string, unknown>).likes !== undefined &&
         Array.isArray((post as Record<string, unknown>).likes) &&
         ((post as Record<string, unknown>).likes as unknown[]).length > 0
+      : false,
+    isBookmarked: currentUser
+      ? (post as Record<string, unknown>).bookmarks !== undefined &&
+        Array.isArray((post as Record<string, unknown>).bookmarks) &&
+        ((post as Record<string, unknown>).bookmarks as unknown[]).length > 0
       : false,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),

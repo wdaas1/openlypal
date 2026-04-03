@@ -36,6 +36,9 @@ function mapPost(
   const likesArr = currentUserId
     ? (post.likes as { id: string }[] | undefined) ?? []
     : [];
+  const bookmarksArr = currentUserId
+    ? (post.bookmarks as { id: string }[] | undefined) ?? []
+    : [];
   return {
     id: post.id,
     type: post.type,
@@ -53,7 +56,9 @@ function mapPost(
     likeCount: post._count.likes,
     commentCount: post._count.comments,
     reblogCount: post._count.reblogs,
+    bookmarkCount: (post._count as Record<string, number>).bookmarks ?? 0,
     isLiked: currentUserId ? likesArr.length > 0 : false,
+    isBookmarked: currentUserId ? bookmarksArr.length > 0 : false,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
   };
@@ -121,8 +126,9 @@ postsRouter.get("/", async (c) => {
 
   const postInclude = {
     user: { select: { id: true, name: true, username: true, image: true } },
-    _count: { select: { likes: true, comments: true, reblogs: true } },
+    _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
     likes: { where: { userId: user.id }, select: { id: true } },
+    bookmarks: { where: { userId: user.id }, select: { id: true } },
   };
 
   // 1. Followed-user posts (50%)
@@ -261,8 +267,9 @@ postsRouter.get("/feed/following", async (c) => {
     },
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
-      _count: { select: { likes: true, comments: true, reblogs: true } },
+      _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
       likes: { where: { userId: user.id }, select: { id: true } },
+      bookmarks: { where: { userId: user.id }, select: { id: true } },
     },
     orderBy: { createdAt: "desc" },
     skip,
@@ -281,9 +288,12 @@ postsRouter.get("/:id", async (c) => {
     where: { id },
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
-      _count: { select: { likes: true, comments: true, reblogs: true } },
+      _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
       ...(user
-        ? { likes: { where: { userId: user.id }, select: { id: true } } }
+        ? {
+            likes: { where: { userId: user.id }, select: { id: true } },
+            bookmarks: { where: { userId: user.id }, select: { id: true } },
+          }
         : {}),
     },
   });
@@ -405,6 +415,30 @@ postsRouter.post("/:id/like", async (c) => {
 
   await prisma.like.create({ data: { userId: user.id, postId } });
   return c.json({ data: { liked: true } });
+});
+
+// POST /:id/bookmark - Toggle bookmark
+postsRouter.post("/:id/bookmark", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const postId = c.req.param("id");
+  const post = await prisma.post.findUnique({ where: { id: postId } });
+  if (!post) {
+    return c.json({ error: { message: "Post not found", code: "NOT_FOUND" } }, 404);
+  }
+
+  const existing = await prisma.bookmark.findUnique({
+    where: { userId_postId: { userId: user.id, postId } },
+  });
+
+  if (existing) {
+    await prisma.bookmark.delete({ where: { id: existing.id } });
+    return c.json({ data: { bookmarked: false } });
+  }
+
+  await prisma.bookmark.create({ data: { userId: user.id, postId } });
+  return c.json({ data: { bookmarked: true } });
 });
 
 // POST /:id/reblog - Reblog a post

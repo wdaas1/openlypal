@@ -59,9 +59,12 @@ exploreRouter.get("/trending", async (c) => {
     where: whereClause,
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
-      _count: { select: { likes: true, comments: true, reblogs: true } },
+      _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
       ...(user
-        ? { likes: { where: { userId: user.id }, select: { id: true } } }
+        ? {
+            likes: { where: { userId: user.id }, select: { id: true } },
+            bookmarks: { where: { userId: user.id }, select: { id: true } },
+          }
         : {}),
     },
     orderBy,
@@ -91,6 +94,9 @@ exploreRouter.get("/trending", async (c) => {
     const likesArr = user
       ? ((post as Record<string, unknown>).likes as { id: string }[] | undefined) ?? []
       : [];
+    const bookmarksArr = user
+      ? ((post as Record<string, unknown>).bookmarks as { id: string }[] | undefined) ?? []
+      : [];
     return {
       id: post.id,
       type: post.type,
@@ -105,7 +111,9 @@ exploreRouter.get("/trending", async (c) => {
       likeCount: post._count.likes,
       commentCount: post._count.comments,
       reblogCount: post._count.reblogs,
+      bookmarkCount: (post._count as Record<string, number>).bookmarks ?? 0,
       isLiked: likesArr.length > 0,
+      isBookmarked: bookmarksArr.length > 0,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
     };

@@ -701,7 +701,14 @@ export default function PostDetailScreen() {
                 <MessageCircle size={22} color="#4a6fa5" />
                 <Text style={{ marginLeft: 8, fontSize: 13, color: '#4a6fa5' }}>{post.commentCount}</Text>
               </Pressable>
-              <Pressable testID="detail-share-button" style={{ marginLeft: 'auto' }}>
+              <Pressable testID="detail-share-button" onPress={async () => {
+                try {
+                  await RNShare.share({
+                    message: `${post.title ?? post.content?.slice(0, 80) ?? 'Check out this post'}\n\nhttps://openly.app/post/${id}`,
+                    title: post.title ?? undefined,
+                  });
+                } catch {}
+              }} style={{ marginLeft: 'auto' }}>
                 <Share size={20} color="#4a6fa5" />
               </Pressable>
             </View>
