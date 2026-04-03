@@ -79,7 +79,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (!isVisible) {
+    if (isVisible) {
+      videoRef.current?.playAsync();
+    } else {
       videoRef.current?.pauseAsync();
     }
   }, [isVisible]);
@@ -492,7 +494,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
               source={{ uri: post.videoUrl }}
               style={{ width: '100%', height: videoHeight }}
               resizeMode={ResizeMode.COVER}
-              shouldPlay={isVisible}
+              shouldPlay={false}
               isLooping
               isMuted={muted}
               useNativeControls={false}

@@ -155,7 +155,7 @@ function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Native
 
   const feedItems = buildFeedItems(posts ?? []);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 30 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
@@ -203,7 +203,7 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
 
   const feedItems = buildFeedItems(posts ?? []);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 30 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
@@ -251,7 +251,7 @@ function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Na
 
   const feedItems = buildFeedItems(posts ?? []);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 30 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
