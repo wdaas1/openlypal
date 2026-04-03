@@ -1,5 +1,5 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -30,9 +30,10 @@ const TumblrDark = {
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !navigationState?.key) return;
 
     if (session?.user) {
       router.replace('/(app)' as any);
@@ -41,7 +42,7 @@ function RootLayoutNav() {
     }
 
     SplashScreen.hideAsync();
-  }, [session, isLoading]);
+  }, [session, isLoading, navigationState?.key]);
 
   return (
     <ThemeProvider value={TumblrDark}>
