@@ -609,7 +609,7 @@ export default function PostDetailScreen() {
         <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 17, marginLeft: 16 }}>Post</Text>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: NAV_HEIGHT + 40 }}>
           {/* Post */}
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
