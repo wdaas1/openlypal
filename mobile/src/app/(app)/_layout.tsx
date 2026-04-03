@@ -341,6 +341,7 @@ function FloatingChatButton() {
   }));
 
   if (pathname.includes('/messenger')) return null;
+  if (pathname.includes('/post/')) return null;
 
   const bottomOffset = Math.max(insets.bottom, 12) + 64 + 16;
 
