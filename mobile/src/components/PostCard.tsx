@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
@@ -7,7 +7,7 @@ import {
   Repeat2,
   MessageCircle,
   MessageSquare,
-  Share,
+  Share as ShareIcon,
   Volume2,
   VolumeX,
   Maximize,
@@ -698,8 +698,15 @@ export function PostCard({ post }: PostCardProps) {
         ) : null}
 
         {/* Share */}
-        <Pressable testID={`share-button-${post.id}`} onPress={(e) => e.stopPropagation()}>
-          <Share size={18} color="#4a6fa5" />
+        <Pressable
+          testID={`share-button-${post.id}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            const text = post.title ?? post.content ?? '';
+            Share.share({ message: text, title: post.title ?? undefined });
+          }}
+        >
+          <ShareIcon size={18} color="#4a6fa5" />
         </Pressable>
       </View>
 
