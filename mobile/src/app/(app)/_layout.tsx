@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { View, Pressable, Text, LayoutChangeEvent } from 'react-native';
+import { View, Pressable, Text, LayoutChangeEvent, StyleSheet } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Home, Compass, PlusCircle, MessageSquare, User } from 'lucide-react-native';
 import Animated, {
@@ -170,6 +170,7 @@ function TabButton({
 function FloatingTabBar() {
   const pathname = usePathname();
   const router = useRouter();
+
   const insets = useSafeAreaInsets();
 
   const barWidth = useSharedValue(0);
@@ -230,8 +231,11 @@ function FloatingTabBar() {
     }
   };
 
+  if (pathname.includes('/post/')) return null;
+
   return (
     <View
+      pointerEvents="box-none"
       onLayout={handleLayout}
       style={{
         position: 'absolute',
@@ -412,8 +416,10 @@ export default function AppLayout() {
         <Tabs.Screen name="edit-profile" options={{ href: null }} />
         <Tabs.Screen name="admin" options={{ href: null }} />
       </Tabs>
-      <FloatingTabBar />
-      <FloatingChatButton />
+      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <FloatingTabBar />
+        <FloatingChatButton />
+      </View>
     </View>
     </KeyboardProvider>
   );
