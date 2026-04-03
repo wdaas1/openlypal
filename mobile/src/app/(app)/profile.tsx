@@ -231,30 +231,48 @@ export default function ProfileScreen() {
                 <Text style={statNumberStyle}>{profile?.postCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Posts</Text>
               </View>
-              <View style={{
-                alignItems: 'center',
-                backgroundColor: 'rgba(10,45,80,0.6)',
-                borderRadius: 14,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderWidth: 0.5,
-                borderColor: 'rgba(255,255,255,0.07)',
-              }}>
+              <Pressable
+                testID="followers-stat-button"
+                onPress={() => {
+                  if (session?.user?.id) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push({ pathname: '/(app)/user/followers' as any, params: { id: session.user.id, type: 'followers' } });
+                  }
+                }}
+                style={{
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(10,45,80,0.6)',
+                  borderRadius: 14,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderWidth: 0.5,
+                  borderColor: 'rgba(255,255,255,0.07)',
+                }}
+              >
                 <Text style={statNumberStyle}>{profile?.followerCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Followers</Text>
-              </View>
-              <View style={{
-                alignItems: 'center',
-                backgroundColor: 'rgba(10,45,80,0.6)',
-                borderRadius: 14,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderWidth: 0.5,
-                borderColor: 'rgba(255,255,255,0.07)',
-              }}>
+              </Pressable>
+              <Pressable
+                testID="following-stat-button"
+                onPress={() => {
+                  if (session?.user?.id) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push({ pathname: '/(app)/user/followers' as any, params: { id: session.user.id, type: 'following' } });
+                  }
+                }}
+                style={{
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(10,45,80,0.6)',
+                  borderRadius: 14,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderWidth: 0.5,
+                  borderColor: 'rgba(255,255,255,0.07)',
+                }}
+              >
                 <Text style={statNumberStyle}>{profile?.followingCount ?? 0}</Text>
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Following</Text>
-              </View>
+              </Pressable>
             </View>
           </View>
 
