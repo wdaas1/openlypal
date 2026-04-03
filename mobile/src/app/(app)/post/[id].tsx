@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, Pressable, TextInput, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Share as RNShare, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X, TrendingUp } from 'lucide-react-native';
+import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X, TrendingUp, Copy, Twitter, Facebook, MessageSquare } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api/api';
 import type { Post, Comment } from '@/lib/types';
@@ -256,6 +257,245 @@ const SORT_TABS: { id: CommentSort; label: string; icon?: React.ReactNode }[] = 
   { id: 'controversial', label: 'Hot' },
 ];
 
+// Share option pill definitions
+type ShareOption = {
+  id: string;
+  label: string;
+  color: string;
+  icon: React.ReactNode;
+  onPress: (url: string, text: string) => void;
+};
+
+function ShareSection({ postId, postTitle }: { postId: string; postTitle?: string }) {
+  const [copied, setCopied] = useState(false);
+  const shareUrl = `https://app.example.com/post/${postId}`;
+  const shareText = postTitle ?? 'Check out this post';
+
+  const handleCopyLink = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await Clipboard.setStringAsync(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleTwitter = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    Linking.openURL(twitterUrl);
+  };
+
+  const handleFacebook = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+    Linking.openURL(fbUrl);
+  };
+
+  const handleWhatsApp = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+    Linking.openURL(waUrl);
+  };
+
+  const handleTelegram = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+    Linking.openURL(tgUrl);
+  };
+
+  const handleInstagram = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL('instagram://');
+  };
+
+  const handleNativeShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await RNShare.share({
+        message: `${shareText} ${shareUrl}`,
+        url: shareUrl,
+        title: shareText,
+      });
+    } catch {
+      // user dismissed
+    }
+  };
+
+  return (
+    <View
+      testID="share-section"
+      style={{
+        marginHorizontal: 16,
+        marginTop: 24,
+        marginBottom: 16,
+        borderRadius: 16,
+        backgroundColor: '#0a2d50',
+        borderWidth: 0.5,
+        borderColor: '#1a3a5c',
+        padding: 16,
+      }}
+    >
+      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15, marginBottom: 14 }}>
+        Share this post
+      </Text>
+
+      {/* Row 1: Copy + Native Share */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+        <Pressable
+          testID="share-copy-link"
+          onPress={handleCopyLink}
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            paddingVertical: 10,
+            borderRadius: 24,
+            backgroundColor: copied ? 'rgba(0,207,53,0.2)' : 'rgba(255,255,255,0.07)',
+            borderWidth: 0.5,
+            borderColor: copied ? '#00CF35' : '#1a3a5c',
+          }}
+        >
+          <Copy size={15} color={copied ? '#00CF35' : '#FFFFFF'} />
+          <Text style={{ color: copied ? '#00CF35' : '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
+            {copied ? 'Copied!' : 'Copy Link'}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          testID="share-native"
+          onPress={handleNativeShare}
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            paddingVertical: 10,
+            borderRadius: 24,
+            backgroundColor: 'rgba(0,207,53,0.15)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(0,207,53,0.4)',
+          }}
+        >
+          <Share size={15} color="#00CF35" />
+          <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600' }}>More</Text>
+        </Pressable>
+      </View>
+
+      {/* Row 2: Social platforms */}
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        {/* Twitter/X */}
+        <Pressable
+          testID="share-twitter"
+          onPress={handleTwitter}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 24,
+            backgroundColor: 'rgba(255,255,255,0.07)',
+            borderWidth: 0.5,
+            borderColor: '#1a3a5c',
+          }}
+        >
+          <Twitter size={14} color="#FFFFFF" />
+          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>X</Text>
+        </Pressable>
+
+        {/* Facebook */}
+        <Pressable
+          testID="share-facebook"
+          onPress={handleFacebook}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 24,
+            backgroundColor: 'rgba(24,119,242,0.15)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(24,119,242,0.35)',
+          }}
+        >
+          <Facebook size={14} color="#1877F2" />
+          <Text style={{ color: '#1877F2', fontSize: 12, fontWeight: '600' }}>Facebook</Text>
+        </Pressable>
+
+        {/* WhatsApp */}
+        <Pressable
+          testID="share-whatsapp"
+          onPress={handleWhatsApp}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 24,
+            backgroundColor: 'rgba(37,211,102,0.12)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(37,211,102,0.3)',
+          }}
+        >
+          {/* WhatsApp icon via text since lucide doesn't have one */}
+          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#001935', fontSize: 8, fontWeight: '900', lineHeight: 10 }}>W</Text>
+          </View>
+          <Text style={{ color: '#25D366', fontSize: 12, fontWeight: '600' }}>WhatsApp</Text>
+        </Pressable>
+
+        {/* Telegram */}
+        <Pressable
+          testID="share-telegram"
+          onPress={handleTelegram}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 24,
+            backgroundColor: 'rgba(0,136,204,0.12)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(0,136,204,0.3)',
+          }}
+        >
+          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#0088CC', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '900', lineHeight: 10 }}>T</Text>
+          </View>
+          <Text style={{ color: '#0088CC', fontSize: 12, fontWeight: '600' }}>Telegram</Text>
+        </Pressable>
+
+        {/* Instagram */}
+        <Pressable
+          testID="share-instagram"
+          onPress={handleInstagram}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 24,
+            backgroundColor: 'rgba(225,48,108,0.12)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(225,48,108,0.3)',
+          }}
+        >
+          <View style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: '#E1306C', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '900', lineHeight: 10 }}>IG</Text>
+          </View>
+          <Text style={{ color: '#E1306C', fontSize: 12, fontWeight: '600' }}>Instagram</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -329,6 +569,13 @@ export default function PostDetailScreen() {
     },
   });
 
+  const handleDmAuthor = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (post?.userId) {
+      router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
+    }
+  };
+
   if (loadingPost) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#001935' }}>
@@ -362,6 +609,48 @@ export default function PostDetailScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Floating DM button — positioned absolutely above the comment bar */}
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', bottom: replyingTo ? 106 : 74, right: 16, zIndex: 10 }}
+        >
+          <Pressable
+            testID="floating-dm-button"
+            onPress={handleDmAuthor}
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: '#00CF35',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#00CF35',
+              shadowOffset: { width: 0, height: 4 },
+              shadowRadius: 12,
+              shadowOpacity: 0.5,
+              elevation: 10,
+            }}
+          >
+            <MessageSquare size={22} color="#001935" />
+          </Pressable>
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 56,
+              right: 0,
+              backgroundColor: 'rgba(0,207,53,0.15)',
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderWidth: 0.5,
+              borderColor: 'rgba(0,207,53,0.4)',
+            }}
+            pointerEvents="none"
+          >
+            <Text style={{ color: '#00CF35', fontSize: 11, fontWeight: '700' }}>Message</Text>
+          </View>
+        </View>
+
         <ScrollView style={{ flex: 1 }}>
           {/* Post */}
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
@@ -548,7 +837,10 @@ export default function PostDetailScreen() {
             ) : null}
           </View>
 
-          <View style={{ height: 100 }} />
+          {/* Share section */}
+          <ShareSection postId={id ?? ''} postTitle={post.title ?? post.content?.slice(0, 80)} />
+
+          <View style={{ height: 120 }} />
         </ScrollView>
 
         {/* Replying to indicator */}
