@@ -496,6 +496,8 @@ function ShareSection({ postId, postTitle }: { postId: string; postTitle?: strin
   );
 }
 
+const NAV_HEIGHT = 100;
+
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -651,7 +653,7 @@ export default function PostDetailScreen() {
           </View>
         </View>
 
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: NAV_HEIGHT + 40 }}>
           {/* Post */}
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             {/* User */}
