@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Send } from 'lucide-react-native';
@@ -28,6 +28,11 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const { data: sessionData } = useSession();
   const currentUserId = sessionData?.user?.id;
+  const insets = useSafeAreaInsets();
+  // Tab bar is 68px tall, floating bottom = max(insets.bottom, 12) + 16px margin
+  const tabBarHeight = 68;
+  const tabBarBottom = Math.max(insets.bottom, 12);
+  const inputBottomPadding = tabBarBottom + tabBarHeight + 8;
 
   // Get conversation meta (for the user name/avatar)
   const { data: conversations } = useQuery({
@@ -186,7 +191,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={inputBottomPadding}
       >
         {isLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -218,7 +223,8 @@ export default function ChatScreen() {
           flexDirection: 'row',
           alignItems: 'flex-end',
           paddingHorizontal: 16,
-          paddingVertical: 12,
+          paddingTop: 12,
+          paddingBottom: inputBottomPadding,
           borderTopWidth: 0.5,
           borderTopColor: '#1a3a5c',
           gap: 10,
