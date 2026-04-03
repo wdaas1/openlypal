@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -38,6 +38,7 @@ import { useSession } from '@/lib/auth/use-session';
 
 interface PostCardProps {
   post: Post;
+  isVisible?: boolean;
 }
 
 const REPORT_REASONS: { label: string; category: string }[] = [
@@ -58,7 +59,7 @@ function formatCount(n: number): string {
   return n.toString();
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, isVisible = true }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
@@ -76,6 +77,12 @@ export function PostCard({ post }: PostCardProps) {
   const lastTapRef = useRef<number>(0);
   const videoRef = useRef<Video>(null);
   const { data: session } = useSession();
+
+  useEffect(() => {
+    if (!isVisible) {
+      videoRef.current?.pauseAsync();
+    }
+  }, [isVisible]);
 
   // Read user's explicit content preference from cache
   const { data: profile } = useQuery({
@@ -485,7 +492,7 @@ export function PostCard({ post }: PostCardProps) {
               source={{ uri: post.videoUrl }}
               style={{ width: '100%', height: videoHeight }}
               resizeMode={ResizeMode.COVER}
-              shouldPlay
+              shouldPlay={isVisible}
               isLooping
               isMuted={muted}
               useNativeControls={false}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, RefreshControl, Pressable, useWindowDimensions, ViewToken } from 'react-native';
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -154,6 +154,11 @@ function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Native
   });
 
   const feedItems = buildFeedItems(posts ?? []);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
+  }, []);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -164,12 +169,14 @@ function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Native
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        return <PostCard post={item.data} />;
+        return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
+      viewabilityConfig={viewabilityConfig}
+      onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -195,6 +202,11 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
   });
 
   const feedItems = buildFeedItems(posts ?? []);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
+  }, []);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -205,12 +217,14 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        return <PostCard post={item.data} />;
+        return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
+      viewabilityConfig={viewabilityConfig}
+      onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
@@ -236,6 +250,11 @@ function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Na
   });
 
   const feedItems = buildFeedItems(posts ?? []);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
+  }, []);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -246,12 +265,14 @@ function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Na
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        return <PostCard post={item.data} />;
+        return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
+      viewabilityConfig={viewabilityConfig}
+      onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
         <RefreshControl
           refreshing={isRefetching}
