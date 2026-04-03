@@ -232,6 +232,8 @@ function FloatingTabBar() {
   };
 
   if (pathname.includes('/post/')) return null;
+  // Hide tab bar inside a live moment room (but not the list or create screens)
+  if (/\/live-moments\/(?!create)[^/]+/.test(pathname)) return null;
 
   return (
     <View
