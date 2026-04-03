@@ -8,7 +8,11 @@ const TOKEN_KEY = "vibecode_auth_token";
 const tokenStorage = {
   get: (): string | null => {
     if (Platform.OS === "web") return localStorage.getItem(TOKEN_KEY);
-    return SecureStore.getItem(TOKEN_KEY);
+    try {
+      return SecureStore.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
   },
   set: (token: string) => {
     if (Platform.OS === "web") localStorage.setItem(TOKEN_KEY, token);
