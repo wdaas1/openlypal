@@ -266,10 +266,10 @@ type ShareOption = {
   onPress: (url: string, text: string) => void;
 };
 
-function ShareSection({ postId, postTitle }: { postId: string; postTitle?: string }) {
+function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: string; postTitle?: string; postContent?: string; imageUrl?: string }) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = `https://app.example.com/post/${postId}`;
-  const shareText = postTitle ?? 'Check out this post';
+  const shareUrl = `https://openly.app/post/${postId}`;
+  const shareText = postTitle ?? postContent?.slice(0, 80) ?? 'Check out this post';
 
   const handleCopyLink = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -280,7 +280,7 @@ function ShareSection({ postId, postTitle }: { postId: string; postTitle?: strin
 
   const handleTwitter = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}`)}&url=${encodeURIComponent(shareUrl)}`;
     Linking.openURL(twitterUrl);
   };
 
@@ -292,13 +292,13 @@ function ShareSection({ postId, postTitle }: { postId: string; postTitle?: strin
 
   const handleWhatsApp = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`)}`;
     Linking.openURL(waUrl);
   };
 
   const handleTelegram = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}`)}`;
     Linking.openURL(tgUrl);
   };
 
@@ -311,9 +311,8 @@ function ShareSection({ postId, postTitle }: { postId: string; postTitle?: strin
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await RNShare.share({
-        message: `${shareText} ${shareUrl}`,
-        url: shareUrl,
-        title: shareText,
+        message: `Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`,
+        url: imageUrl ?? shareUrl,
       });
     } catch {
       // user dismissed
@@ -840,7 +839,7 @@ export default function PostDetailScreen() {
           </View>
 
           {/* Share section */}
-          <ShareSection postId={id ?? ''} postTitle={post.title ?? post.content?.slice(0, 80)} />
+          <ShareSection postId={id ?? ''} postTitle={post.title ?? undefined} postContent={post.content ?? undefined} imageUrl={post.imageUrl ?? undefined} />
 
           <View style={{ height: 120 }} />
         </ScrollView>
