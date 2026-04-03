@@ -3,7 +3,7 @@ import { View, Text, Pressable, TextInput, ActivityIndicator, ScrollView, Keyboa
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X, TrendingUp, Copy, Twitter, Facebook, MessageSquare } from 'lucide-react-native';
+import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X, TrendingUp, Copy, Twitter, Facebook } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
@@ -577,13 +577,6 @@ export default function PostDetailScreen() {
     },
   });
 
-  const handleDmAuthor = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (post?.userId) {
-      router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
-    }
-  };
-
   if (loadingPost) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#001935' }}>
@@ -617,48 +610,6 @@ export default function PostDetailScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Floating DM button — positioned absolutely above the comment bar */}
-        <View
-          pointerEvents="box-none"
-          style={{ position: 'absolute', bottom: replyingTo ? 106 : 74, right: 16, zIndex: 10 }}
-        >
-          <Pressable
-            testID="floating-dm-button"
-            onPress={handleDmAuthor}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 26,
-              backgroundColor: '#00CF35',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#00CF35',
-              shadowOffset: { width: 0, height: 4 },
-              shadowRadius: 12,
-              shadowOpacity: 0.5,
-              elevation: 10,
-            }}
-          >
-            <MessageSquare size={22} color="#001935" />
-          </Pressable>
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 56,
-              right: 0,
-              backgroundColor: 'rgba(0,207,53,0.15)',
-              borderRadius: 8,
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderWidth: 0.5,
-              borderColor: 'rgba(0,207,53,0.4)',
-            }}
-            pointerEvents="none"
-          >
-            <Text style={{ color: '#00CF35', fontSize: 11, fontWeight: '700' }}>Message</Text>
-          </View>
-        </View>
-
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: NAV_HEIGHT + 40 }}>
           {/* Post */}
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
