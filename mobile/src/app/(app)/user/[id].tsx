@@ -160,14 +160,20 @@ export default function UserProfileScreen() {
               <Text className="text-white font-bold text-base">{user._count?.posts ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Posts</Text>
             </View>
-            <View>
+            <Pressable
+              testID="followers-button"
+              onPress={() => router.push({ pathname: '/(app)/user/followers' as any, params: { id, type: 'followers' } })}
+            >
               <Text className="text-white font-bold text-base">{user._count?.followers ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Followers</Text>
-            </View>
-            <View>
+            </Pressable>
+            <Pressable
+              testID="following-button"
+              onPress={() => router.push({ pathname: '/(app)/user/followers' as any, params: { id, type: 'following' } })}
+            >
               <Text className="text-white font-bold text-base">{user._count?.following ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Following</Text>
-            </View>
+            </Pressable>
           </View>
         </View>
 

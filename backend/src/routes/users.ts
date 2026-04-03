@@ -314,6 +314,36 @@ usersRouter.delete("/me", async (c) => {
 });
 
 // POST /:id/follow - Toggle follow/unfollow
+// GET /:id/followers - List users who follow this user
+usersRouter.get("/:id/followers", async (c) => {
+  const profileId = c.req.param("id");
+  const followers = await prisma.follow.findMany({
+    where: { followingId: profileId },
+    include: {
+      follower: {
+        select: { id: true, name: true, username: true, image: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return c.json({ data: followers.map((f) => f.follower) });
+});
+
+// GET /:id/following - List users this user follows
+usersRouter.get("/:id/following", async (c) => {
+  const profileId = c.req.param("id");
+  const following = await prisma.follow.findMany({
+    where: { followerId: profileId },
+    include: {
+      following: {
+        select: { id: true, name: true, username: true, image: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return c.json({ data: following.map((f) => f.following) });
+});
+
 usersRouter.post("/:id/follow", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
