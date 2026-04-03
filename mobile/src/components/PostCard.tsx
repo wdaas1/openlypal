@@ -487,7 +487,15 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
             </Pressable>
           </View>
         ) : (
-          <View style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}>
+          <Pressable
+            testID={`video-tap-fullscreen-${post.id}`}
+            onPress={(e) => {
+              e.stopPropagation();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
+            }}
+            style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}
+          >
             <Video
               ref={videoRef}
               testID={`post-video-${post.id}`}
@@ -532,7 +540,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
             >
               <Maximize size={15} color="#ffffff" />
             </Pressable>
-          </View>
+          </Pressable>
         )
       ) : null}
 
