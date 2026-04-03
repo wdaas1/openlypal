@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, TextInput, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Share as RNShare, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Heart, Repeat2, MessageCircle, Share, Send, ChevronUp, ChevronDown, X, TrendingUp, Copy, Twitter, Facebook } from 'lucide-react-native';
@@ -508,6 +508,7 @@ export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const [commentText, setCommentText] = useState('');
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
@@ -829,7 +830,7 @@ export default function PostDetailScreen() {
 
         {/* Comment Input — floating glass bar */}
         <View style={{
-          flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+          flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(12, insets.bottom),
           backgroundColor: 'rgba(0,18,40,0.92)',
           borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
         }}>

@@ -595,16 +595,18 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       ) : null}
 
       {/* Action Bar */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderTopWidth: 0.5,
-        borderTopColor: '#1a3a5c',
-        borderBottomLeftRadius: 16,
-        borderBottomRightRadius: 16,
-      }}>
+      <View
+        onStartShouldSetResponder={() => true}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          borderTopWidth: 0.5,
+          borderTopColor: '#1a3a5c',
+          borderBottomLeftRadius: 16,
+          borderBottomRightRadius: 16,
+        }}>
         {/* Like */}
         <Pressable
           testID={`like-button-${post.id}`}
@@ -670,19 +672,6 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
               {post.commentCount}
             </Text>
           ) : null}
-        </Pressable>
-
-        {/* DM */}
-        <Pressable
-          testID={`dm-button-${post.id}`}
-          onPress={(e) => {
-            e.stopPropagation();
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
-          }}
-          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
-        >
-          <MessageSquare size={18} color="#4a6fa5" />
         </Pressable>
 
         {/* Bookmark */}
