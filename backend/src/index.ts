@@ -13,6 +13,7 @@ import { tagFollowsRouter } from "./routes/tagFollows";
 import { commentsRouter } from "./routes/comments";
 import { reportsRouter } from "./routes/reports";
 import { adminRouter } from "./routes/admin";
+import { liveMomentsRouter } from "./routes/live-moments";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -123,6 +124,7 @@ app.route("/api", messagesRouter);
 app.route("/api", tagFollowsRouter);
 app.route("/api", reportsRouter);
 app.route("/api/admin", adminRouter);
+app.route("/api/live-moments", liveMomentsRouter);
 
 // Allowed MIME types for uploads
 const ALLOWED_MIME_TYPES = new Set([

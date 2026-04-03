@@ -44,6 +44,8 @@ model User {
   commentVotes     CommentVote[]
   reports          Report[]
   bookmarks        Bookmark[]
+  liveMoments          LiveMoment[]
+  liveMomentMessages   LiveMomentMessage[]
 }
 
 model Session {
@@ -214,4 +216,31 @@ model Bookmark {
   createdAt DateTime @default(now())
 
   @@unique([userId, postId])
+}
+
+// ─── Live Moments ───────────────────────────────────────────
+
+model LiveMoment {
+  id             String   @id @default(cuid())
+  title          String
+  creatorId      String
+  creator        User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  status         String   @default("active") // "active" | "ended"
+  expiresAt      DateTime
+  expiresAfter   Int      @default(60) // minutes: 30, 60, 360, 1440
+  invitedUserIds String   @default("[]") // JSON array of user IDs
+  viewerIds      String   @default("[]") // JSON array of currently joined user IDs
+  createdAt      DateTime @default(now())
+  messages       LiveMomentMessage[]
+}
+
+model LiveMomentMessage {
+  id        String   @id @default(cuid())
+  momentId  String
+  moment    LiveMoment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  type      String   @default("text") // "text" | "image" | "reaction"
+  createdAt DateTime @default(now())
 }

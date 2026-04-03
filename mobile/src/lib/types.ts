@@ -129,6 +129,31 @@ export interface Notification {
   } | null;
 }
 
+export interface LiveMoment {
+  id: string
+  title: string
+  creatorId: string
+  creator: User
+  status: 'active' | 'ended'
+  expiresAt: string
+  expiresAfter: number
+  invitedUserIds: string[]
+  invitedUsers: User[]
+  viewerCount: number
+  messageCount: number
+  createdAt: string
+}
+
+export interface LiveMomentMessage {
+  id: string
+  momentId: string
+  userId: string
+  user: User
+  content: string
+  type: 'text' | 'image' | 'reaction'
+  createdAt: string
+}
+
 export interface TrendingHashtag {
   tag: string;
   count: number;

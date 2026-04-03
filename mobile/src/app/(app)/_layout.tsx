@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { Home, Compass, PlusCircle, MessageSquare, User } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Radio } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -78,8 +78,8 @@ const TABS: TabConfig[] = [
     isCenter: true,
   },
   {
-    route: '/(app)/messenger',
-    icon: (color, size, isActive) => <ChatIcon color={color} size={size} isActive={isActive} />,
+    route: '/(app)/live-moments',
+    icon: (color, size) => <Radio size={size} color={color} />,
   },
   {
     route: '/(app)/profile',
@@ -181,7 +181,7 @@ function FloatingTabBar() {
     if (pathname === '/' || pathname === '/index' || pathname.endsWith('/(app)')) return 0;
     if (pathname.includes('/explore')) return 1;
     if (pathname.includes('/create')) return 2;
-    if (pathname.includes('/messenger')) return 3;
+    if (pathname.includes('/live-moments')) return 3;
     if (pathname.includes('/profile')) return 4;
     return -1;
   };
@@ -311,7 +311,7 @@ function FloatingTabBar() {
                 '/(app)/index': '/',
                 '/(app)/explore': '/(app)/explore',
                 '/(app)/create': '/(app)/create',
-                '/(app)/messenger': '/(app)/messenger',
+                '/(app)/live-moments': '/(app)/live-moments',
                 '/(app)/profile': '/(app)/profile',
               };
               router.push(routeMap[tab.route] as any);
@@ -345,6 +345,7 @@ function FloatingChatButton() {
   }));
 
   if (pathname.includes('/messenger')) return null;
+  if (pathname.includes('/live-moments')) return null;
   if (pathname.includes('/post/')) return null;
 
   const bottomOffset = Math.max(insets.bottom, 12) + 64 + 16;
@@ -405,7 +406,10 @@ export default function AppLayout() {
         <Tabs.Screen name="create" options={{ title: 'Create' }} />
         <Tabs.Screen name="activity" options={{ href: null, title: 'Activity' }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-        <Tabs.Screen name="messenger/index" options={{ title: 'Chat' }} />
+        <Tabs.Screen name="live-moments/index" options={{ title: 'Live' }} />
+        <Tabs.Screen name="live-moments/create" options={{ href: null }} />
+        <Tabs.Screen name="live-moments/[id]" options={{ href: null }} />
+        <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
         <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
         <Tabs.Screen name="post/[id]" options={{ href: null }} />
         <Tabs.Screen name="user/[id]" options={{ href: null }} />
