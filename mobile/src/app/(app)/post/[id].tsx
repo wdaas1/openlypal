@@ -24,7 +24,7 @@ function VideoPlayer({ uri }: { uri: string }) {
 
   useEffect(() => {
     return () => {
-      player.pause();
+      try { player.pause(); } catch {}
     };
   }, [player]);
 
