@@ -20,10 +20,10 @@ import { api } from '@/lib/api/api';
 import type { User } from '@/lib/types';
 
 const DURATIONS = [
-  { label: '30m', value: 30 * 60 * 1000 },
-  { label: '1hr', value: 60 * 60 * 1000 },
-  { label: '6hr', value: 6 * 60 * 60 * 1000 },
-  { label: '24hr', value: 24 * 60 * 60 * 1000 },
+  { label: '30m', value: 30 },
+  { label: '1hr', value: 60 },
+  { label: '6hr', value: 360 },
+  { label: '24hr', value: 1440 },
 ];
 
 export default function CreateMomentScreen() {
