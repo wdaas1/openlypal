@@ -3,7 +3,7 @@ import { View, Text, RefreshControl, Pressable, useWindowDimensions } from 'reac
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -146,50 +146,49 @@ function SkeletonLoader() {
   );
 }
 
+const STATIC_POST: Post = {
+  id: 'static-1',
+  type: 'text',
+  title: '🧪 Feed frozen for testing',
+  content: 'This is a static test post. No fetching, no refreshing.',
+  imageUrl: null,
+  videoUrl: null,
+  linkUrl: null,
+  tags: ['test'],
+  userId: 'static-user',
+  user: {
+    id: 'static-user',
+    name: 'Test User',
+    username: 'testuser',
+    image: null,
+  },
+  likeCount: 0,
+  commentCount: 0,
+  reblogCount: 0,
+  isLiked: false,
+  isExplicit: false,
+  category: null,
+  createdAt: new Date().toISOString(),
+  poll: null,
+};
+
 function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
-  const queryClient = useQueryClient();
-  const { data: posts, isLoading, isRefetching } = useQuery({
-    queryKey: ['feed'],
-    queryFn: () => api.get<Post[]>('/api/posts'),
-  });
-
-  const feedItems = buildFeedItems(posts ?? []);
-
-  if (isLoading) return <SkeletonLoader />;
-
   return (
     <FlashList
       testID="feed-list"
-      data={feedItems}
-      keyExtractor={(item) => item.key}
-      renderItem={({ item }) => {
-        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        return <PostCard post={item.data} />;
-      }}
+      data={[STATIC_POST]}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <PostCard post={item} />}
       estimatedItemSize={320}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed'] })}
-          tintColor="#00CF35"
-        />
-      }
-      ListEmptyComponent={
-        <EmptyState
-          message="No posts yet"
-          sub="Follow some blogs or create your first post"
-        />
-      }
     />
   );
 }
 
 function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
-  const queryClient = useQueryClient();
-  const { data: posts, isLoading, isRefetching } = useQuery({
+  const { data: posts, isLoading } = useQuery({
     queryKey: ['feed', 'following'],
     queryFn: () => api.get<Post[]>('/api/posts/feed/following'),
   });
@@ -211,13 +210,6 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed', 'following'] })}
-          tintColor="#00CF35"
-        />
-      }
       ListEmptyComponent={
         <EmptyState
           message="Nothing here yet"
@@ -229,8 +221,7 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
 }
 
 function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
-  const queryClient = useQueryClient();
-  const { data: posts, isLoading, isRefetching } = useQuery({
+  const { data: posts, isLoading } = useQuery({
     queryKey: ['feed', 'unfiltered'],
     queryFn: () => api.get<Post[]>('/api/posts/feed/unfiltered'),
   });
@@ -252,13 +243,6 @@ function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Na
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['feed', 'unfiltered'] })}
-          tintColor="#00CF35"
-        />
-      }
       ListEmptyComponent={
         <EmptyState
           message="No unfiltered posts yet"
