@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import { useInvalidateSession } from '@/lib/auth/use-session';
+import { api } from '@/lib/api/api';
 import * as Haptics from 'expo-haptics';
 import { Logo } from '@/components/Logo';
+
+function buildUsername(displayName: string, suffix: number): string {
+  const base = displayName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 16);
+  return base ? `${base}${suffix}` : '';
+}
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -14,6 +23,23 @@ export default function SignUpScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameEdited, setUsernameEdited] = useState(false);
+  // Stable random suffix so it doesn't jump around while typing
+  const suffixRef = useRef(Math.floor(1000 + Math.random() * 9000));
+
+  const handleNameChange = (text: string) => {
+    setName(text);
+    if (!usernameEdited) {
+      setUsername(buildUsername(text, suffixRef.current));
+    }
+  };
+
+  const handleUsernameChange = (text: string) => {
+    setUsernameEdited(true);
+    // Only allow lowercase letters, numbers, underscores
+    setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+  };
 
   const signUp = useMutation({
     mutationFn: async () => {
@@ -24,6 +50,15 @@ export default function SignUpScreen() {
       });
       if (result.error) {
         throw new Error(result.error.message ?? 'Failed to create account');
+      }
+      // Set the auto-generated (or edited) username right after account creation
+      const trimmedUsername = username.trim();
+      if (trimmedUsername) {
+        try {
+          await api.patch('/api/users/me', { username: trimmedUsername });
+        } catch {
+          // Non-fatal — user can change it later in edit profile
+        }
       }
       return result;
     },
@@ -56,10 +91,11 @@ export default function SignUpScreen() {
 
             {/* Inputs */}
             <View className="gap-3 mb-6">
+              {/* Display name */}
               <TextInput
                 testID="name-input"
                 value={name}
-                onChangeText={setName}
+                onChangeText={handleNameChange}
                 placeholder="Display name"
                 placeholderTextColor="#4a6fa5"
                 autoCapitalize="words"
@@ -67,6 +103,39 @@ export default function SignUpScreen() {
                 className="rounded-xl px-5 py-4 text-white text-base"
                 style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
               />
+
+              {/* Username — auto-filled, editable */}
+              <View>
+                <View style={{ position: 'relative' }}>
+                  <Text style={{
+                    position: 'absolute', left: 18, top: 14,
+                    color: '#4a6fa5', fontSize: 16, zIndex: 1,
+                  }}>@</Text>
+                  <TextInput
+                    testID="username-input"
+                    value={username}
+                    onChangeText={handleUsernameChange}
+                    placeholder="username"
+                    placeholderTextColor="#2a4a6a"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    className="rounded-xl py-4 text-white text-base"
+                    style={{
+                      backgroundColor: '#0a2d50',
+                      borderColor: '#1a3a5c',
+                      borderWidth: 1,
+                      paddingLeft: 34,
+                      paddingRight: 18,
+                    }}
+                  />
+                </View>
+                {username ? (
+                  <Text style={{ color: '#2a4a6a', fontSize: 12, marginTop: 4, marginLeft: 4 }}>
+                    You can always change this later
+                  </Text>
+                ) : null}
+              </View>
+
               <TextInput
                 testID="email-input"
                 value={email}
