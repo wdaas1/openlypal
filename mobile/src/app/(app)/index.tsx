@@ -4,7 +4,7 @@ import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -349,10 +349,18 @@ const TAB_INDICATOR_WIDTH = 40;
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: session } = useSession();
   const admin = isAdmin(session?.user);
   const scrollY = useSharedValue(0);
   const { width: screenWidth } = useWindowDimensions();
+
+  // Refresh all feeds whenever the home tab is navigated to
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+    }, [queryClient])
+  );
 
   // For underline indicator
   const tabWidth = screenWidth / TABS.length;
