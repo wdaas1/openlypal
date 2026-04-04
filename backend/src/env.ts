@@ -18,7 +18,7 @@ const envSchema = z.object({
 
   // Email
   RESEND_API_KEY: z.string().optional().default(""),
-  RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
+  RESEND_FROM_EMAIL: z.string().optional().default("noreply@openlypal.com"),
 });
 
 /**
