@@ -8,6 +8,7 @@ import { useInvalidateSession } from '@/lib/auth/use-session';
 import { api } from '@/lib/api/api';
 import * as Haptics from 'expo-haptics';
 import { Logo } from '@/components/Logo';
+import { Mail } from 'lucide-react-native';
 
 function buildUsername(displayName: string, suffix: number): string {
   const base = displayName
@@ -25,6 +26,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [usernameEdited, setUsernameEdited] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   // Stable random suffix so it doesn't jump around while typing
   const suffixRef = useRef(Math.floor(1000 + Math.random() * 9000));
 
@@ -47,6 +49,7 @@ export default function SignUpScreen() {
         name: name.trim(),
         email: email.trim(),
         password,
+        callbackURL: 'vibecode://',
       });
       if (result.error) {
         throw new Error(result.error.message ?? 'Failed to create account');
@@ -64,6 +67,7 @@ export default function SignUpScreen() {
     },
     onSuccess: async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setVerificationSent(true);
       await invalidateSession();
     },
   });
@@ -160,6 +164,29 @@ export default function SignUpScreen() {
                 style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
               />
             </View>
+
+            {/* Email verification notice */}
+            {verificationSent ? (
+              <View
+                testID="verification-notice"
+                style={{
+                  backgroundColor: 'rgba(0,207,53,0.1)',
+                  borderRadius: 10,
+                  padding: 14,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,207,53,0.3)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <Mail size={18} color="#00CF35" />
+                <Text style={{ color: '#00CF35', fontSize: 13, flex: 1, lineHeight: 18 }}>
+                  Check your email to verify your account before signing in.
+                </Text>
+              </View>
+            ) : null}
 
             {/* Error */}
             {signUp.isError ? (
