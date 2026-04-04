@@ -4,7 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '@/lib/auth/use-session';
 
 export const unstable_settings = {
@@ -31,18 +32,29 @@ function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
   const router = useRouter();
   const navigationState = useRootNavigationState();
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isLoading || !navigationState?.key) return;
+    AsyncStorage.getItem('onboarding_done').then((val) => {
+      setOnboardingDone(val === 'true');
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !navigationState?.key || onboardingDone === null) return;
 
     if (session?.user) {
-      router.replace('/(app)' as any);
+      if (!onboardingDone) {
+        router.replace('/onboarding' as any);
+      } else {
+        router.replace('/(app)' as any);
+      }
     } else {
       router.replace('/sign-in' as any);
     }
 
     SplashScreen.hideAsync();
-  }, [session, isLoading, navigationState?.key]);
+  }, [session, isLoading, navigationState?.key, onboardingDone]);
 
   return (
     <ThemeProvider value={TumblrDark}>
@@ -50,6 +62,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(app)" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
+        <Stack.Screen name="onboarding" />
       </Stack>
     </ThemeProvider>
   );
