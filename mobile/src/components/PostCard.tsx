@@ -21,6 +21,8 @@ import {
   Pencil,
   Trash2,
   X,
+  Copy,
+  Check,
 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -32,6 +34,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { formatDistanceToNow } from 'date-fns';
 import { Video, ResizeMode } from 'expo-av';
 import { api } from '@/lib/api/api';
@@ -81,6 +84,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const [editVisible, setEditVisible] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title ?? '');
   const [editContent, setEditContent] = useState(post.content ?? '');
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareCaption, setShareCaption] = useState('');
+  const [captionCopied, setCaptionCopied] = useState(false);
   const lastTapRef = useRef<number>(0);
   const imageLastTapRef = useRef<number>(0);
   const videoRef = useRef<Video>(null);
@@ -794,12 +800,12 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
               parts.push(preview);
             }
             parts.push(`— ${author} on Openly`);
-            const mediaUrl = post.imageUrl ?? post.videoUrl ?? null;
-            if (Platform.OS === 'android' && mediaUrl) parts.push(mediaUrl);
-            const message = parts.join('\n\n');
-            const shareOptions: Parameters<typeof Share.share>[0] = { message, title: post.title ?? `Post by ${author} on Openly` };
-            if (Platform.OS === 'ios' && mediaUrl) shareOptions.url = mediaUrl;
-            Share.share(shareOptions);
+            const caption = parts.join('\n\n');
+            setShareCaption(caption);
+            setCaptionCopied(false);
+            Clipboard.setStringAsync(caption).then(() => setCaptionCopied(true));
+            setShareModalVisible(true);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
           <ShareIcon size={18} color="#4a6fa5" />
@@ -1080,6 +1086,132 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
                   </>
                 )}
               </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Share Caption Modal */}
+      <Modal
+        visible={shareModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShareModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <View style={{
+                  backgroundColor: '#0a2d50',
+                  borderTopLeftRadius: 20,
+                  borderTopRightRadius: 20,
+                  paddingBottom: 32,
+                  paddingTop: 8,
+                  paddingHorizontal: 24,
+                }}>
+                  <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                  {/* Header */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', flex: 1 }}>Share Post</Text>
+                    <Pressable testID="share-modal-close" onPress={() => setShareModalVisible(false)}>
+                      <X size={20} color="#4a6fa5" />
+                    </Pressable>
+                  </View>
+                  {/* Copied badge */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 }}>
+                    {captionCopied ? (
+                      <>
+                        <Check size={13} color="#00CF35" />
+                        <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600' }}>Caption copied to clipboard</Text>
+                      </>
+                    ) : (
+                      <Text style={{ color: '#4a6fa5', fontSize: 12 }}>Edit your caption before sharing</Text>
+                    )}
+                  </View>
+                  {/* Caption editor */}
+                  <TextInput
+                    testID="share-caption-input"
+                    value={shareCaption}
+                    onChangeText={setShareCaption}
+                    multiline
+                    numberOfLines={5}
+                    placeholderTextColor="#2a4a6a"
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      backgroundColor: '#001935',
+                      borderColor: '#1a3a5c',
+                      borderWidth: 1,
+                      marginBottom: 14,
+                      minHeight: 120,
+                      textAlignVertical: 'top',
+                    }}
+                  />
+                  {/* Action row */}
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <Pressable
+                      testID="share-copy-button"
+                      onPress={() => {
+                        Clipboard.setStringAsync(shareCaption).then(() => {
+                          setCaptionCopied(true);
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        });
+                      }}
+                      style={{
+                        flex: 1,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        borderRadius: 14,
+                        paddingVertical: 13,
+                        backgroundColor: '#001935',
+                        borderWidth: 1,
+                        borderColor: '#1a3a5c',
+                      }}
+                    >
+                      <Copy size={15} color={captionCopied ? '#00CF35' : '#4a6fa5'} />
+                      <Text style={{ color: captionCopied ? '#00CF35' : '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
+                        {captionCopied ? 'Copied!' : 'Copy'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      testID="share-open-button"
+                      onPress={() => {
+                        const author = post.user.username ? `@${post.user.username}` : post.user.name;
+                        const mediaUrl = post.imageUrl ?? post.videoUrl ?? null;
+                        const message = Platform.OS === 'android' && mediaUrl
+                          ? `${shareCaption}\n\n${mediaUrl}`
+                          : shareCaption;
+                        const shareOptions: Parameters<typeof Share.share>[0] = {
+                          message,
+                          title: post.title ?? `Post by ${author} on Openly`,
+                        };
+                        if (Platform.OS === 'ios' && mediaUrl) shareOptions.url = mediaUrl;
+                        setShareModalVisible(false);
+                        Share.share(shareOptions);
+                      }}
+                      style={{
+                        flex: 2,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        borderRadius: 14,
+                        paddingVertical: 13,
+                        backgroundColor: '#00CF35',
+                      }}
+                    >
+                      <ShareIcon size={15} color="#001935" />
+                      <Text style={{ color: '#001935', fontWeight: '700', fontSize: 14 }}>Share</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
