@@ -10,7 +10,10 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  runOnJS,
+  cancelAnimation,
 } from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -331,8 +334,12 @@ function FloatingChatButton() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const pulseScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const offsetX = useSharedValue(0);
+  const offsetY = useSharedValue(0);
 
-  React.useEffect(() => {
+  const startPulse = () => {
     pulseScale.value = withRepeat(
       withSequence(
         withTiming(1.08, { duration: 900 }),
@@ -341,10 +348,45 @@ function FloatingChatButton() {
       -1,
       false
     );
+  };
+
+  React.useEffect(() => {
+    startPulse();
   }, [pulseScale]);
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/(app)/messenger' as any);
+  };
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      cancelAnimation(pulseScale);
+      pulseScale.value = withTiming(1, { duration: 100 });
+      offsetX.value = translateX.value;
+      offsetY.value = translateY.value;
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+    })
+    .onChange((e) => {
+      translateX.value = offsetX.value + e.translationX;
+      translateY.value = offsetY.value + e.translationY;
+    })
+    .onEnd(() => {
+      runOnJS(startPulse)();
+    });
+
+  const tapGesture = Gesture.Tap().onEnd(() => {
+    runOnJS(handlePress)();
+  });
+
+  const composed = Gesture.Race(panGesture, tapGesture);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: pulseScale.value },
+    ],
   }));
 
   if (pathname.includes('/messenger')) return null;
@@ -354,42 +396,32 @@ function FloatingChatButton() {
   const bottomOffset = Math.max(insets.bottom, 12) + 64 + 16;
 
   return (
-    <Animated.View
-      style={[
-        pulseStyle,
-        {
-          position: 'absolute',
-          bottom: bottomOffset,
-          right: 20,
-          width: 52,
-          height: 52,
-          borderRadius: 26,
-          shadowColor: '#00CF35',
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: 16,
-          elevation: 12,
-        },
-      ]}
-    >
-      <Pressable
+    <GestureDetector gesture={composed}>
+      <Animated.View
         testID="floating-chat-button"
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          router.push('/(app)/messenger' as any);
-        }}
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: 26,
-          backgroundColor: '#00CF35',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        style={[
+          animatedStyle,
+          {
+            position: 'absolute',
+            bottom: bottomOffset,
+            right: 20,
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            backgroundColor: '#00CF35',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#00CF35',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.8,
+            shadowRadius: 16,
+            elevation: 12,
+          },
+        ]}
       >
         <MessageSquare size={22} color="#001935" />
-      </Pressable>
-    </Animated.View>
+      </Animated.View>
+    </GestureDetector>
   );
 }
 
