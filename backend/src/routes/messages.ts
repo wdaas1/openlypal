@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
+import { sendPushNotification } from "../lib/push-notifications";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -154,6 +155,17 @@ messagesRouter.post(
         sender: { select: { id: true, name: true, username: true, image: true } },
       },
     });
+
+    if (receiver.pushToken) {
+      const senderName = user.name ?? "Someone";
+      const rawContent = body.content;
+      const messagePreview =
+        rawContent.length > 100 ? rawContent.slice(0, 100) + "..." : rawContent;
+      sendPushNotification(receiver.pushToken, senderName, messagePreview, {
+        type: "message",
+        senderId: user.id,
+      });
+    }
 
     return c.json({
       data: {
