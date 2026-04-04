@@ -28,7 +28,8 @@ export const auth = betterAuth({
           console.log(`[Auth] No RESEND_API_KEY — skipping password reset email for ${user.email}`);
           return;
         }
-        const { error } = await resend.emails.send({
+        console.log(`[Auth] Sending password reset email to ${user.email} via Resend`);
+        const resendResponse = await resend.emails.send({
           from: "onboarding@resend.dev",
           to: user.email,
           subject: "Reset your password",
@@ -42,10 +43,11 @@ export const auth = betterAuth({
             </div>
           `,
         });
-        if (error) {
-          console.error(`[Auth] Failed to send password reset email to ${user.email}:`, error);
+        console.log(`[Auth] Resend full response for password reset email to ${user.email}:`, JSON.stringify(resendResponse));
+        if (resendResponse.error) {
+          console.error(`[Auth] Resend error sending password reset email to ${user.email}:`, JSON.stringify(resendResponse.error));
         } else {
-          console.log(`[Auth] Password reset email sent to ${user.email}`);
+          console.log(`[Auth] Password reset email sent successfully to ${user.email}, id: ${resendResponse.data?.id}`);
         }
       } catch (err) {
         console.error(`[Auth] Unexpected error sending password reset email to ${user.email}:`, err);
@@ -61,7 +63,8 @@ export const auth = betterAuth({
           console.log(`[Auth] No RESEND_API_KEY — skipping verification email send for ${user.email}`);
           return;
         }
-        const { error } = await resend.emails.send({
+        console.log(`[Auth] Sending verification email to ${user.email} via Resend`);
+        const resendResponse = await resend.emails.send({
           from: "onboarding@resend.dev",
           to: user.email,
           subject: "Verify your email",
@@ -75,10 +78,11 @@ export const auth = betterAuth({
             </div>
           `,
         });
-        if (error) {
-          console.error(`[Auth] Failed to send verification email to ${user.email}:`, error);
+        console.log(`[Auth] Resend full response for verification email to ${user.email}:`, JSON.stringify(resendResponse));
+        if (resendResponse.error) {
+          console.error(`[Auth] Resend error sending verification email to ${user.email}:`, JSON.stringify(resendResponse.error));
         } else {
-          console.log(`[Auth] Verification email sent to ${user.email} from ${env.RESEND_FROM_EMAIL}`);
+          console.log(`[Auth] Verification email sent successfully to ${user.email}, id: ${resendResponse.data?.id}`);
         }
       } catch (err) {
         console.error(`[Auth] Unexpected error sending verification email to ${user.email}:`, err);
