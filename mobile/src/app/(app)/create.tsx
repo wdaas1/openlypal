@@ -485,7 +485,7 @@ export default function CreateScreen() {
           </Text>
         ) : null}
 
-        <View className="h-8" />
+        <View className="h-24" />
       </ScrollView>
     </SafeAreaView>
   );
