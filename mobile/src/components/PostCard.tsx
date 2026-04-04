@@ -75,6 +75,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportError, setReportError] = useState(false);
   const lastTapRef = useRef<number>(0);
+  const imageLastTapRef = useRef<number>(0);
   const videoRef = useRef<Video>(null);
   const { data: session } = useSession();
 
@@ -181,8 +182,33 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     lastTapRef.current = now;
   };
 
-  const reblogMutation = useMutation({
-    mutationFn: async () => {
+  const handleImageTap = (e: any) => {
+    e.stopPropagation();
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - imageLastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Double tap — heart it
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      doubleTapHeartScale.value = withSequence(
+        withSpring(1.4, { damping: 4 }),
+        withTiming(1.4, { duration: 200 }),
+        withSpring(0, { damping: 6 })
+      );
+      if (!post.isLiked) {
+        likeMutation.mutate();
+      }
+    } else {
+      // Single tap — open viewer after delay (cancelled if double-tap follows)
+      const timer = setTimeout(() => {
+        setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! });
+      }, DOUBLE_TAP_DELAY + 50);
+      imageLastTapRef.current = now;
+      return () => clearTimeout(timer);
+    }
+    imageLastTapRef.current = now;
+  };
+
+  const reblogMutation = useMutation({    mutationFn: async () => {
       await api.post(`/api/posts/${post.id}/reblog`);
     },
     onSuccess: () => {
@@ -447,10 +473,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
         ) : (
           <Pressable
             testID={`open-image-viewer-${post.id}`}
-            onPress={(e) => {
-              e.stopPropagation();
-              setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! });
-            }}
+            onPress={handleImageTap}
           >
             <Image
               source={{ uri: post.imageUrl }}
