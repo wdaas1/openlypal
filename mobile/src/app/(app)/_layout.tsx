@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { api } from '@/lib/api/api';
+import { useE2EInit } from '@/lib/use-e2e-init';
 import type { Conversation } from '@/lib/types';
 
 type TabConfig = {
@@ -392,10 +393,16 @@ function FloatingChatButton() {
   );
 }
 
+function E2EInitializer() {
+  useE2EInit();
+  return null;
+}
+
 export default function AppLayout() {
   return (
     <KeyboardProvider>
     <View style={{ flex: 1 }}>
+      <E2EInitializer />
       <Tabs
         tabBar={() => null}
         screenOptions={{
@@ -423,6 +430,7 @@ export default function AppLayout() {
         <Tabs.Screen name="edit-profile" options={{ href: null }} />
         <Tabs.Screen name="admin" options={{ href: null }} />
         <Tabs.Screen name="relationships/index" options={{ href: null }} />
+        <Tabs.Screen name="profile-modules/index" options={{ href: null }} />
       </Tabs>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
         <FloatingTabBar />

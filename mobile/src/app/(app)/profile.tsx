@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon, Check, MapPin, Pin } from 'lucide-react-native';
+import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon, Check, MapPin, Pin, Puzzle, Rocket, Target, Smile, BookOpen, Circle } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -20,6 +20,7 @@ import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
 import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+import { profileModulesApi, type ProfileModule, type ModuleType } from '@/lib/api/profile-modules';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -29,6 +30,65 @@ const CELL_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 type ProfileTab = 'posts' | 'media' | 'liked';
 
 type ProfileLink = { label: string; url: string };
+
+const MODULE_TYPE_META: Record<ModuleType, { label: string; icon: React.ReactNode }> = {
+  project: { label: 'Project', icon: <Rocket size={14} color="#00CF35" /> },
+  goal: { label: 'Goal', icon: <Target size={14} color="#00CF35" /> },
+  mood: { label: 'Mood', icon: <Smile size={14} color="#00CF35" /> },
+  learning: { label: 'Learning', icon: <BookOpen size={14} color="#00CF35" /> },
+  availability: { label: 'Availability', icon: <Circle size={14} color="#00CF35" /> },
+};
+
+function CompactModuleCard({ mod }: { mod: ProfileModule }) {
+  let parsed: Record<string, string> = {};
+  try { parsed = JSON.parse(mod.content) as Record<string, string>; } catch {}
+  const meta = MODULE_TYPE_META[mod.type];
+
+  const summary = (() => {
+    switch (mod.type) {
+      case 'project': return parsed.name ?? '';
+      case 'goal': return parsed.title ?? '';
+      case 'mood': return `${parsed.emoji ?? '😊'} ${parsed.label ?? ''}`.trim();
+      case 'learning': return parsed.topic ?? '';
+      case 'availability': return parsed.status ?? '';
+      default: return '';
+    }
+  })();
+
+  return (
+    <View
+      style={{
+        backgroundColor: 'rgba(10,45,80,0.7)',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderWidth: 0.5,
+        borderColor: 'rgba(0,207,53,0.2)',
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+      }}
+    >
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          backgroundColor: 'rgba(0,207,53,0.12)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {meta.icon}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#00CF35', fontSize: 10, fontWeight: '700' }}>{meta.label.toUpperCase()}</Text>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500', marginTop: 1 }} numberOfLines={1}>{summary}</Text>
+      </View>
+    </View>
+  );
+}
 
 function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
   const hasMedia = !!(post.imageUrl || post.videoUrl);
@@ -94,6 +154,11 @@ export default function ProfileScreen() {
   const { data: likedPosts } = useQuery({
     queryKey: ['posts', 'liked'],
     queryFn: () => api.get<Post[]>('/api/posts?liked=true'),
+  });
+
+  const { data: myModules } = useQuery({
+    queryKey: ['profile-modules'],
+    queryFn: () => profileModulesApi.getOwn(),
   });
 
   const mediaPosts = (myPosts ?? []).filter(p => !!(p.imageUrl || p.videoUrl));
@@ -187,6 +252,21 @@ export default function ProfileScreen() {
             >
               <Edit3 size={13} color="#FFFFFF" />
               <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Edit Profile</Text>
+            </Pressable>
+            <Pressable
+              testID="modules-button"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(app)/profile-modules' as any);
+              }}
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+                flexDirection: 'row', alignItems: 'center', gap: 5,
+              }}
+            >
+              <Puzzle size={13} color="#00CF35" />
+              <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600' }}>Modules</Text>
             </Pressable>
             <Pressable
               testID="settings-button"
@@ -374,6 +454,28 @@ export default function ProfileScreen() {
             </ScrollView>
           ) : null}
         </View>
+
+        {/* Profile Modules */}
+        {myModules && myModules.length > 0 ? (
+          <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Puzzle size={13} color="#00CF35" />
+                <Text style={{ color: '#00CF35', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>MODULES</Text>
+              </View>
+              <Pressable
+                testID="manage-modules-button"
+                onPress={() => router.push('/(app)/profile-modules' as any)}
+                style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+              >
+                <Text style={{ color: '#4a6fa5', fontSize: 12 }}>Manage</Text>
+              </Pressable>
+            </View>
+            {myModules.map(mod => (
+              <CompactModuleCard key={mod.id} mod={mod} />
+            ))}
+          </View>
+        ) : null}
 
         {/* Pinned Post */}
         {profile?.pinnedPost ? (

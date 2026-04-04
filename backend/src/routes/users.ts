@@ -195,6 +195,41 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
   return c.json({ data: updated });
 });
 
+// PATCH /me/public-key - Update public key for E2E encryption
+usersRouter.patch(
+  "/me/public-key",
+  zValidator("json", z.object({ publicKey: z.string() })),
+  async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+    const { publicKey } = c.req.valid("json");
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { publicKey },
+    });
+
+    return c.json({ data: { publicKey } });
+  }
+);
+
+// GET /:id/public-key - Get user's public key
+usersRouter.get("/:id/public-key", async (c) => {
+  const id = c.req.param("id");
+
+  const profile = await prisma.user.findUnique({
+    where: { id },
+    select: { publicKey: true },
+  });
+
+  if (!profile) {
+    return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
+  }
+
+  return c.json({ data: { publicKey: profile.publicKey } });
+});
+
 // GET /:id - Get user profile by ID
 usersRouter.get("/:id", async (c) => {
   const user = c.get("user");

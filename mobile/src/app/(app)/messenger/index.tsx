@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, Edit2, Search } from 'lucide-react-native';
+import { MessageSquare, Edit2, Search, Lock } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,6 +22,10 @@ import Animated, {
 import { api } from '@/lib/api/api';
 import type { Conversation, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+
+function isEncryptedContent(content: string): boolean {
+  return content.includes('.') && content.length > 60;
+}
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -182,6 +186,9 @@ export default function MessengerScreen() {
               {item.user.name}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {item.lastMessage && isEncryptedContent(item.lastMessage.content) ? (
+                <Lock size={11} color="#00CF35" />
+              ) : null}
               {item.lastMessage ? (
                 <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
                   {formatTime(item.lastMessage.createdAt)}

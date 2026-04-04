@@ -99,6 +99,7 @@ messagesRouter.get("/conversations/:userId", async (c) => {
     id: msg.id,
     content: msg.content,
     read: msg.read,
+    encrypted: msg.encrypted,
     createdAt: msg.createdAt.toISOString(),
     senderId: msg.senderId,
     receiverId: msg.receiverId,
@@ -111,6 +112,7 @@ messagesRouter.get("/conversations/:userId", async (c) => {
 // POST /conversations/:userId - Send a message to userId
 const sendMessageSchema = z.object({
   content: z.string().min(1),
+  encrypted: z.boolean().optional(),
 });
 
 messagesRouter.post(
@@ -146,6 +148,7 @@ messagesRouter.post(
         content: body.content,
         senderId: user.id,
         receiverId,
+        encrypted: body.encrypted ?? false,
       },
       include: {
         sender: { select: { id: true, name: true, username: true, image: true } },
@@ -157,6 +160,7 @@ messagesRouter.post(
         id: message.id,
         content: message.content,
         read: message.read,
+        encrypted: message.encrypted,
         createdAt: message.createdAt.toISOString(),
         senderId: message.senderId,
         receiverId: message.receiverId,

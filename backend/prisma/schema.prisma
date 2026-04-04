@@ -46,6 +46,8 @@ model User {
   bookmarks        Bookmark[]
   liveMoments          LiveMoment[]
   liveMomentMessages   LiveMomentMessage[]
+  publicKey            String?
+  profileModules       ProfileModule[]
 }
 
 model Session {
@@ -179,6 +181,7 @@ model Message {
   receiverId String
   content    String
   read       Boolean  @default(false)
+  encrypted  Boolean  @default(false)
   createdAt  DateTime @default(now())
   sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
@@ -243,4 +246,15 @@ model LiveMomentMessage {
   content   String
   type      String   @default("text") // "text" | "image" | "reaction"
   createdAt DateTime @default(now())
+}
+
+model ProfileModule {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "project" | "goal" | "mood" | "learning" | "availability"
+  content   String   // JSON string with module-specific fields
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
