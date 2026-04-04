@@ -15,6 +15,10 @@ const envSchema = z.object({
   // Auth
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
   BACKEND_URL: z.string().optional(),
+
+  // Email
+  RESEND_API_KEY: z.string().optional().default(""),
+  RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
 });
 
 /**
