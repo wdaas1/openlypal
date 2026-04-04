@@ -20,57 +20,67 @@ export const auth = betterAuth({
     autoSignIn: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      const resend = getResend();
-      if (!resend) {
-        console.log(`[Auth] No RESEND_API_KEY — skipping password reset email for ${user.email}`);
-        return;
-      }
-      const { error } = await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: user.email,
-        subject: "Reset your password",
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Reset your password</h2>
-            <p>Hi ${user.name || user.email},</p>
-            <p>We received a request to reset your password. Click the button below to choose a new one.</p>
-            <a href="${url}" style="display: inline-block; background: #00CF35; color: #001935; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Reset Password</a>
-            <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
-          </div>
-        `,
-      });
-      if (error) {
-        console.error(`[Auth] Failed to send password reset email to ${user.email}:`, error);
-      } else {
-        console.log(`[Auth] Password reset email sent to ${user.email}`);
+      try {
+        const resend = getResend();
+        if (!resend) {
+          console.log(`[Auth] No RESEND_API_KEY — skipping password reset email for ${user.email}`);
+          return;
+        }
+        const { error } = await resend.emails.send({
+          from: env.RESEND_FROM_EMAIL,
+          to: user.email,
+          subject: "Reset your password",
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Reset your password</h2>
+              <p>Hi ${user.name || user.email},</p>
+              <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+              <a href="${url}" style="display: inline-block; background: #00CF35; color: #001935; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Reset Password</a>
+              <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+            </div>
+          `,
+        });
+        if (error) {
+          console.error(`[Auth] Failed to send password reset email to ${user.email}:`, error);
+        } else {
+          console.log(`[Auth] Password reset email sent to ${user.email}`);
+        }
+      } catch (err) {
+        console.error(`[Auth] Unexpected error sending password reset email to ${user.email}:`, err);
       }
     },
   },
   emailVerification: {
+    sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
-      const resend = getResend();
-      if (!resend) {
+      try {
         console.log(`[Auth] Email verification URL for ${user.email}: ${url}`);
-        return;
-      }
-      const { error } = await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: user.email,
-        subject: "Verify your email",
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Verify your email</h2>
-            <p>Hi ${user.name || user.email},</p>
-            <p>Thanks for signing up! Please verify your email address to get started.</p>
-            <a href="${url}" style="display: inline-block; background: #00CF35; color: #001935; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Verify Email</a>
-            <p style="color: #666; font-size: 14px;">If you didn't create an account, you can safely ignore this email.</p>
-          </div>
-        `,
-      });
-      if (error) {
-        console.error(`[Auth] Failed to send verification email to ${user.email}:`, error);
-      } else {
-        console.log(`[Auth] Verification email sent to ${user.email} from ${env.RESEND_FROM_EMAIL}`);
+        const resend = getResend();
+        if (!resend) {
+          console.log(`[Auth] No RESEND_API_KEY — skipping verification email send for ${user.email}`);
+          return;
+        }
+        const { error } = await resend.emails.send({
+          from: env.RESEND_FROM_EMAIL,
+          to: user.email,
+          subject: "Verify your email",
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Verify your email</h2>
+              <p>Hi ${user.name || user.email},</p>
+              <p>Thanks for signing up! Please verify your email address to get started.</p>
+              <a href="${url}" style="display: inline-block; background: #00CF35; color: #001935; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Verify Email</a>
+              <p style="color: #666; font-size: 14px;">If you didn't create an account, you can safely ignore this email.</p>
+            </div>
+          `,
+        });
+        if (error) {
+          console.error(`[Auth] Failed to send verification email to ${user.email}:`, error);
+        } else {
+          console.log(`[Auth] Verification email sent to ${user.email} from ${env.RESEND_FROM_EMAIL}`);
+        }
+      } catch (err) {
+        console.error(`[Auth] Unexpected error sending verification email to ${user.email}:`, err);
       }
     },
     autoSignInAfterVerification: true,
