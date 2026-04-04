@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
@@ -17,6 +17,9 @@ import {
   ExternalLink,
   Bookmark,
   Clock,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -74,6 +77,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportError, setReportError] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title ?? '');
+  const [editContent, setEditContent] = useState(post.content ?? '');
   const lastTapRef = useRef<number>(0);
   const imageLastTapRef = useRef<number>(0);
   const videoRef = useRef<Video>(null);
@@ -146,6 +152,54 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/api/posts/${post.id}`);
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['post', post.id] });
+    },
+    onError: () => {
+      Alert.alert('Error', 'Failed to delete post. Please try again.');
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ title, content }: { title: string; content: string }) => {
+      await api.put(`/api/posts/${post.id}`, { title: title || null, content: content || null });
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['post', post.id] });
+      setEditVisible(false);
+    },
+    onError: () => {
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
+    },
+  });
+
+  const handleDeleteConfirm = () => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteMutation.mutate(),
+        },
+      ]
+    );
+  };
+
+  const isOwnPost = session?.user?.id === post.userId;
 
   const handleLike = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -762,26 +816,148 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
                 paddingTop: 8,
               }}>
                 <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
-                <Pressable
-                  testID="menu-report-button"
-                  onPress={() => {
-                    setMenuVisible(false);
-                    setReportVisible(true);
-                  }}
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
-                >
-                  <Flag size={18} color="#FF4E6A" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Report</Text>
-                </Pressable>
-                <Pressable
-                  testID="menu-not-interested-button"
-                  onPress={() => setMenuVisible(false)}
-                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
-                >
-                  <MoreHorizontal size={18} color="#4a6fa5" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Not interested</Text>
-                </Pressable>
+                {isOwnPost ? (
+                  <>
+                    <Pressable
+                      testID="menu-edit-button"
+                      onPress={() => {
+                        setMenuVisible(false);
+                        setEditTitle(post.title ?? '');
+                        setEditContent(post.content ?? '');
+                        setEditVisible(true);
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                    >
+                      <Pencil size={18} color="#00CF35" />
+                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Edit Post</Text>
+                    </Pressable>
+                    <Pressable
+                      testID="menu-delete-button"
+                      onPress={() => {
+                        setMenuVisible(false);
+                        handleDeleteConfirm();
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                    >
+                      <Trash2 size={18} color="#FF4E6A" />
+                      <Text style={{ color: '#FF4E6A', fontSize: 15, fontWeight: '500' }}>Delete Post</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Pressable
+                      testID="menu-report-button"
+                      onPress={() => {
+                        setMenuVisible(false);
+                        setReportVisible(true);
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                    >
+                      <Flag size={18} color="#FF4E6A" />
+                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Report</Text>
+                    </Pressable>
+                    <Pressable
+                      testID="menu-not-interested-button"
+                      onPress={() => setMenuVisible(false)}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                    >
+                      <MoreHorizontal size={18} color="#4a6fa5" />
+                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Not interested</Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Edit Post Modal */}
+      <Modal visible={editVisible} transparent animationType="slide" onRequestClose={() => setEditVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setEditVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <View style={{
+                  backgroundColor: '#0a2d50',
+                  borderTopLeftRadius: 20,
+                  borderTopRightRadius: 20,
+                  paddingBottom: 32,
+                  paddingTop: 8,
+                  paddingHorizontal: 24,
+                }}>
+                  <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                  {/* Header row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', flex: 1 }}>Edit Post</Text>
+                    <Pressable testID="edit-modal-close" onPress={() => setEditVisible(false)}>
+                      <X size={20} color="#4a6fa5" />
+                    </Pressable>
+                  </View>
+                  {/* Title input */}
+                  <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Title</Text>
+                  <TextInput
+                    testID="edit-title-input"
+                    value={editTitle}
+                    onChangeText={setEditTitle}
+                    placeholder="Post title (optional)"
+                    placeholderTextColor="#2a4a6a"
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 15,
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      backgroundColor: '#001935',
+                      borderColor: '#1a3a5c',
+                      borderWidth: 1,
+                      marginBottom: 16,
+                    }}
+                  />
+                  {/* Content input */}
+                  <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Content</Text>
+                  <TextInput
+                    testID="edit-content-input"
+                    value={editContent}
+                    onChangeText={setEditContent}
+                    placeholder="What's on your mind?"
+                    placeholderTextColor="#2a4a6a"
+                    multiline
+                    numberOfLines={5}
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      backgroundColor: '#001935',
+                      borderColor: '#1a3a5c',
+                      borderWidth: 1,
+                      marginBottom: 20,
+                      minHeight: 110,
+                      textAlignVertical: 'top',
+                    }}
+                  />
+                  {/* Save button */}
+                  <Pressable
+                    testID="edit-save-button"
+                    onPress={() => editMutation.mutate({ title: editTitle, content: editContent })}
+                    disabled={editMutation.isPending}
+                    style={{
+                      backgroundColor: '#00CF35',
+                      borderRadius: 14,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                    }}
+                  >
+                    {editMutation.isPending ? (
+                      <ActivityIndicator color="#001935" size="small" />
+                    ) : (
+                      <Text style={{ color: '#001935', fontWeight: '700', fontSize: 15 }}>Save Changes</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>

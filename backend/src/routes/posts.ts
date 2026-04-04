@@ -393,6 +393,57 @@ postsRouter.delete("/:id", async (c) => {
   return c.json({ data: { success: true } });
 });
 
+// PUT /:id - Edit own post
+const updatePostSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+  imageUrl: z.string().optional(),
+  videoUrl: z.string().optional(),
+  linkUrl: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  isExplicit: z.boolean().optional(),
+  category: z.string().optional(),
+});
+
+postsRouter.put("/:id", zValidator("json", updatePostSchema), async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const id = c.req.param("id");
+  const post = await prisma.post.findUnique({ where: { id } });
+
+  if (!post) {
+    return c.json({ error: { message: "Post not found", code: "NOT_FOUND" } }, 404);
+  }
+  if (post.userId !== user.id) {
+    return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+  }
+
+  const body = c.req.valid("json");
+
+  const updated = await prisma.post.update({
+    where: { id },
+    data: {
+      ...(body.title !== undefined ? { title: body.title } : {}),
+      ...(body.content !== undefined ? { content: body.content } : {}),
+      ...(body.imageUrl !== undefined ? { imageUrl: body.imageUrl } : {}),
+      ...(body.videoUrl !== undefined ? { videoUrl: body.videoUrl } : {}),
+      ...(body.linkUrl !== undefined ? { linkUrl: body.linkUrl } : {}),
+      ...(body.tags !== undefined ? { tags: body.tags.join(", ") } : {}),
+      ...(body.isExplicit !== undefined ? { isExplicit: body.isExplicit } : {}),
+      ...(body.category !== undefined ? { category: body.category } : {}),
+    },
+    include: {
+      user: { select: { id: true, name: true, username: true, image: true } },
+      _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
+      bookmarks: { where: { userId: user.id }, select: { id: true } },
+    },
+  });
+
+  return c.json({ data: mapPost(updated as Parameters<typeof mapPost>[0], user.id) });
+});
+
 // POST /:id/like - Toggle like
 postsRouter.post("/:id/like", async (c) => {
   const user = c.get("user");
