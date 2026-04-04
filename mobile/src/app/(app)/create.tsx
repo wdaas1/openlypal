@@ -220,7 +220,7 @@ export default function CreateScreen() {
         {postType === 'photo' ? (
           <View className="mb-4">
             {imageUrl ? (
-              <View className="rounded-xl overflow-hidden" style={{ position: 'relative' }}>
+              <View className="rounded-xl overflow-hidden" style={{ position: 'relative', backgroundColor: '#0a2d50' }}>
                 <Image
                   source={{ uri: imageUrl }}
                   style={{ width: '100%', aspectRatio: imageAspectRatio, borderRadius: 12 }}

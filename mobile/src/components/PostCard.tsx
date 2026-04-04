@@ -410,7 +410,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
             <Image
               source={{ uri: post.imageUrl }}
               style={{ width: '100%', aspectRatio: imageAspectRatio }}
-              contentFit="cover"
+              contentFit="contain"
               blurRadius={25}
               onLoad={(e) => {
                 const { width: w, height: h } = e.source;
