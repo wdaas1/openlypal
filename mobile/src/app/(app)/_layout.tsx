@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
 import { api } from '@/lib/api/api';
 import { useE2EInit } from '@/lib/use-e2e-init';
+import { fireHomeTabPress } from '@/lib/home-tab-press';
 import type { Conversation } from '@/lib/types';
 
 type TabConfig = {
@@ -313,6 +314,12 @@ function FloatingTabBar() {
             config={tab}
             isActive={activeIndex === index}
             onPress={() => {
+              const isHome = tab.route === '/(app)/index';
+              const alreadyOnHome = activeIndex === index;
+              if (isHome && alreadyOnHome) {
+                fireHomeTabPress();
+                return;
+              }
               const routeMap: Record<string, string> = {
                 '/(app)/index': '/',
                 '/(app)/explore': '/(app)/explore',

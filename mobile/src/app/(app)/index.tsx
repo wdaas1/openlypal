@@ -4,7 +4,7 @@ import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,6 +24,7 @@ import { AdCard } from '@/components/AdCard';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
 import { localStore } from '@/lib/local-store';
+import { onHomeTabPress } from '@/lib/home-tab-press';
 
 function BellWithBadge({ onPress }: { onPress: () => void }) {
   const { data: activities } = useQuery({
@@ -190,7 +191,7 @@ function SkeletonLoader() {
   );
 }
 
-function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
+function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
@@ -208,6 +209,7 @@ function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Native
 
   return (
     <FlashList
+      ref={scrollRef}
       testID="feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
@@ -238,7 +240,7 @@ function ForYouTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Native
   );
 }
 
-function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
+function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'following'],
@@ -256,6 +258,7 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
 
   return (
     <FlashList
+      ref={scrollRef}
       testID="following-feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
@@ -286,7 +289,7 @@ function FollowingTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Nat
   );
 }
 
-function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
+function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'unfiltered'],
@@ -304,6 +307,7 @@ function UnfilteredTab({ onScroll }: { onScroll: (event: NativeSyntheticEvent<Na
 
   return (
     <FlashList
+      ref={scrollRef}
       testID="unfiltered-feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
@@ -355,12 +359,27 @@ export default function FeedScreen() {
   const scrollY = useSharedValue(0);
   const { width: screenWidth } = useWindowDimensions();
 
-  // Refresh all feeds whenever the home tab is navigated to
-  useFocusEffect(
-    useCallback(() => {
+  const forYouRef = useRef<FlashList<any> | null>(null);
+  const followingRef = useRef<FlashList<any> | null>(null);
+  const unfilteredRef = useRef<FlashList<any> | null>(null);
+
+  const activeTabRef = useRef<Tab>('foryou');
+  activeTabRef.current = activeTab;
+
+  // Scroll to top + refresh when home tab pressed while already on home
+  React.useEffect(() => {
+    const unsub = onHomeTabPress(() => {
+      const refs: Record<Tab, React.RefObject<FlashList<any> | null>> = {
+        foryou: forYouRef,
+        following: followingRef,
+        unfiltered: unfilteredRef,
+      };
+      refs[activeTabRef.current]?.current?.scrollToOffset({ offset: 0, animated: true });
       queryClient.invalidateQueries({ queryKey: ['feed'] });
-    }, [queryClient])
-  );
+      scrollY.value = 0;
+    });
+    return () => { unsub(); };
+  }, [queryClient]);
 
   // For underline indicator
   const tabWidth = screenWidth / TABS.length;
@@ -488,9 +507,9 @@ export default function FeedScreen() {
 
       {/* Tab Content */}
       <View style={{ flex: 1 }}>
-        {activeTab === 'foryou' && <ForYouTab onScroll={scrollHandler} />}
-        {activeTab === 'following' && <FollowingTab onScroll={scrollHandler} />}
-        {activeTab === 'unfiltered' && <UnfilteredTab onScroll={scrollHandler} />}
+        {activeTab === 'foryou' && <ForYouTab onScroll={scrollHandler} scrollRef={forYouRef} />}
+        {activeTab === 'following' && <FollowingTab onScroll={scrollHandler} scrollRef={followingRef} />}
+        {activeTab === 'unfiltered' && <UnfilteredTab onScroll={scrollHandler} scrollRef={unfilteredRef} />}
       </View>
     </SafeAreaView>
   );
