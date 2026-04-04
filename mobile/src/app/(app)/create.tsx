@@ -39,6 +39,7 @@ export default function CreateScreen() {
   const [tagsInput, setTagsInput] = useState('');
   const [category, setCategory] = useState<string>('');
   const [isExplicit, setIsExplicit] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -222,8 +223,12 @@ export default function CreateScreen() {
               <View className="rounded-xl overflow-hidden" style={{ position: 'relative' }}>
                 <Image
                   source={{ uri: imageUrl }}
-                  style={{ width: '100%', height: 200, borderRadius: 12 }}
-                  contentFit="cover"
+                  style={{ width: '100%', aspectRatio: imageAspectRatio, borderRadius: 12 }}
+                  contentFit="contain"
+                  onLoad={(e) => {
+                    const { width: w, height: h } = e.source;
+                    if (w && h) setImageAspectRatio(w / h);
+                  }}
                 />
                 <Pressable
                   testID="remove-image-button"
