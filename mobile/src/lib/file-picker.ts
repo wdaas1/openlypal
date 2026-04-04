@@ -8,7 +8,7 @@ export async function pickImage(): Promise<PickedFile | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     quality: 0.8,
-    allowsEditing: true,
+    allowsEditing: false,
   });
   if (result.canceled) return null;
   const a = result.assets[0];
@@ -42,7 +42,7 @@ export async function takePhoto(): Promise<PickedFile | null> {
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     quality: 0.85,
-    allowsEditing: true,
+    allowsEditing: false,
   });
   if (result.canceled) return null;
   const a = result.assets[0];
