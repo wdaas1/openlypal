@@ -21,8 +21,11 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
       const resend = getResend();
-      if (!resend) return;
-      await resend.emails.send({
+      if (!resend) {
+        console.log(`[Auth] No RESEND_API_KEY — skipping password reset email for ${user.email}`);
+        return;
+      }
+      const { error } = await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
         to: user.email,
         subject: "Reset your password",
@@ -36,6 +39,11 @@ export const auth = betterAuth({
           </div>
         `,
       });
+      if (error) {
+        console.error(`[Auth] Failed to send password reset email to ${user.email}:`, error);
+      } else {
+        console.log(`[Auth] Password reset email sent to ${user.email}`);
+      }
     },
   },
   emailVerification: {
@@ -45,7 +53,7 @@ export const auth = betterAuth({
         console.log(`[Auth] Email verification URL for ${user.email}: ${url}`);
         return;
       }
-      await resend.emails.send({
+      const { error } = await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
         to: user.email,
         subject: "Verify your email",
@@ -59,6 +67,11 @@ export const auth = betterAuth({
           </div>
         `,
       });
+      if (error) {
+        console.error(`[Auth] Failed to send verification email to ${user.email}:`, error);
+      } else {
+        console.log(`[Auth] Verification email sent to ${user.email} from ${env.RESEND_FROM_EMAIL}`);
+      }
     },
     autoSignInAfterVerification: true,
   },
