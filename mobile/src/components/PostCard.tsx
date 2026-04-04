@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
@@ -785,8 +786,20 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
           testID={`share-button-${post.id}`}
           onPress={(e) => {
             e.stopPropagation();
-            const text = post.title ?? post.content ?? '';
-            Share.share({ message: text, title: post.title ?? undefined });
+            const author = post.user.username ? `@${post.user.username}` : post.user.name;
+            const parts: string[] = [];
+            if (post.title) parts.push(post.title);
+            if (post.content) {
+              const preview = post.content.length > 200 ? post.content.slice(0, 200) + '…' : post.content;
+              parts.push(preview);
+            }
+            parts.push(`— ${author} on Openly`);
+            const mediaUrl = post.imageUrl ?? post.videoUrl ?? null;
+            if (Platform.OS === 'android' && mediaUrl) parts.push(mediaUrl);
+            const message = parts.join('\n\n');
+            const shareOptions: Parameters<typeof Share.share>[0] = { message, title: post.title ?? `Post by ${author} on Openly` };
+            if (Platform.OS === 'ios' && mediaUrl) shareOptions.url = mediaUrl;
+            Share.share(shareOptions);
           }}
         >
           <ShareIcon size={18} color="#4a6fa5" />
