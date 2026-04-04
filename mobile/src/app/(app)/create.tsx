@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { cn } from '@/lib/cn';
 import { pickImage, pickVideo, takePhoto, recordVideo } from '@/lib/file-picker';
-import { uploadFile } from '@/lib/upload';
+import { uploadFile, uploadFileWithProgress } from '@/lib/upload';
 
 type PostType = 'text' | 'photo' | 'quote' | 'link' | 'video';
 
@@ -41,6 +41,7 @@ export default function CreateScreen() {
   const [category, setCategory] = useState<string>('');
   const [isExplicit, setIsExplicit] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -68,22 +69,28 @@ export default function CreateScreen() {
     mutationFn: async () => {
       const file = await pickVideo();
       if (!file) return null;
-      return uploadFile(file.uri, file.filename, file.mimeType);
+      setVideoUploadProgress(0);
+      return uploadFileWithProgress(file.uri, file.filename, file.mimeType, setVideoUploadProgress);
     },
     onSuccess: (result) => {
       if (result) setVideoUrl(result.url);
+      setVideoUploadProgress(0);
     },
+    onError: () => setVideoUploadProgress(0),
   });
 
   const recordVideoMutation = useMutation({
     mutationFn: async () => {
       const file = await recordVideo();
       if (!file) return null;
-      return uploadFile(file.uri, file.filename, file.mimeType);
+      setVideoUploadProgress(0);
+      return uploadFileWithProgress(file.uri, file.filename, file.mimeType, setVideoUploadProgress);
     },
     onSuccess: (result) => {
       if (result) setVideoUrl(result.url);
+      setVideoUploadProgress(0);
     },
+    onError: () => setVideoUploadProgress(0),
   });
 
   const createPost = useMutation({
@@ -370,6 +377,27 @@ export default function CreateScreen() {
               <Text className="text-red-400 text-xs mt-2 text-center">
                 {recordVideoMutation.error.message}
               </Text>
+            ) : null}
+            {(uploadVideoMutation.isPending || recordVideoMutation.isPending) && videoUploadProgress > 0 ? (
+              <View className="mt-3">
+                <View className="flex-row justify-between mb-1">
+                  <Text className="text-xs" style={{ color: '#4a6fa5' }}>Uploading video…</Text>
+                  <Text className="text-xs font-semibold" style={{ color: '#00CF35' }}>
+                    {Math.round(videoUploadProgress * 100)}%
+                  </Text>
+                </View>
+                <View style={{ height: 4, backgroundColor: '#0a2d50', borderRadius: 2, overflow: 'hidden' }}>
+                  <View
+                    testID="video-upload-progress-bar"
+                    style={{
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: '#00CF35',
+                      width: `${Math.round(videoUploadProgress * 100)}%`,
+                    }}
+                  />
+                </View>
+              </View>
             ) : null}
           </View>
         ) : null}

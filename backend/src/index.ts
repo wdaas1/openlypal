@@ -135,7 +135,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif",
   "video/mp4", "video/quicktime", "video/webm", "video/mov",
 ]);
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500 MB
 
 app.post("/api/upload", async (c) => {
   const formData = await c.req.formData();
@@ -147,7 +147,7 @@ app.post("/api/upload", async (c) => {
 
   // Validate file size
   if (file.size > MAX_UPLOAD_BYTES) {
-    return c.json({ error: "File too large. Maximum size is 50 MB." }, 413);
+    return c.json({ error: "File too large. Maximum size is 500 MB." }, 413);
   }
 
   // Validate MIME type
