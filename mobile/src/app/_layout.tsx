@@ -7,6 +7,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '@/lib/auth/use-session';
+import {
+  registerForPushNotificationsAsync,
+  sendPushTokenToBackend,
+  setupNotificationListeners,
+} from '@/lib/notifications';
 
 export const unstable_settings = {
   initialRouteName: '(app)',
@@ -39,6 +44,25 @@ function RootLayoutNav() {
       setOnboardingDone(val === 'true');
     });
   }, []);
+
+  // Register for push notifications and set up listeners once session is ready
+  useEffect(() => {
+    if (!session?.user) return;
+
+    let cleanupListeners: (() => void) | undefined;
+
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        sendPushTokenToBackend(token);
+      }
+    });
+
+    cleanupListeners = setupNotificationListeners();
+
+    return () => {
+      cleanupListeners?.();
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (isLoading || !navigationState?.key || onboardingDone === null) return;

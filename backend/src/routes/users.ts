@@ -195,6 +195,25 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
   return c.json({ data: updated });
 });
 
+// PATCH /me/push-token - Store device push token
+usersRouter.patch(
+  "/me/push-token",
+  zValidator("json", z.object({ pushToken: z.string() })),
+  async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+    const { pushToken } = c.req.valid("json");
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { pushToken },
+    });
+
+    return c.json({ data: { pushToken } });
+  }
+);
+
 // PATCH /me/public-key - Update public key for E2E encryption
 usersRouter.patch(
   "/me/public-key",

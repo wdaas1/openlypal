@@ -47,6 +47,7 @@ model User {
   liveMoments          LiveMoment[]
   liveMomentMessages   LiveMomentMessage[]
   publicKey            String?
+  pushToken            String?
   profileModules       ProfileModule[]
 }
 
