@@ -175,20 +175,29 @@ export default function ExploreScreen() {
         paddingBottom: 10,
       }}>
         <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 26, flex: 1 }}>Explore</Text>
-        <View style={{ position: 'relative' }}>
-          <Bell size={22} color="#FFFFFF" />
-          <View style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: '#00CF35',
-            borderWidth: 1.5,
-            borderColor: '#001935',
-          }} />
-        </View>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/(app)/activity');
+          }}
+          style={{ padding: 4 }}
+          testID="explore-bell-button"
+        >
+          <View style={{ position: 'relative' }}>
+            <Bell size={22} color="#FFFFFF" />
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: '#00CF35',
+              borderWidth: 1.5,
+              borderColor: '#001935',
+            }} />
+          </View>
+        </Pressable>
       </View>
 
       {/* Search Bar */}
