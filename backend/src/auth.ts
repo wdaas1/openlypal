@@ -6,8 +6,11 @@ import { Resend } from "resend";
 import { prisma } from "./prisma";
 import { env } from "./env";
 
-// Create Resend client (lazy - only if key is present)
-const getResend = () => env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
+// Create Resend client once at startup if key is present
+const resend = env.RESEND_API_KEY ? (() => {
+  console.log("[Auth] Resend client initialized with API key");
+  return new Resend(env.RESEND_API_KEY);
+})() : null;
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -21,13 +24,12 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
       try {
-        const resend = getResend();
         if (!resend) {
           console.log(`[Auth] No RESEND_API_KEY — skipping password reset email for ${user.email}`);
           return;
         }
         const { error } = await resend.emails.send({
-          from: env.RESEND_FROM_EMAIL,
+          from: "onboarding@resend.dev",
           to: user.email,
           subject: "Reset your password",
           html: `
@@ -55,13 +57,12 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       try {
         console.log(`[Auth] Email verification URL for ${user.email}: ${url}`);
-        const resend = getResend();
         if (!resend) {
           console.log(`[Auth] No RESEND_API_KEY — skipping verification email send for ${user.email}`);
           return;
         }
         const { error } = await resend.emails.send({
-          from: env.RESEND_FROM_EMAIL,
+          from: "onboarding@resend.dev",
           to: user.email,
           subject: "Verify your email",
           html: `
