@@ -15,7 +15,7 @@ const CATEGORIES = [
   { id: 'writing', label: 'Writing & Poetry', emoji: '✍️' },
   { id: 'gaming', label: 'Gaming', emoji: '🎮' },
   { id: 'fashion', label: 'Fashion & Style', emoji: '👗' },
-  { id: 'food', label: 'Food & Cooking', emoji: '🍕' },
+  { id: 'food', label: 'Food & Cooking', emoji: '🍔' },
   { id: 'travel', label: 'Travel', emoji: '✈️' },
   { id: 'nature', label: 'Nature & Animals', emoji: '🌿' },
   { id: 'sports', label: 'Sports', emoji: '⚽' },
@@ -25,6 +25,12 @@ const CATEGORIES = [
   { id: 'comics', label: 'Comics', emoji: '💥' },
   { id: 'science', label: 'Science', emoji: '🔬' },
   { id: 'lgbtq', label: 'LGBTQ+', emoji: '🏳️‍🌈' },
+  { id: 'wellness', label: 'Wellness', emoji: '🌿' },
+  { id: 'social', label: 'Social', emoji: '💬' },
+  { id: 'dating', label: 'Dating', emoji: '❤️' },
+  { id: 'friendships', label: 'Friendships', emoji: '🤝' },
+  { id: 'politics', label: 'Politics', emoji: '🗳️' },
+  { id: 'thoughts', label: 'Thoughts', emoji: '🧠' },
 ];
 
 export default function InterestsScreen() {

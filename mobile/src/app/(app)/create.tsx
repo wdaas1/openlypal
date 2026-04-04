@@ -25,6 +25,7 @@ const CATEGORIES = [
   'Art & Design', 'Photography', 'Music', 'Writing & Poetry', 'Gaming',
   'Fashion & Style', 'Food & Cooking', 'Travel', 'Nature & Animals', 'Sports',
   'Technology', 'Humor & Memes', 'Film & TV', 'Comics', 'Science', 'LGBTQ+',
+  'Wellness', 'Social', 'Dating', 'Friendships', 'Politics', 'Thoughts',
 ];
 
 export default function CreateScreen() {

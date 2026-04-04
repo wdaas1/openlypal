@@ -42,7 +42,7 @@ const POPULAR_HASHTAGS: TrendingHashtag[] = [
 
 const SORTED_HASHTAGS = [...POPULAR_HASHTAGS].sort((a, b) => b.count - a.count);
 
-const CATEGORIES = ['All', 'Art', 'Music', 'Tech', 'Gaming', 'Fashion', 'Food', 'Travel'];
+const CATEGORIES = ['All', 'Art', 'Music', 'Tech', 'Gaming', 'Fashion', 'Food', 'Travel', 'Wellness', 'Social', 'Dating', 'Friendships', 'Politics', 'Thoughts'];
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   All: '🌐',
@@ -51,8 +51,14 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   Tech: '💻',
   Gaming: '🎮',
   Fashion: '👗',
-  Food: '🍜',
+  Food: '🍔',
   Travel: '✈️',
+  Wellness: '🌿',
+  Social: '💬',
+  Dating: '❤️',
+  Friendships: '🤝',
+  Politics: '🗳️',
+  Thoughts: '🧠',
 };
 
 function TrendIcon({ trend }: { trend?: 'up' | 'down' | 'stable' }) {
