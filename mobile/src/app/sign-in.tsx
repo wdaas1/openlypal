@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ export default function SignInScreen() {
   const invalidateSession = useInvalidateSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const signIn = useMutation({
     mutationFn: async () => {
@@ -71,20 +73,34 @@ export default function SignInScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                autoCorrect={false}
+                spellCheck={false}
                 className="rounded-xl px-5 py-4 text-white text-base"
                 style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
               />
-              <TextInput
-                testID="password-input"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
-                placeholderTextColor="#4a6fa5"
-                secureTextEntry
-                autoComplete="current-password"
-                className="rounded-xl px-5 py-4 text-white text-base"
-                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
-              />
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  testID="password-input"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor="#4a6fa5"
+                  secureTextEntry={!showPassword}
+                  autoComplete="current-password"
+                  className="rounded-xl px-5 py-4 text-white text-base"
+                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, paddingRight: 52 }}
+                />
+                <Pressable
+                  testID="password-toggle"
+                  onPress={() => setShowPassword(prev => !prev)}
+                  style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 52, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {showPassword
+                    ? <EyeOff size={20} color="#4a6fa5" />
+                    : <Eye size={20} color="#4a6fa5" />
+                  }
+                </Pressable>
+              </View>
             </View>
 
             {/* Error */}
