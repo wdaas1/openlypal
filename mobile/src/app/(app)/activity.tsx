@@ -5,8 +5,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart, Repeat2, MessageCircle, Users } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { api } from '@/lib/api/api';
 import { UserAvatar } from '@/components/UserAvatar';
+import { localStore } from '@/lib/local-store';
 
 interface ActivityItem {
   id: string;
@@ -56,6 +58,13 @@ function getActivityText(type: string) {
 export default function ActivityScreen() {
   const queryClient = useQueryClient();
   const router = useRouter();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      localStore.set('activity-last-seen', new Date().toISOString());
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
+    }, [queryClient])
+  );
 
   const { data: activities, isLoading, isRefetching } = useQuery({
     queryKey: ['activity'],

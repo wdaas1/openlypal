@@ -23,6 +23,50 @@ import { PostCard } from '@/components/PostCard';
 import { AdCard } from '@/components/AdCard';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
+import { localStore } from '@/lib/local-store';
+
+function BellWithBadge({ onPress }: { onPress: () => void }) {
+  const { data: activities } = useQuery({
+    queryKey: ['activity'],
+    queryFn: () => api.get<{ createdAt: string }[]>('/api/activity'),
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = React.useMemo(() => {
+    if (!activities?.length) return 0;
+    const lastSeen = localStore.get<string>('activity-last-seen');
+    if (!lastSeen) return activities.length;
+    return activities.filter(a => new Date(a.createdAt) > new Date(lastSeen)).length;
+  }, [activities]);
+
+  return (
+    <Pressable testID="notifications-button" onPress={onPress}>
+      <View>
+        <Bell size={22} color="#FFFFFF" />
+        {unreadCount > 0 && (
+          <View style={{
+            position: 'absolute',
+            top: -5,
+            right: -6,
+            minWidth: 16,
+            height: 16,
+            borderRadius: 8,
+            backgroundColor: '#FF4E6A',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 3,
+            borderWidth: 1.5,
+            borderColor: '#001935',
+          }}>
+            <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800' }}>
+              {unreadCount > 9 ? '9+' : String(unreadCount)}
+            </Text>
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
+}
 
 type Tab = 'following' | 'foryou' | 'unfiltered';
 
@@ -377,9 +421,7 @@ export default function FeedScreen() {
             <Pressable testID="search-button" onPress={() => router.push('/(app)/explore' as any)}>
               <Search size={22} color="#FFFFFF" />
             </Pressable>
-            <Pressable testID="notifications-button" onPress={() => router.push('/(app)/activity' as any)}>
-              <Bell size={22} color="#FFFFFF" />
-            </Pressable>
+            <BellWithBadge onPress={() => router.push('/(app)/activity' as any)} />
           </View>
         </LinearGradient>
       </Animated.View>
