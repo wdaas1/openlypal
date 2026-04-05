@@ -46,6 +46,9 @@ import { useSession } from '@/lib/auth/use-session';
 interface PostCardProps {
   post: Post;
   isVisible?: boolean;
+  from?: string;
+  roomId?: string;
+  momentId?: string;
 }
 
 const REPORT_REASONS: { label: string; category: string }[] = [
@@ -66,7 +69,7 @@ function formatCount(n: number): string {
   return n.toString();
 }
 
-export function PostCard({ post, isVisible = true }: PostCardProps) {
+export function PostCard({ post, isVisible = true, from, roomId, momentId }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
@@ -370,7 +373,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     } else {
       // Single tap - navigate to post
       const timer = setTimeout(() => {
-        router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id } });
+        router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id, from: from ?? 'feed', roomId: roomId ?? '', momentId: momentId ?? '' } });
       }, DOUBLE_TAP_DELAY + 50);
       lastTapRef.current = now;
       // Actually store so double tap can clear navigation
@@ -902,7 +905,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
           testID={`comment-button-${post.id}`}
           onPress={(e) => {
             e.stopPropagation();
-            router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id } });
+            router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id, from: from ?? 'feed', roomId: roomId ?? '', momentId: momentId ?? '' } });
           }}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >

@@ -580,7 +580,7 @@ export default function RoomDetailScreen() {
 
               return (
                 <Pressable
-                  onPress={() => router.push(`/(app)/post/${item.id}` as any)}
+                  onPress={() => router.push({ pathname: '/(app)/post/[id]' as any, params: { id: item.id, from: 'room', roomId: id, momentId: '' } })}
                   style={{ backgroundColor: '#0a2d50', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#1a3a5c' }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
