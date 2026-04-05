@@ -11,6 +11,7 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -102,6 +103,93 @@ type CreateModalProps = {
   backdropOpacity: Animated.SharedValue<number>;
 };
 
+type ActionRowProps = {
+  testID: string;
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  onPress: () => void;
+};
+
+function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
+  const scale = useSharedValue(1);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      onPressIn={() => {
+        scale.value = withTiming(0.97, { duration: 80 });
+      }}
+      onPressOut={() => {
+        scale.value = withTiming(1, { duration: 150 });
+      }}
+    >
+      <Animated.View
+        style={[
+          animStyle,
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 14,
+            paddingHorizontal: 14,
+            borderRadius: 14,
+            backgroundColor: 'rgba(255,255,255,0.04)',
+            gap: 14,
+          },
+        ]}
+      >
+        {/* Icon container */}
+        <View
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            backgroundColor: 'rgba(0,207,53,0.1)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: 'rgba(0,207,53,0.2)',
+            shadowColor: '#00CF35',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+          }}
+        >
+          {icon}
+        </View>
+
+        {/* Labels */}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: '600',
+              letterSpacing: -0.2,
+            }}
+          >
+            {label}
+          </Text>
+          <Text
+            style={{
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: 13,
+              marginTop: 1,
+            }}
+          >
+            {sub}
+          </Text>
+        </View>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateModalProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -124,33 +212,47 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
   const actions = [
     {
       testID: 'create-modal-post',
-      icon: <Camera size={22} color="#00CF35" />,
+      icon: <Camera size={18} color="#00CF35" />,
       label: 'Post',
       sub: 'Share a photo or video',
       onPress: () => navigate('/(app)/create'),
     },
     {
       testID: 'create-modal-live',
-      icon: <Video size={22} color="#00CF35" />,
+      icon: <Video size={18} color="#00CF35" />,
       label: 'Go Live',
       sub: 'Start a live session',
       onPress: () => navigate('/(app)/live-moments/create'),
     },
     {
       testID: 'create-modal-room',
-      icon: <Users size={22} color="#00CF35" />,
+      icon: <Users size={18} color="#00CF35" />,
       label: 'Create Room',
       sub: 'Start a group space',
       onPress: () => navigate('/(app)/rooms'),
     },
     {
       testID: 'create-modal-message',
-      icon: <MessageSquare size={22} color="#00CF35" />,
+      icon: <MessageSquare size={18} color="#00CF35" />,
       label: 'Message',
       sub: 'Send a direct message',
       onPress: () => navigate('/(app)/messenger'),
     },
   ];
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        translateY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY > 80 || e.velocityY > 500) {
+        runOnJS(onClose)();
+      } else {
+        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+      }
+    });
 
   return (
     <Modal
@@ -161,7 +263,20 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      {/* Backdrop */}
+      {/* Blur backdrop */}
+      <BlurView
+        intensity={20}
+        tint="dark"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+
+      {/* Dark overlay */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -176,144 +291,99 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
         onPress={onClose}
       />
 
-      {/* Sheet */}
-      <Animated.View
-        style={[
-          sheetStyle,
-          {
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: '#001228',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            paddingBottom: Math.max(insets.bottom, 16),
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.5,
-            shadowRadius: 20,
-            elevation: 24,
-          },
-        ]}
-      >
-        {/* Drag handle */}
-        <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
-          <View
-            style={{
-              width: 36,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: 'rgba(255,255,255,0.25)',
-            }}
-          />
-        </View>
-
-        {/* Title */}
-        <Text
-          style={{
-            color: '#ffffff',
-            fontSize: 13,
-            fontWeight: '600',
-            letterSpacing: 0.5,
-            textTransform: 'uppercase',
-            opacity: 0.45,
-            textAlign: 'center',
-            paddingTop: 8,
-            paddingBottom: 16,
-          }}
+      {/* Sheet with swipe-down gesture */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            sheetStyle,
+            {
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: '#001228',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingBottom: Math.max(insets.bottom, 16),
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 20,
+              elevation: 24,
+            },
+          ]}
         >
-          Create something
-        </Text>
+          {/* Drag handle */}
+          <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: 'rgba(255,255,255,0.25)',
+              }}
+            />
+          </View>
 
-        {/* Actions */}
-        <View style={{ paddingHorizontal: 16, gap: 4 }}>
-          {actions.map((action) => (
-            <Pressable
-              key={action.testID}
-              testID={action.testID}
-              onPress={action.onPress}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 18,
-                paddingHorizontal: 16,
-                borderRadius: 14,
-                backgroundColor: pressed
-                  ? 'rgba(0,207,53,0.08)'
-                  : 'rgba(255,255,255,0.04)',
-                gap: 16,
-              })}
-            >
-              {/* Icon container */}
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  backgroundColor: 'rgba(0,207,53,0.1)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: 'rgba(0,207,53,0.2)',
-                }}
-              >
-                {action.icon}
-              </View>
-
-              {/* Labels */}
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    color: '#ffffff',
-                    fontSize: 17,
-                    fontWeight: '600',
-                    letterSpacing: -0.2,
-                  }}
-                >
-                  {action.label}
-                </Text>
-                <Text
-                  style={{
-                    color: 'rgba(255,255,255,0.45)',
-                    fontSize: 13,
-                    marginTop: 1,
-                  }}
-                >
-                  {action.sub}
-                </Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Cancel */}
-        <Pressable
-          testID="create-modal-cancel"
-          onPress={onClose}
-          style={({ pressed }) => ({
-            height: 56,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: 8,
-            marginHorizontal: 16,
-            borderRadius: 14,
-            backgroundColor: pressed
-              ? 'rgba(255,255,255,0.06)'
-              : 'transparent',
-          })}
-        >
+          {/* Title */}
           <Text
             style={{
-              color: 'rgba(255,255,255,0.45)',
-              fontSize: 16,
-              fontWeight: '500',
+              fontSize: 11,
+              fontWeight: '600',
+              letterSpacing: 1.5,
+              color: 'rgba(255,255,255,0.35)',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              paddingTop: 8,
+              paddingBottom: 20,
             }}
           >
-            Cancel
+            Create something
           </Text>
-        </Pressable>
-      </Animated.View>
+
+          {/* Actions */}
+          <View style={{ paddingHorizontal: 20, gap: 8 }}>
+            {actions.map((action) => (
+              <ActionRow
+                key={action.testID}
+                testID={action.testID}
+                icon={action.icon}
+                label={action.label}
+                sub={action.sub}
+                onPress={action.onPress}
+              />
+            ))}
+          </View>
+
+          {/* Cancel */}
+          <Pressable
+            testID="create-modal-cancel"
+            onPress={onClose}
+            style={{
+              marginTop: 12,
+              marginHorizontal: 20,
+              marginBottom: 4,
+              height: 52,
+              borderRadius: 14,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '500',
+                color: 'rgba(255,255,255,0.5)',
+              }}
+            >
+              Cancel
+            </Text>
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
     </Modal>
   );
 }
@@ -610,7 +680,7 @@ export default function AppLayout() {
       duration: 250,
       easing: Easing.out(Easing.cubic),
     });
-    backdropOpacity.value = withTiming(0.5, { duration: 250 });
+    backdropOpacity.value = withTiming(0.4, { duration: 250 });
     contentScale.value = withTiming(0.96, { duration: 250 });
   };
 
