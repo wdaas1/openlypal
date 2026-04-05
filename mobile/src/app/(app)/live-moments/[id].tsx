@@ -351,6 +351,13 @@ function MessageBubble({
 export default function LiveMomentRoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const { data: session } = useSession();
 
@@ -724,15 +731,7 @@ export default function LiveMomentRoomScreen() {
       >
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          onPress={handleBack}
         >
           <ArrowLeft size={18} color="rgba(255,255,255,0.8)" />
         </Pressable>
@@ -1007,7 +1006,7 @@ export default function LiveMomentRoomScreen() {
           </Text>
           <Pressable
             testID="leave-ended-button"
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={{
               marginTop: 24,
               backgroundColor: 'rgba(255,255,255,0.1)',

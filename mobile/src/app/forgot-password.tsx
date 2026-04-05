@@ -8,6 +8,13 @@ import { Mail, ArrowLeft } from 'lucide-react-native';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const [email, setEmail] = useState('');
 
   const requestReset = useMutation({
@@ -28,7 +35,7 @@ export default function ForgotPasswordScreen() {
         {/* Back button */}
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 32 }}
         >
           <ArrowLeft size={18} color="#4a6fa5" />

@@ -23,6 +23,13 @@ import { useSession } from '@/lib/auth/use-session';
 export default function ChatScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const flatListRef = useRef<FlatList>(null);
@@ -165,7 +172,7 @@ export default function ChatScreen() {
       }}>
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={{ marginRight: 12, padding: 4 }}
         >
           <ArrowLeft size={22} color="#ffffff" />

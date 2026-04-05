@@ -14,6 +14,13 @@ import { UserAvatar } from '@/components/UserAvatar';
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
 
   const { data: user, isLoading: loadingUser, isRefetching } = useQuery({
@@ -64,7 +71,7 @@ export default function UserProfileScreen() {
       <View className="absolute top-12 left-4 z-10">
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           className="rounded-full p-2"
           style={{ backgroundColor: 'rgba(0,25,53,0.7)' }}
         >

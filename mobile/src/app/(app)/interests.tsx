@@ -35,6 +35,13 @@ const CATEGORIES = [
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -107,7 +114,7 @@ export default function InterestsScreen() {
     <SafeAreaView testID="interests-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Pressable testID="back-button" onPress={() => router.back()}>
+        <Pressable testID="back-button" onPress={handleBack}>
           <Text style={{ color: '#4a6fa5' }} className="text-base">Cancel</Text>
         </Pressable>
         <Text className="text-white font-bold text-lg">Interests</Text>

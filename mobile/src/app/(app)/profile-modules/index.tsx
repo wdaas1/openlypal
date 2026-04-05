@@ -364,6 +364,13 @@ function FormInput({
 
 export default function ProfileModulesScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
@@ -446,7 +453,7 @@ export default function ProfileModulesScreen() {
       >
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={{
             width: 36,
             height: 36,

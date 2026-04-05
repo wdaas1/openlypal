@@ -20,6 +20,13 @@ function buildUsername(displayName: string, suffix: number): string {
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const invalidateSession = useInvalidateSession();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -218,7 +225,7 @@ export default function SignUpScreen() {
             {/* Sign In Link */}
             <Pressable
               testID="signin-link"
-              onPress={() => router.back()}
+              onPress={handleBack}
               className="items-center py-3"
             >
               <Text style={{ color: '#4a6fa5' }} className="text-sm">

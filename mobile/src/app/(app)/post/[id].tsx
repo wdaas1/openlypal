@@ -507,6 +507,13 @@ const NAV_HEIGHT = 100;
 export default function PostDetailScreen() {
   const { id, from, roomId, momentId } = useLocalSearchParams<{ id: string; from?: string; roomId?: string; momentId?: string }>();
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [commentText, setCommentText] = useState('');
@@ -616,7 +623,7 @@ export default function PostDetailScreen() {
     <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Pressable testID="back-button" onPress={() => router.back()}>
+        <Pressable testID="back-button" onPress={handleBack}>
           <ArrowLeft size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 17, marginLeft: 16 }}>Post</Text>

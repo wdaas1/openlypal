@@ -30,6 +30,13 @@ const CATEGORIES = [
 
 export default function CreateScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const { roomId: paramRoomId } = useLocalSearchParams<{ roomId?: string }>();
   const [postType, setPostType] = useState<PostType>('text');
@@ -150,7 +157,7 @@ export default function CreateScreen() {
     <SafeAreaView testID="create-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Pressable testID="cancel-button" onPress={() => router.back()}>
+        <Pressable testID="cancel-button" onPress={handleBack}>
           <Text style={{ color: '#4a6fa5' }} className="text-base">Cancel</Text>
         </Pressable>
         <Text className="text-white font-bold text-lg">New Post</Text>

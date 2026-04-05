@@ -28,6 +28,13 @@ const DURATIONS = [
 
 export default function CreateMomentScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const { roomId: paramRoomId } = useLocalSearchParams<{ roomId?: string }>();
 
@@ -97,7 +104,7 @@ export default function CreateMomentScreen() {
           </Text>
           <Pressable
             testID="close-create-button"
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={{
               width: 36,
               height: 36,

@@ -35,6 +35,13 @@ const ADMIN_EMAIL = "your@email.com";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const invalidateSession = useInvalidateSession();
@@ -141,7 +148,7 @@ export default function SettingsScreen() {
       >
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           className="w-9 h-9 items-center justify-center rounded-full mr-3"
           style={{ backgroundColor: '#0a2d50' }}
         >

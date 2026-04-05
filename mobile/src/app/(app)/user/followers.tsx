@@ -17,6 +17,13 @@ type UserSummary = {
 export default function FollowersScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type: 'followers' | 'following' }>();
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const isFollowers = type === 'followers';
 
   const { data: users, isLoading } = useQuery({
@@ -29,7 +36,7 @@ export default function FollowersScreen() {
     <SafeAreaView testID="followers-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 gap-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Pressable testID="back-button" onPress={() => router.back()} className="p-1">
+        <Pressable testID="back-button" onPress={handleBack} className="p-1">
           <ArrowLeft size={22} color="#FFFFFF" />
         </Pressable>
         <Text className="text-white font-bold text-lg">{isFollowers ? 'Followers' : 'Following'}</Text>

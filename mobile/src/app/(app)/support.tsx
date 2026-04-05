@@ -58,6 +58,13 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 
 export default function SupportScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const handleEmail = () => {
@@ -70,7 +77,7 @@ export default function SupportScreen() {
       <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           className="mr-3 p-1"
           style={{ borderRadius: 20 }}
         >

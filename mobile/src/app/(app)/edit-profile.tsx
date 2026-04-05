@@ -25,6 +25,13 @@ import { uploadFile } from '@/lib/upload';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const queryClient = useQueryClient();
   const { data: session } = useSession();
 
@@ -115,7 +122,7 @@ export default function EditProfileScreen() {
         >
           <Pressable
             testID="back-button"
-            onPress={() => router.back()}
+            onPress={handleBack}
             className="w-9 h-9 items-center justify-center rounded-full"
             style={{ backgroundColor: '#0a2d50' }}
           >

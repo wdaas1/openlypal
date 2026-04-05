@@ -142,6 +142,13 @@ Email: info@clearstepsdigital.com
 
 export default function LegalScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/rooms');
+    }
+  };
   const [activeTab, setActiveTab] = useState<'privacy' | 'terms'>('privacy');
 
   const content = activeTab === 'privacy' ? PRIVACY_POLICY : TERMS_OF_SERVICE;
@@ -152,7 +159,7 @@ export default function LegalScreen() {
       <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={handleBack}
           className="mr-3 p-1"
           style={{ borderRadius: 20 }}
         >
