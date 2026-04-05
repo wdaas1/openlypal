@@ -628,7 +628,7 @@ export default function LiveMomentRoomScreen() {
 
   const handlePickMedia = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ['images', 'videos'] as any,
       allowsEditing: false,
       quality: 0.8,
       videoMaxDuration: 60,

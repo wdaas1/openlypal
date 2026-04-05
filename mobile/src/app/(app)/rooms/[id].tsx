@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, Pressable, ActivityIndicator, TextInput, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api/api';
-import { ArrowLeft, UserPlus, Pencil, Check, X, LogOut, Trash2, Lock, FileText } from 'lucide-react-native';
+import { ArrowLeft, UserPlus, Pencil, Check, X, LogOut, Trash2, Lock, FileText, Camera, Play } from 'lucide-react-native';
 import { useSession } from '@/lib/auth/use-session';
+import { getAuthToken } from '@/lib/auth/auth-client';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 type ActiveLiveMoment = {
   id: string;
@@ -41,12 +44,32 @@ type Post = {
   type: string;
   content: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   title: string | null;
   user: { id: string; name: string; username: string | null; image: string | null };
   likeCount: number;
   commentCount: number;
   createdAt: string;
 };
+
+type ComposeMedia = {
+  uri: string;
+  isVideo: boolean;
+  mimeType: string;
+};
+
+function VideoPost({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => { p.loop = false; });
+  return (
+    <VideoView
+      player={player}
+      style={{ width: '100%', height: 200, borderRadius: 10, marginTop: 10 }}
+      allowsFullscreen
+      allowsPictureInPicture={false}
+      contentFit="cover"
+    />
+  );
+}
 
 export default function RoomDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -59,7 +82,8 @@ export default function RoomDetailScreen() {
   const [newName, setNewName] = useState('');
   const [activeTab, setActiveTab] = useState<'posts' | 'members'>('posts');
   const [composeText, setComposeText] = useState('');
-  const [isPosting, setIsPosting] = useState(false);
+  const [composeMedia, setComposeMedia] = useState<ComposeMedia | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room', id],
@@ -125,14 +149,82 @@ export default function RoomDetailScreen() {
     },
   });
 
-  const createPostMutation = useMutation({
-    mutationFn: (content: string) =>
-      api.post('/api/posts', { content, type: 'text', roomId: id }),
+  const { mutate: createPost, isPending: isCreatingPost } = useMutation({
+    mutationFn: (payload: { content?: string; imageUrl?: string; videoUrl?: string; type: string }) =>
+      api.post('/api/posts', { ...payload, roomId: id }),
     onSuccess: () => {
       setComposeText('');
+      setComposeMedia(null);
       queryClient.invalidateQueries({ queryKey: ['room-posts', id] });
     },
   });
+
+  const handlePickMedia = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'] as any,
+      allowsEditing: false,
+      quality: 0.8,
+      videoMaxDuration: 60,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setComposeMedia({
+      uri: asset.uri,
+      isVideo: asset.type === 'video',
+      mimeType: asset.mimeType ?? (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+    });
+  }, []);
+
+  const handlePost = useCallback(async () => {
+    if (!composeText.trim() && !composeMedia) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (!composeMedia) {
+      createPost({ content: composeText.trim(), type: 'text' });
+      return;
+    }
+
+    // Upload media first
+    setIsUploading(true);
+    try {
+      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+      const token = await getAuthToken();
+      const formData = new FormData();
+      formData.append('file', {
+        uri: composeMedia.uri,
+        type: composeMedia.mimeType,
+        name: composeMedia.isVideo ? 'video.mp4' : 'photo.jpg',
+      } as any);
+
+      const uploadRes = await fetch(`${backendUrl}/api/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (uploadRes.ok) {
+        const uploadJson = await uploadRes.json() as { data: { url: string } };
+        const remoteUrl = uploadJson.data.url;
+        createPost({
+          content: composeText.trim() || undefined,
+          type: composeMedia.isVideo ? 'video' : 'photo',
+          imageUrl: composeMedia.isVideo ? undefined : remoteUrl,
+          videoUrl: composeMedia.isVideo ? remoteUrl : undefined,
+        });
+      } else {
+        if (composeText.trim()) {
+          createPost({ content: composeText.trim(), type: 'text' });
+        }
+      }
+    } catch {
+      if (composeText.trim()) {
+        createPost({ content: composeText.trim(), type: 'text' });
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }, [composeText, composeMedia, createPost]);
 
   if (isLoading || !room) {
     return (
@@ -143,6 +235,109 @@ export default function RoomDetailScreen() {
   }
 
   const isOwner = userId === room.ownerId;
+  const canPost = composeText.trim().length > 0 || composeMedia !== null;
+  const isPosting = isUploading || isCreatingPost;
+
+  const composer = (
+    <View
+      style={{
+        marginHorizontal: -4,
+        marginTop: 0,
+        marginBottom: 8,
+        backgroundColor: '#0a2d50',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#1a3a5c',
+        padding: 12,
+      }}
+    >
+      <TextInput
+        testID="compose-input"
+        placeholder={`Post in ${room.name}...`}
+        placeholderTextColor="rgba(255,255,255,0.3)"
+        value={composeText}
+        onChangeText={setComposeText}
+        multiline
+        style={{
+          color: '#ffffff',
+          fontSize: 15,
+          minHeight: 52,
+          textAlignVertical: 'top',
+        }}
+      />
+
+      {/* Media preview */}
+      {composeMedia ? (
+        <View style={{ marginTop: 10, position: 'relative' }}>
+          {composeMedia.isVideo ? (
+            <View style={{
+              width: '100%', height: 160, borderRadius: 10,
+              backgroundColor: '#000', alignItems: 'center', justifyContent: 'center',
+              borderWidth: 1, borderColor: 'rgba(0,207,53,0.3)',
+            }}>
+              <Play size={36} color="rgba(255,255,255,0.7)" />
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 6 }}>Video selected</Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: composeMedia.uri }}
+              style={{ width: '100%', height: 160, borderRadius: 10 }}
+              resizeMode="cover"
+            />
+          )}
+          <Pressable
+            testID="remove-media-button"
+            onPress={() => setComposeMedia(null)}
+            style={{
+              position: 'absolute', top: 6, right: 6,
+              width: 26, height: 26, borderRadius: 13,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <X size={14} color="#fff" />
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Actions row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}>
+        <Pressable
+          testID="media-picker-button"
+          onPress={handlePickMedia}
+          style={{
+            width: 36, height: 36, borderRadius: 18,
+            backgroundColor: 'rgba(0,207,53,0.1)',
+            borderWidth: 1, borderColor: 'rgba(0,207,53,0.25)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <Camera size={16} color="#00CF35" />
+        </Pressable>
+
+        <View style={{ flex: 1 }} />
+
+        {canPost ? (
+          <Pressable
+            testID="post-button"
+            onPress={handlePost}
+            disabled={isPosting}
+            style={{
+              backgroundColor: '#00CF35',
+              paddingHorizontal: 20,
+              paddingVertical: 8,
+              borderRadius: 20,
+              opacity: isPosting ? 0.6 : 1,
+            }}
+          >
+            <Text style={{ color: '#001935', fontSize: 14, fontWeight: '800' }}>
+              {isPosting ? 'Posting...' : 'Post'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView testID="room-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
@@ -298,58 +493,9 @@ export default function RoomDetailScreen() {
             data={posts ?? []}
             keyExtractor={(p) => p.id}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-            ListHeaderComponent={
-              <View
-                style={{
-                  marginHorizontal: -4,
-                  marginTop: 0,
-                  marginBottom: 8,
-                  backgroundColor: '#0a2d50',
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: '#1a3a5c',
-                  padding: 12,
-                }}
-              >
-                <TextInput
-                  placeholder={`Post in ${room.name}...`}
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={composeText}
-                  onChangeText={setComposeText}
-                  multiline
-                  style={{
-                    color: '#ffffff',
-                    fontSize: 15,
-                    minHeight: 60,
-                    textAlignVertical: 'top',
-                  }}
-                />
-                {composeText.trim().length > 0 ? (
-                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
-                    <Pressable
-                      onPress={() => {
-                        if (!composeText.trim()) return;
-                        createPostMutation.mutate(composeText.trim());
-                      }}
-                      disabled={createPostMutation.isPending}
-                      style={{
-                        backgroundColor: '#00CF35',
-                        paddingHorizontal: 18,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                        opacity: createPostMutation.isPending ? 0.6 : 1,
-                      }}
-                    >
-                      <Text style={{ color: '#001935', fontSize: 14, fontWeight: '800' }}>
-                        {createPostMutation.isPending ? 'Posting...' : 'Post'}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-            }
+            ListHeaderComponent={composer}
             ListEmptyComponent={
-              <View style={{ alignItems: 'center', paddingTop: 60, gap: 10 }}>
+              <View style={{ alignItems: 'center', paddingTop: 40, gap: 10 }}>
                 <FileText size={40} color="#1a3a5c" />
                 <Text style={{ color: '#4a6fa5', fontSize: 15 }}>No posts in this room yet</Text>
               </View>
@@ -374,7 +520,15 @@ export default function RoomDetailScreen() {
                 </View>
                 {item.title ? <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 6 }}>{item.title}</Text> : null}
                 {item.content ? <Text style={{ color: '#c0d0e0', fontSize: 14, lineHeight: 20 }} numberOfLines={3}>{item.content}</Text> : null}
-                {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: 180, borderRadius: 10, marginTop: 10 }} resizeMode="cover" /> : null}
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={{ width: '100%', height: 200, borderRadius: 10, marginTop: 10 }}
+                    resizeMode="cover"
+                  />
+                ) : item.videoUrl ? (
+                  <VideoPost uri={item.videoUrl} />
+                ) : null}
               </Pressable>
             )}
           />
