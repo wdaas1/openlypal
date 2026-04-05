@@ -50,7 +50,7 @@ export default function AddMembersScreen() {
   return (
     <SafeAreaView testID="add-members-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Pressable testID="back-button" onPress={() => router.back()}>
+        <Pressable testID="back-button" onPress={() => router.push(`/(app)/rooms/${roomId}` as any)}>
           <ArrowLeft size={22} color="#fff" />
         </Pressable>
         <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Add Members</Text>
