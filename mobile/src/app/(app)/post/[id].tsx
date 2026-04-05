@@ -505,7 +505,8 @@ function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: st
 const NAV_HEIGHT = 100;
 
 export default function PostDetailScreen() {
-  const { id, from, roomId, momentId } = useLocalSearchParams<{ id: string; from?: string; roomId?: string; momentId?: string }>();
+  const { id: _idParam, postId, from, roomId, momentId } = useLocalSearchParams<{ id?: string; postId?: string; from?: string; roomId?: string; momentId?: string }>();
+  const id = postId ?? _idParam ?? '';
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
