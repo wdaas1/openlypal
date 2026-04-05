@@ -80,7 +80,7 @@ export default function RoomDetailScreen() {
     mutationFn: () => api.delete(`/api/rooms/${id}/members/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      router.back();
+      router.push('/(app)/rooms' as any);
     },
   });
 
@@ -88,7 +88,7 @@ export default function RoomDetailScreen() {
     mutationFn: () => api.delete(`/api/rooms/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      router.back();
+      router.push('/(app)/rooms' as any);
     },
   });
 

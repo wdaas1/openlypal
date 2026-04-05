@@ -446,7 +446,7 @@ export default function ProfileModulesScreen() {
       >
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={() => router.push('/(app)/profile' as any)}
           style={{
             width: 36,
             height: 36,

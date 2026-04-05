@@ -654,7 +654,7 @@ export default function LiveMomentRoomScreen() {
       >
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={() => router.push('/(app)/live-moments' as any)}
           style={{
             width: 36,
             height: 36,
@@ -891,7 +891,7 @@ export default function LiveMomentRoomScreen() {
           </Text>
           <Pressable
             testID="leave-ended-button"
-            onPress={() => router.back()}
+            onPress={() => router.push('/(app)/live-moments' as any)}
             style={{
               marginTop: 24,
               backgroundColor: 'rgba(255,255,255,0.1)',

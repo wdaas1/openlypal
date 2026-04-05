@@ -165,7 +165,7 @@ export default function ChatScreen() {
       }}>
         <Pressable
           testID="back-button"
-          onPress={() => router.back()}
+          onPress={() => router.push('/(app)/messenger' as any)}
           style={{ marginRight: 12, padding: 4 }}
         >
           <ArrowLeft size={22} color="#ffffff" />
