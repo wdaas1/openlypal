@@ -92,10 +92,6 @@ const TABS: TabConfig[] = [
     route: '/(app)/rooms',
     icon: (color, size) => <Layers size={size} color={color} />,
   },
-  {
-    route: '/(app)/profile',
-    icon: (color, size) => <User size={size} color={color} />,
-  },
 ];
 
 // ─── CreateModal ─────────────────────────────────────────────────────────────
@@ -241,6 +237,13 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
       label: 'Message',
       sub: 'Send a direct message',
       onPress: () => navigate('/(app)/messenger'),
+    },
+    {
+      testID: 'create-modal-profile',
+      icon: <User size={18} color="#00CF35" />,
+      label: 'Profile',
+      sub: 'View your profile',
+      onPress: () => navigate('/(app)/profile'),
     },
   ];
 
@@ -476,7 +479,6 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
     if (pathname.includes('/create')) return 2;
     if (pathname.includes('/live-moments')) return 3;
     if (pathname.includes('/rooms')) return 4;
-    if (pathname.includes('/profile')) return 5;
     return -1;
   };
 
@@ -490,7 +492,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
     const isValid = activeIndex !== -1 && !isCenter;
 
     if (isValid && barWidthRef.current > 0) {
-      const slotWidth = barWidthRef.current / 6;
+      const slotWidth = barWidthRef.current / 5;
       const targetLeft = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
       pillLeft.value = withSpring(targetLeft, { damping: 20, stiffness: 200 });
       pillOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
@@ -518,7 +520,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
     const isCenter = activeIndex === 2;
     const isValid = activeIndex !== -1 && !isCenter;
     if (isValid && width > 0) {
-      const slotWidth = width / 6;
+      const slotWidth = width / 5;
       pillLeft.value = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
       pillOpacity.value = 1;
     }
@@ -630,7 +632,6 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
                     '/(app)/explore': '/(app)/explore',
                     '/(app)/live-moments': '/(app)/live-moments',
                     '/(app)/rooms': '/(app)/rooms',
-                    '/(app)/profile': '/(app)/profile',
                   };
                   router.push(routeMap[tab.route] as any);
                 }}
