@@ -189,6 +189,7 @@ function FloatingTabBar() {
   const insets = useSafeAreaInsets();
 
   const barWidth = useSharedValue(0);
+  const barWidthRef = React.useRef(0);
   const pillLeft = useSharedValue(0);
   const pillOpacity = useSharedValue(0);
 
@@ -212,15 +213,15 @@ function FloatingTabBar() {
     const isCenter = activeIndex === 2;
     const isValid = activeIndex !== -1 && !isCenter;
 
-    if (isValid && barWidth.value > 0) {
-      const slotWidth = barWidth.value / 6;
+    if (isValid && barWidthRef.current > 0) {
+      const slotWidth = barWidthRef.current / 6;
       const targetLeft = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
       pillLeft.value = withSpring(targetLeft, { damping: 20, stiffness: 200 });
       pillOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
     } else {
       pillOpacity.value = withSpring(0, { damping: 20, stiffness: 200 });
     }
-  }, [activeIndex, barWidth.value]);
+  }, [activeIndex]);
 
   const pillStyle = useAnimatedStyle(() => ({
     position: 'absolute',
@@ -238,6 +239,7 @@ function FloatingTabBar() {
   const handleLayout = (e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
     barWidth.value = width;
+    barWidthRef.current = width;
     const isCenter = activeIndex === 2;
     const isValid = activeIndex !== -1 && !isCenter;
     if (isValid && width > 0) {
@@ -481,7 +483,6 @@ export default function AppLayout() {
         <Tabs.Screen name="live-moments/[id]" options={{ href: null }} />
         <Tabs.Screen name="rooms/index" options={{ href: null, title: 'Rooms' }} />
         <Tabs.Screen name="rooms/[id]" options={{ href: null }} />
-        <Tabs.Screen name="rooms/create" options={{ href: null }} />
         <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
         <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
         <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />

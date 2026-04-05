@@ -36,7 +36,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { formatDistanceToNow } from 'date-fns';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { api } from '@/lib/api/api';
 import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -89,16 +89,24 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const [captionCopied, setCaptionCopied] = useState(false);
   const lastTapRef = useRef<number>(0);
   const imageLastTapRef = useRef<number>(0);
-  const videoRef = useRef<Video>(null);
+  const player = useVideoPlayer(
+    post.type === 'video' && post.videoUrl ? post.videoUrl : null,
+    (p) => { p.loop = true; p.muted = true; }
+  );
   const { data: session } = useSession();
 
   useEffect(() => {
+    if (!player) return;
     if (isVisible) {
-      videoRef.current?.playAsync();
+      player.play();
     } else {
-      videoRef.current?.pauseAsync();
+      player.pause();
     }
-  }, [isVisible]);
+  }, [isVisible, player]);
+
+  useEffect(() => {
+    if (player) player.muted = muted;
+  }, [muted, player]);
 
   // Read user's explicit content preference from cache
   const { data: profile } = useQuery({
@@ -580,16 +588,13 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
             }}
             style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}
           >
-            <Video
-              ref={videoRef}
+            <VideoView
               testID={`post-video-${post.id}`}
-              source={{ uri: post.videoUrl }}
+              player={player}
               style={{ width: '100%', height: videoHeight }}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={false}
-              isLooping
-              isMuted={muted}
-              useNativeControls={false}
+              contentFit="cover"
+              allowsFullscreen={false}
+              allowsPictureInPicture={false}
             />
             <Pressable
               testID={`mute-button-${post.id}`}
