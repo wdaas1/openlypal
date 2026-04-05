@@ -7,8 +7,9 @@ export const liveMomentsApi = {
   create: (data: { title: string; expiresAfter: number; invitedUserIds: string[] }) =>
     api.post<LiveMoment>('/api/live-moments', data),
   end: (id: string) => api.patch<LiveMoment>(`/api/live-moments/${id}`, { status: 'ended' }),
+  goLive: (id: string) => api.patch<LiveMoment>(`/api/live-moments/${id}/go-live`, {}),
   getMessages: (id: string) => api.get<LiveMomentMessage[]>(`/api/live-moments/${id}/messages`),
-  sendMessage: (id: string, data: { content: string; type: string }) =>
+  sendMessage: (id: string, data: { content: string; type: string; contentUrl?: string }) =>
     api.post<LiveMomentMessage>(`/api/live-moments/${id}/messages`, data),
   join: (id: string) => api.post<{ viewerCount: number }>(`/api/live-moments/${id}/join`, {}),
   leave: (id: string) => api.post<{ viewerCount: number }>(`/api/live-moments/${id}/leave`, {}),

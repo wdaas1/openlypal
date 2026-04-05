@@ -52,6 +52,7 @@ async function formatMoment(
     creatorId: string;
     creator: { id: string; name: string; username: string | null; image: string | null };
     status: string;
+    isLive: boolean;
     expiresAt: Date;
     expiresAfter: number;
     invitedUserIds: string;
@@ -70,6 +71,7 @@ async function formatMoment(
     creatorId: moment.creatorId,
     creator: moment.creator,
     status: moment.status,
+    isLive: moment.isLive,
     expiresAt: moment.expiresAt,
     expiresAfter: moment.expiresAfter,
     invitedUserIds,
@@ -264,6 +266,29 @@ liveMomentsRouter.patch(
   }
 );
 
+// ─── PATCH /api/live-moments/:id/go-live ──────────────────────────────────
+// Set isLive to true (creator only, only if still active)
+liveMomentsRouter.patch("/:id/go-live", async (c) => {
+  const user = requireAuth(c);
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  const moment = await prisma.liveMoment.findUnique({ where: { id: c.req.param("id") } });
+  if (!moment) return c.json({ error: { message: "Not found" } }, 404);
+  if (moment.creatorId !== user.id) return c.json({ error: { message: "Forbidden" } }, 403);
+  if (moment.status === "ended") return c.json({ error: { message: "Moment has ended" } }, 400);
+
+  const updated = await prisma.liveMoment.update({
+    where: { id: moment.id },
+    data: { isLive: true },
+    include: momentInclude,
+  });
+
+  const formatted = await formatMoment(updated);
+  return c.json({ data: formatted });
+});
+
 // ─── GET /api/live-moments/:id/messages ───────────────────────────────────
 // Get messages for a moment (paginated, newest-first then reversed for display)
 liveMomentsRouter.get("/:id/messages", async (c) => {
@@ -307,7 +332,16 @@ liveMomentsRouter.get("/:id/messages", async (c) => {
   // Reverse for chronological display (oldest first)
   const ordered = [...messages].reverse();
 
-  return c.json({ data: ordered });
+  return c.json({ data: ordered.map((m) => ({
+    id: m.id,
+    momentId: m.momentId,
+    userId: m.userId,
+    user: m.user,
+    content: m.content,
+    contentUrl: m.contentUrl ?? null,
+    type: m.type,
+    createdAt: m.createdAt,
+  })) });
 });
 
 // ─── POST /api/live-moments/:id/messages ──────────────────────────────────
@@ -319,6 +353,7 @@ liveMomentsRouter.post(
     z.object({
       content: z.string().min(1),
       type: z.enum(["text", "image", "reaction"]).default("text"),
+      contentUrl: z.string().optional(),
     })
   ),
   async (c) => {
@@ -328,7 +363,7 @@ liveMomentsRouter.post(
     }
 
     const { id } = c.req.param();
-    const { content, type } = c.req.valid("json");
+    const { content, type, contentUrl } = c.req.valid("json");
 
     const moment = await prisma.liveMoment.findUnique({
       where: { id },
@@ -358,13 +393,23 @@ liveMomentsRouter.post(
         userId: user.id,
         content,
         type,
+        contentUrl: contentUrl ?? null,
       },
       include: {
         user: { select: userSelect },
       },
     });
 
-    return c.json({ data: message }, 201);
+    return c.json({ data: {
+      id: message.id,
+      momentId: message.momentId,
+      userId: message.userId,
+      user: message.user,
+      content: message.content,
+      contentUrl: message.contentUrl ?? null,
+      type: message.type,
+      createdAt: message.createdAt,
+    } }, 201);
   }
 );
 

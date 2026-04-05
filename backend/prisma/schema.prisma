@@ -234,6 +234,7 @@ model LiveMoment {
   creatorId      String
   creator        User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   status         String   @default("active") // "active" | "ended"
+  isLive         Boolean  @default(false)
   expiresAt      DateTime
   expiresAfter   Int      @default(60) // minutes: 30, 60, 360, 1440
   invitedUserIds String   @default("[]") // JSON array of user IDs
@@ -249,6 +250,7 @@ model LiveMomentMessage {
   userId    String
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   content   String
+  contentUrl String?
   type      String   @default("text") // "text" | "image" | "reaction"
   createdAt DateTime @default(now())
 }

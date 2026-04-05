@@ -135,6 +135,7 @@ export interface LiveMoment {
   creatorId: string
   creator: User
   status: 'active' | 'ended'
+  isLive: boolean
   expiresAt: string
   expiresAfter: number
   invitedUserIds: string[]
@@ -151,6 +152,7 @@ export interface LiveMomentMessage {
   user: User
   content: string
   type: 'text' | 'image' | 'reaction'
+  contentUrl?: string
   createdAt: string
 }
 

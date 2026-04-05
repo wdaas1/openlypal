@@ -175,31 +175,85 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
                   ENDED
                 </Text>
               </View>
+            ) : !moment.isLive ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: 'rgba(255,255,255,0.07)',
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <View
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 3.5,
+                    backgroundColor: 'rgba(255,255,255,0.3)',
+                  }}
+                />
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '700' }}>
+                  OFFLINE
+                </Text>
+              </View>
             ) : (
               <LivePulse />
             )}
 
             {isOwn ? (
-              <View
-                style={{
-                  backgroundColor: 'rgba(0,207,53,0.15)',
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: 'rgba(0,207,53,0.25)',
-                }}
-              >
-                <Text
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View
                   style={{
-                    color: '#00CF35',
-                    fontSize: 10,
-                    fontWeight: '800',
-                    letterSpacing: 1.5,
+                    backgroundColor: 'rgba(0,207,53,0.15)',
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(0,207,53,0.25)',
                   }}
                 >
-                  YOUR MOMENT
-                </Text>
+                  <Text
+                    style={{
+                      color: '#00CF35',
+                      fontSize: 10,
+                      fontWeight: '800',
+                      letterSpacing: 1.5,
+                    }}
+                  >
+                    YOUR MOMENT
+                  </Text>
+                </View>
+                {!isEnded && !moment.isLive ? (
+                  <View
+                    style={{
+                      backgroundColor: '#00CF35',
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 20,
+                      shadowColor: '#00CF35',
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.7,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#001935',
+                        fontSize: 10,
+                        fontWeight: '900',
+                        letterSpacing: 1.5,
+                      }}
+                    >
+                      GO LIVE
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </View>

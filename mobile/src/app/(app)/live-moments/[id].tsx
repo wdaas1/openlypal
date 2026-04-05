@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,8 +23,9 @@ import Animated, {
   withTiming,
   FadeInDown,
 } from 'react-native-reanimated';
-import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal } from 'lucide-react-native';
+import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
 import type { LiveMomentMessage } from '@/lib/types';
@@ -98,6 +100,101 @@ function LiveBadge() {
         LIVE
       </Text>
     </View>
+  );
+}
+
+function OfflineBadge() {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(255,255,255,0.07)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+      }}
+    >
+      <View
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: 3.5,
+          backgroundColor: 'rgba(255,255,255,0.3)',
+        }}
+      />
+      <Text
+        style={{
+          color: 'rgba(255,255,255,0.4)',
+          fontSize: 12,
+          fontWeight: '900',
+          letterSpacing: 2.5,
+        }}
+      >
+        OFFLINE
+      </Text>
+    </View>
+  );
+}
+
+function GoLivePulseButton({ onPress, isPending }: { onPress: () => void; isPending: boolean }) {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 700 }),
+        withTiming(1, { duration: 700 })
+      ),
+      -1,
+      false
+    );
+  }, [scale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={pulseStyle}>
+      <Pressable
+        testID="go-live-button"
+        onPress={onPress}
+        disabled={isPending}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          backgroundColor: '#00CF35',
+          paddingHorizontal: 18,
+          paddingVertical: 10,
+          borderRadius: 24,
+          shadowColor: '#00CF35',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.9,
+          shadowRadius: 14,
+          elevation: 10,
+        }}
+      >
+        {isPending ? (
+          <ActivityIndicator size="small" color="#001935" />
+        ) : (
+          <Text
+            style={{
+              color: '#001935',
+              fontSize: 14,
+              fontWeight: '900',
+              letterSpacing: 1.5,
+            }}
+          >
+            GO LIVE
+          </Text>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -177,6 +274,21 @@ function MessageBubble({
         )}
         {message.type === 'reaction' ? (
           <Text style={{ fontSize: 24 }}>{message.content}</Text>
+        ) : message.type === 'image' && message.contentUrl ? (
+          <View
+            style={{
+              borderRadius: 14,
+              overflow: 'hidden',
+              borderWidth: 1,
+              borderColor: isOwn ? 'rgba(0,207,53,0.3)' : 'rgba(255,255,255,0.1)',
+            }}
+          >
+            <Image
+              source={{ uri: message.contentUrl }}
+              style={{ width: 200, height: 150, borderRadius: 12 }}
+              resizeMode="cover"
+            />
+          </View>
         ) : (
           <View
             style={{
@@ -272,7 +384,7 @@ export default function LiveMomentRoomScreen() {
   }, [messages]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: (data: { content: string; type: string }) =>
+    mutationFn: (data: { content: string; type: string; contentUrl?: string }) =>
       liveMomentsApi.sendMessage(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['live-moment-messages', id] });
@@ -288,6 +400,14 @@ export default function LiveMomentRoomScreen() {
     },
   });
   const endMoment = endMomentMutation.mutate;
+
+  const { mutate: goLive, isPending: isGoingLive } = useMutation({
+    mutationFn: () => liveMomentsApi.goLive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['live-moments'] });
+      queryClient.invalidateQueries({ queryKey: ['live-moment', id] });
+    },
+  });
 
   const handleSend = useCallback(() => {
     const text = messageText.trim();
@@ -325,8 +445,27 @@ export default function LiveMomentRoomScreen() {
     setFacingFront((prev) => !prev);
   }, []);
 
+  const handleGoLive = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    goLive();
+  }, [goLive]);
+
+  const handlePickImage = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      sendMessage({ content: 'Photo', type: 'image', contentUrl: uri });
+    }
+  }, [sendMessage]);
+
   const isCreator = moment?.creatorId === session?.user?.id;
   const isEnded = moment?.status === 'ended' || timeRemaining === 'Ended';
+  const isNotLive = !moment?.isLive;
 
   if (isLoading || !moment) {
     return (
@@ -415,6 +554,8 @@ export default function LiveMomentRoomScreen() {
                 ENDED
               </Text>
             </View>
+          ) : isNotLive ? (
+            <OfflineBadge />
           ) : (
             <LiveBadge />
           )}
@@ -439,8 +580,36 @@ export default function LiveMomentRoomScreen() {
         </View>
       </View>
 
-      {/* Viewer "watching live" indicator */}
-      {!isCreator && !isEnded ? (
+      {/* Go Live banner for creator when not live yet */}
+      {isCreator && isNotLive && !isEnded ? (
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 8,
+            backgroundColor: 'rgba(0,207,53,0.08)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: 'rgba(0,207,53,0.2)',
+            padding: 16,
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <Text
+            style={{
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: 13,
+              textAlign: 'center',
+            }}
+          >
+            This moment is not live yet. Tap to go live.
+          </Text>
+          <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive} />
+        </View>
+      ) : null}
+
+      {/* Viewer "watching live" indicator — only when actually live */}
+      {!isCreator && !isEnded && !isNotLive ? (
         <View style={{ alignItems: 'center', marginBottom: 4 }}>
           <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: '600' }}>
             📡 Watching live...
@@ -463,29 +632,47 @@ export default function LiveMomentRoomScreen() {
         </Text>
       ) : null}
 
-      {/* Messages */}
-      <ScrollView
-        ref={scrollRef}
-        testID="messages-scroll"
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {(messages ?? []).length === 0 ? (
-          <View style={{ alignItems: 'center', paddingTop: 60 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>
-              No messages yet. Say something!
-            </Text>
-          </View>
-        ) : null}
-        {(messages ?? []).map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            isOwn={msg.userId === session?.user?.id}
-          />
-        ))}
-      </ScrollView>
+      {/* Messages — show placeholder for viewers when not live */}
+      {!isCreator && isNotLive && !isEnded ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 32 }}>📡</Text>
+          <Text
+            style={{
+              color: 'rgba(255,255,255,0.35)',
+              fontSize: 15,
+              fontWeight: '600',
+              marginTop: 12,
+              textAlign: 'center',
+              paddingHorizontal: 40,
+            }}
+          >
+            Creator hasn't gone live yet
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          testID="messages-scroll"
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {(messages ?? []).length === 0 ? (
+            <View style={{ alignItems: 'center', paddingTop: 60 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>
+                No messages yet. Say something!
+              </Text>
+            </View>
+          ) : null}
+          {(messages ?? []).map((msg) => (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              isOwn={msg.userId === session?.user?.id}
+            />
+          ))}
+        </ScrollView>
+      )}
 
       {/* Floating reactions layer */}
       <View
@@ -624,6 +811,24 @@ export default function LiveMomentRoomScreen() {
                   gap: 10,
                 }}
               >
+                {/* Photo picker button */}
+                <Pressable
+                  testID="photo-picker-button"
+                  onPress={handlePickImage}
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 21,
+                    backgroundColor: 'rgba(255,255,255,0.07)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <Camera size={18} color="rgba(255,255,255,0.5)" />
+                </Pressable>
+
                 <View
                   style={{
                     flex: 1,
