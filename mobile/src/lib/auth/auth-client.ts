@@ -76,3 +76,5 @@ export const authClient = createAuthClient({
   plugins: [bearerTokenPlugin()],
 });
 
+/** Stores an externally provided auth token (e.g. from email verification deep link) */
+export const setAuthToken = (token: string) => tokenStorage.set(token);

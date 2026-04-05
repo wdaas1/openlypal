@@ -12,6 +12,9 @@ import {
   sendPushTokenToBackend,
   setupNotificationListeners,
 } from '@/lib/notifications';
+import * as Linking from 'expo-linking';
+import { setAuthToken } from '@/lib/auth/auth-client';
+import { useInvalidateSession } from '@/lib/auth/use-session';
 
 export const unstable_settings = {
   initialRouteName: '(app)',
@@ -38,6 +41,36 @@ function RootLayoutNav() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+
+  const invalidateSession = useInvalidateSession();
+
+  // Handle email verification deep links (vibecode://?token=...)
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const parsed = Linking.parse(url);
+      const token = parsed.queryParams?.token;
+      if (token && typeof token === 'string') {
+        setAuthToken(token);
+      }
+      invalidateSession();
+    };
+
+    // Check if app was opened cold from a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url && url.startsWith('vibecode://')) {
+        handleUrl(url);
+      }
+    });
+
+    // Listen for deep links when app is already open
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      if (url.startsWith('vibecode://')) {
+        handleUrl(url);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem('onboarding_done').then((val) => {
