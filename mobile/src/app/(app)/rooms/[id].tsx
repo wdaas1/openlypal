@@ -106,7 +106,7 @@ export default function RoomDetailScreen() {
     <SafeAreaView testID="room-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Pressable testID="back-button" onPress={() => router.back()}>
+        <Pressable testID="back-button" onPress={() => router.push('/(app)/rooms' as any)}>
           <ArrowLeft size={22} color="#fff" />
         </Pressable>
         <View style={{ flex: 1 }}>
