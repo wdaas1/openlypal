@@ -98,7 +98,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const scrubPillOpacity = useSharedValue(0);
   const scrubDisplayText = useSharedValue('0:00 / 0:00');
   const scrubStartTimeRef = useRef(0);
-  const lastSeekTimeRef = useRef(0);
+  const targetTimeRef = useRef(0);
+  const currentTimeRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
   const lastScrubDirectionRef = useRef(0);
   const player = useVideoPlayer(
     post.type === 'video' && post.videoUrl ? post.videoUrl : null,
@@ -125,10 +127,27 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const seekTo = (time: number, duration: number) => {
-    if (!player) return;
-    player.currentTime = time;
-    scrubDisplayText.value = `${formatScrubTime(time)} / ${formatScrubTime(duration)}`;
+  const startLerpLoop = (duration: number) => {
+    const tick = () => {
+      const target = targetTimeRef.current;
+      const prev = currentTimeRef.current;
+      const next = prev + (target - prev) * 0.25;
+      const snapped = Math.abs(next - target) < 0.02 ? target : next;
+      currentTimeRef.current = snapped;
+      if (player) {
+        player.currentTime = snapped;
+        scrubDisplayText.value = `${formatScrubTime(snapped)} / ${formatScrubTime(duration)}`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  };
+
+  const stopLerpLoop = () => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
   };
 
   const scrubDimStyle = useAnimatedStyle(() => ({
@@ -149,25 +168,23 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     .activeOffsetX([-8, 8])
     .failOffsetY([-15, 15])
     .onStart(() => {
-      scrubStartTimeRef.current = player?.currentTime ?? 0;
+      const start = player?.currentTime ?? 0;
+      scrubStartTimeRef.current = start;
+      currentTimeRef.current = start;
+      targetTimeRef.current = start;
       lastScrubDirectionRef.current = 0;
       scrubDimOpacity.value = withTiming(0.3, { duration: 150 });
       scrubPillOpacity.value = withTiming(1, { duration: 150 });
+      startLerpLoop(player?.duration || 0);
     })
     .onUpdate((e) => {
       if (!player) return;
       const duration = player.duration || 0;
       if (duration <= 0) return;
-      // Velocity boost + edge resistance
       let raw = scrubStartTimeRef.current + e.translationX * 0.05 + e.velocityX * 0.01;
       if (raw < 0) raw = raw * 0.3;
       else if (raw > duration) raw = duration + (raw - duration) * 0.3;
-      const newTime = Math.max(0, Math.min(duration, raw));
-      const now = Date.now();
-      if (now - lastSeekTimeRef.current >= 16) {
-        lastSeekTimeRef.current = now;
-        seekTo(newTime, duration);
-      }
+      targetTimeRef.current = Math.max(0, Math.min(duration, raw));
       const dir = e.translationX >= 0 ? 1 : -1;
       if (lastScrubDirectionRef.current !== 0 && dir !== lastScrubDirectionRef.current) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -175,6 +192,11 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       lastScrubDirectionRef.current = dir;
     })
     .onEnd(() => {
+      stopLerpLoop();
+      // Snap to final target
+      if (player) {
+        player.currentTime = targetTimeRef.current;
+      }
       scrubDimOpacity.value = withTiming(0, { duration: 300 });
       scrubPillOpacity.value = withTiming(0, { duration: 250 });
       lastScrubDirectionRef.current = 0;
