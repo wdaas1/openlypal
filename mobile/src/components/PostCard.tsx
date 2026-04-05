@@ -29,6 +29,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedProps,
   withSequence,
   withSpring,
   withTiming,
@@ -42,6 +43,8 @@ import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
 import { useSession } from '@/lib/auth/use-session';
+
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 interface PostCardProps {
   post: Post;
@@ -90,10 +93,10 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const lastTapRef = useRef<number>(0);
   const imageLastTapRef = useRef<number>(0);
 
-  // Video scrubbing state
-  const [scrubbing, setScrubbing] = useState(false);
-  const [scrubTime, setScrubTime] = useState(0);
+  // Video scrubbing — zero React state on hot path, all via Reanimated shared values
   const scrubDimOpacity = useSharedValue(0);
+  const scrubPillOpacity = useSharedValue(0);
+  const scrubDisplayText = useSharedValue('0:00 / 0:00');
   const scrubStartTimeRef = useRef(0);
   const lastSeekTimeRef = useRef(0);
   const lastScrubDirectionRef = useRef(0);
@@ -122,14 +125,23 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const seekTo = (time: number) => {
+  const seekTo = (time: number, duration: number) => {
     if (!player) return;
     player.currentTime = time;
-    setScrubTime(time);
+    scrubDisplayText.value = `${formatScrubTime(time)} / ${formatScrubTime(duration)}`;
   };
 
   const scrubDimStyle = useAnimatedStyle(() => ({
     opacity: scrubDimOpacity.value,
+  }));
+
+  const scrubPillStyle = useAnimatedStyle(() => ({
+    opacity: scrubPillOpacity.value,
+  }));
+
+  const animatedTimeProps = useAnimatedProps(() => ({
+    text: scrubDisplayText.value,
+    defaultValue: scrubDisplayText.value,
   }));
 
   const videoScrubGesture = Gesture.Pan()
@@ -139,18 +151,22 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     .onStart(() => {
       scrubStartTimeRef.current = player?.currentTime ?? 0;
       lastScrubDirectionRef.current = 0;
-      scrubDimOpacity.value = withTiming(0.35, { duration: 150 });
-      setScrubbing(true);
+      scrubDimOpacity.value = withTiming(0.3, { duration: 150 });
+      scrubPillOpacity.value = withTiming(1, { duration: 150 });
     })
     .onUpdate((e) => {
       if (!player) return;
       const duration = player.duration || 0;
       if (duration <= 0) return;
-      const newTime = Math.max(0, Math.min(duration, scrubStartTimeRef.current + e.translationX * 0.05));
+      // Velocity boost + edge resistance
+      let raw = scrubStartTimeRef.current + e.translationX * 0.05 + e.velocityX * 0.01;
+      if (raw < 0) raw = raw * 0.3;
+      else if (raw > duration) raw = duration + (raw - duration) * 0.3;
+      const newTime = Math.max(0, Math.min(duration, raw));
       const now = Date.now();
-      if (now - lastSeekTimeRef.current >= 33) {
+      if (now - lastSeekTimeRef.current >= 16) {
         lastSeekTimeRef.current = now;
-        seekTo(newTime);
+        seekTo(newTime, duration);
       }
       const dir = e.translationX >= 0 ? 1 : -1;
       if (lastScrubDirectionRef.current !== 0 && dir !== lastScrubDirectionRef.current) {
@@ -160,7 +176,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     })
     .onEnd(() => {
       scrubDimOpacity.value = withTiming(0, { duration: 300 });
-      setScrubbing(false);
+      scrubPillOpacity.value = withTiming(0, { duration: 250 });
       lastScrubDirectionRef.current = 0;
     });
 
@@ -658,33 +674,40 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
                 allowsPictureInPicture={false}
               />
 
-              {/* Scrub dim overlay + time indicator */}
+              {/* Scrub dim overlay */}
               <Animated.View
                 style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, scrubDimStyle]}
                 pointerEvents="none"
               />
-              {scrubbing ? (
-                <View
-                  pointerEvents="none"
-                  style={{
+
+              {/* Small pill time indicator — always mounted, fades in/out via Reanimated */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  scrubPillStyle,
+                  {
                     position: 'absolute',
-                    top: 0, left: 0, right: 0, bottom: 0,
+                    top: 10,
+                    alignSelf: 'center',
+                    left: 0,
+                    right: 0,
                     alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <View style={{
-                    backgroundColor: 'rgba(0,0,0,0.72)',
-                    borderRadius: 10,
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                  }}>
-                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', letterSpacing: 0.3 }}>
-                      {formatScrubTime(scrubTime)} / {formatScrubTime(player?.duration ?? 0)}
-                    </Text>
-                  </View>
+                  },
+                ]}
+              >
+                <View style={{
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  borderRadius: 20,
+                  paddingHorizontal: 12,
+                  paddingVertical: 5,
+                }}>
+                  <AnimatedTextInput
+                    animatedProps={animatedTimeProps}
+                    editable={false}
+                    style={{ color: '#fff', fontSize: 13, fontWeight: '600', padding: 0 }}
+                  />
                 </View>
-              ) : null}
+              </Animated.View>
 
               <Pressable
                 testID={`mute-button-${post.id}`}
