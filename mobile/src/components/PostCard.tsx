@@ -32,7 +32,6 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
@@ -134,13 +133,14 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   }));
 
   const videoScrubGesture = Gesture.Pan()
+    .runOnJS(true)
     .activeOffsetX([-8, 8])
     .failOffsetY([-15, 15])
     .onStart(() => {
       scrubStartTimeRef.current = player?.currentTime ?? 0;
       lastScrubDirectionRef.current = 0;
       scrubDimOpacity.value = withTiming(0.35, { duration: 150 });
-      runOnJS(setScrubbing)(true);
+      setScrubbing(true);
     })
     .onUpdate((e) => {
       if (!player) return;
@@ -150,24 +150,25 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       const now = Date.now();
       if (now - lastSeekTimeRef.current >= 33) {
         lastSeekTimeRef.current = now;
-        runOnJS(seekTo)(newTime);
+        seekTo(newTime);
       }
       const dir = e.translationX >= 0 ? 1 : -1;
       if (lastScrubDirectionRef.current !== 0 && dir !== lastScrubDirectionRef.current) {
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
       lastScrubDirectionRef.current = dir;
     })
     .onEnd(() => {
       scrubDimOpacity.value = withTiming(0, { duration: 300 });
-      runOnJS(setScrubbing)(false);
+      setScrubbing(false);
       lastScrubDirectionRef.current = 0;
     });
 
   const tapToFullscreenGesture = Gesture.Tap()
+    .runOnJS(true)
     .onEnd(() => {
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-      runOnJS(setMediaViewer)({ visible: true, type: 'video', uri: post.videoUrl! });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
     });
 
   const videoGesture = Gesture.Exclusive(videoScrubGesture, tapToFullscreenGesture);
