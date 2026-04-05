@@ -133,7 +133,7 @@ export default function CreateScreen() {
       setCategory('');
       setIsExplicit(false);
       setSelectedRoomId(null);
-      router.navigate('/(app)' as any);
+      router.back();
     },
   });
 

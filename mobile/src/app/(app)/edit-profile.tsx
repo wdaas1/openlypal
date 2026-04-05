@@ -93,7 +93,7 @@ export default function EditProfileScreen() {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      router.push('/(app)/profile' as any);
+      router.back();
     },
     onError: (err: Error) => {
       if (err.message?.includes('already taken') || err.message?.includes('CONFLICT')) {
@@ -115,7 +115,7 @@ export default function EditProfileScreen() {
         >
           <Pressable
             testID="back-button"
-            onPress={() => router.push('/(app)/profile' as any)}
+            onPress={() => router.back()}
             className="w-9 h-9 items-center justify-center rounded-full"
             style={{ backgroundColor: '#0a2d50' }}
           >

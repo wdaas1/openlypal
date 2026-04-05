@@ -62,7 +62,7 @@ export default function InterestsScreen() {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      router.push('/(app)/settings' as any);
+      router.back();
     },
   });
 
@@ -107,7 +107,7 @@ export default function InterestsScreen() {
     <SafeAreaView testID="interests-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Pressable testID="back-button" onPress={() => router.push('/(app)/settings' as any)}>
+        <Pressable testID="back-button" onPress={() => router.back()}>
           <Text style={{ color: '#4a6fa5' }} className="text-base">Cancel</Text>
         </Pressable>
         <Text className="text-white font-bold text-lg">Interests</Text>

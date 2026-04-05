@@ -121,7 +121,7 @@ export default function AdminScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#1a3a5c' }}>
         <Pressable
           testID="admin-back-button"
-          onPress={() => router.push('/(app)/settings' as any)}
+          onPress={() => router.back()}
           style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}
         >
           <ArrowLeft size={18} color="#FFFFFF" />

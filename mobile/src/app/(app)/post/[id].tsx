@@ -616,15 +616,7 @@ export default function PostDetailScreen() {
     <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Pressable testID="back-button" onPress={() => {
-          if (from === 'room' && roomId) {
-            router.push({ pathname: '/(app)/rooms/[id]' as any, params: { id: roomId } });
-          } else if (from === 'live' && momentId) {
-            router.push({ pathname: '/(app)/live-moments/[id]' as any, params: { id: momentId } });
-          } else {
-            router.back();
-          }
-        }}>
+        <Pressable testID="back-button" onPress={() => router.back()}>
           <ArrowLeft size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 17, marginLeft: 16 }}>Post</Text>

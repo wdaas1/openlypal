@@ -141,7 +141,7 @@ export default function SettingsScreen() {
       >
         <Pressable
           testID="back-button"
-          onPress={() => router.push('/(app)/profile' as any)}
+          onPress={() => router.back()}
           className="w-9 h-9 items-center justify-center rounded-full mr-3"
           style={{ backgroundColor: '#0a2d50' }}
         >

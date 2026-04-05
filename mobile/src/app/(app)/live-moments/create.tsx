@@ -97,7 +97,7 @@ export default function CreateMomentScreen() {
           </Text>
           <Pressable
             testID="close-create-button"
-            onPress={() => router.push('/(app)/live-moments' as any)}
+            onPress={() => router.back()}
             style={{
               width: 36,
               height: 36,
