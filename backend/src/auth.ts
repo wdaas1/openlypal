@@ -30,7 +30,7 @@ export const auth = betterAuth({
         }
         console.log(`[Auth] Sending password reset email to ${user.email} via Resend`);
         const resendResponse = await resend.emails.send({
-          from: "noreply@openlypal.com",
+          from: "Openly <noreply@openlypal.com>",
           to: user.email,
           subject: "Reset your password",
           html: `
@@ -65,7 +65,7 @@ export const auth = betterAuth({
         }
         console.log(`[Auth] Sending verification email to ${user.email} via Resend`);
         const resendResponse = await resend.emails.send({
-          from: "noreply@openlypal.com",
+          from: "Openly <noreply@openlypal.com>",
           to: user.email,
           subject: "Verify your email",
           html: `
