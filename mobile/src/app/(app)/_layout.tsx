@@ -130,21 +130,21 @@ function TabButton({
           style={[
             animStyle,
             {
-              width: 52,
-              height: 52,
-              borderRadius: 26,
+              width: 46,
+              height: 46,
+              borderRadius: 23,
               backgroundColor: '#00CF35',
               alignItems: 'center',
               justifyContent: 'center',
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.9,
-              shadowRadius: 18,
-              elevation: 10,
+              shadowOpacity: 0.5,
+              shadowRadius: 10,
+              elevation: 6,
             },
           ]}
         >
-          {config.icon('#001935', 24, false)}
+          {config.icon('#001935', 20, false)}
         </Animated.View>
       </Pressable>
     );
@@ -162,15 +162,21 @@ function TabButton({
         style={[
           animStyle,
           {
-            width: 46,
-            height: 46,
-            borderRadius: 23,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             alignItems: 'center',
             justifyContent: 'center',
+            ...(isActive ? {
+              shadowColor: '#00CF35',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.35,
+              shadowRadius: 8,
+            } : {}),
           },
         ]}
       >
-        {config.icon(iconColor, 22, isActive)}
+        {config.icon(iconColor, 20, isActive)}
       </Animated.View>
     </Pressable>
   );
@@ -223,9 +229,9 @@ function FloatingTabBar() {
     width: PILL_WIDTH,
     height: PILL_WIDTH,
     borderRadius: PILL_WIDTH / 2,
-    backgroundColor: 'rgba(0,207,53,0.13)',
+    backgroundColor: 'rgba(0,207,53,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(0,207,53,0.28)',
+    borderColor: 'rgba(0,207,53,0.18)',
     opacity: pillOpacity.value,
   }));
 
@@ -258,15 +264,15 @@ function FloatingTabBar() {
         borderRadius: 34,
         overflow: 'hidden',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.5,
-        shadowRadius: 24,
-        elevation: 24,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 12,
       }}
     >
       {/* Blur layer */}
       <BlurView
-        intensity={90}
+        intensity={70}
         tint="dark"
         style={{
           position: 'absolute',
@@ -284,7 +290,7 @@ function FloatingTabBar() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0,18,40,0.55)',
+          backgroundColor: 'rgba(0,12,28,0.72)',
         }}
       />
       {/* Top specular highlight */}
