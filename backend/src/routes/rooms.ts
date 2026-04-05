@@ -209,4 +209,58 @@ roomsRouter.get("/:id/posts", async (c) => {
   return c.json({ data: mapped });
 });
 
+// GET /api/rooms/:id/live-moment — get the active live moment for a room
+roomsRouter.get("/:id/live-moment", async (c) => {
+  const user = c.get("user")!;
+  const { id } = c.req.param();
+
+  // Check user is a member or owner of the room
+  const member = await prisma.roomMember.findUnique({
+    where: { roomId_userId: { roomId: id, userId: user.id } },
+  });
+  if (!member) return c.json({ error: { message: "Not a member" } }, 403);
+
+  // Auto-expire any active moments that have passed their expiry time
+  await prisma.liveMoment.updateMany({
+    where: { roomId: id, status: "active", expiresAt: { lt: new Date() } },
+    data: { status: "ended" },
+  });
+
+  // Find the most recent active live moment for this room
+  const moment = await prisma.liveMoment.findFirst({
+    where: { roomId: id, status: "active" },
+    include: {
+      creator: { select: { id: true, name: true, username: true, image: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!moment) {
+    return c.json({ data: null });
+  }
+
+  const viewerIds: string[] = (() => {
+    try {
+      const parsed = JSON.parse(moment.viewerIds);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  return c.json({
+    data: {
+      id: moment.id,
+      title: moment.title,
+      creatorId: moment.creatorId,
+      creator: moment.creator,
+      roomId: moment.roomId,
+      isLive: moment.isLive,
+      status: moment.status,
+      expiresAt: moment.expiresAt,
+      viewerCount: viewerIds.length,
+    },
+  });
+});
+
 export { roomsRouter };

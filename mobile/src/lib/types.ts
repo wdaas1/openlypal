@@ -143,6 +143,7 @@ export interface LiveMoment {
   viewerCount: number
   messageCount: number
   createdAt: string
+  roomId?: string | null
 }
 
 export interface LiveMomentMessage {

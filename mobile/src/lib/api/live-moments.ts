@@ -4,7 +4,7 @@ import type { LiveMoment, LiveMomentMessage } from '../types';
 export const liveMomentsApi = {
   getAll: () => api.get<LiveMoment[]>('/api/live-moments'),
   getOne: (id: string) => api.get<LiveMoment>(`/api/live-moments/${id}`),
-  create: (data: { title: string; expiresAfter: number; invitedUserIds: string[] }) =>
+  create: (data: { title: string; expiresAfter: number; invitedUserIds: string[]; roomId?: string }) =>
     api.post<LiveMoment>('/api/live-moments', data),
   end: (id: string) => api.patch<LiveMoment>(`/api/live-moments/${id}`, { status: 'ended' }),
   goLive: (id: string) => api.patch<LiveMoment>(`/api/live-moments/${id}/go-live`, {}),

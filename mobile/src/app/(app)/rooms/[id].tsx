@@ -8,6 +8,17 @@ import { ArrowLeft, UserPlus, Pencil, Check, X, LogOut, Trash2, Lock, FileText }
 import { useSession } from '@/lib/auth/use-session';
 import * as Haptics from 'expo-haptics';
 
+type ActiveLiveMoment = {
+  id: string;
+  title: string;
+  creatorId: string;
+  creator: { id: string; name: string; image: string | null };
+  isLive: boolean;
+  status: string;
+  expiresAt: string;
+  viewerCount: number;
+};
+
 type Member = {
   id: string;
   userId: string;
@@ -59,6 +70,26 @@ export default function RoomDetailScreen() {
     queryKey: ['room-posts', id],
     queryFn: () => api.get<Post[]>(`/api/rooms/${id}/posts`),
     enabled: activeTab === 'posts',
+  });
+
+  const { data: activeLiveMoment, refetch: refetchLiveMoment } = useQuery({
+    queryKey: ['room-live-moment', id],
+    queryFn: () => api.get<ActiveLiveMoment | null>(`/api/rooms/${id}/live-moment`),
+    refetchInterval: 5000,
+  });
+
+  const startLiveMoment = useMutation({
+    mutationFn: () =>
+      api.post('/api/live-moments', {
+        title: `${room?.name ?? 'Room'} Live`,
+        expiresAfter: 60,
+        invitedUserIds: (room?.members ?? []).map((m: Member) => m.userId).filter((uid: string) => uid !== userId),
+        roomId: id,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-live-moment', id] });
+      refetchLiveMoment();
+    },
   });
 
   const renameRoom = useMutation({
@@ -159,6 +190,71 @@ export default function RoomDetailScreen() {
           </Pressable>
         )}
       </View>
+
+      {/* Live Session Banner */}
+      {activeLiveMoment ? (
+        <Pressable
+          onPress={() => router.push(`/(app)/live-moments/${activeLiveMoment.id}` as any)}
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 10,
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundColor: 'rgba(255,59,48,0.12)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,59,48,0.35)',
+            padding: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <View style={{
+            width: 10, height: 10, borderRadius: 5,
+            backgroundColor: activeLiveMoment.isLive ? '#FF3B30' : '#FF9500',
+          }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>
+              {activeLiveMoment.isLive ? '🔴 LIVE NOW' : '⏳ Live Session Scheduled'}
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 }}>
+              {activeLiveMoment.title} · {activeLiveMoment.viewerCount} watching
+            </Text>
+          </View>
+          <View style={{
+            backgroundColor: '#FF3B30',
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: 20,
+          }}>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.5 }}>
+              {activeLiveMoment.isLive ? 'Join Live' : 'Open'}
+            </Text>
+          </View>
+        </Pressable>
+      ) : isOwner ? (
+        <Pressable
+          onPress={() => startLiveMoment.mutate()}
+          disabled={startLiveMoment.isPending}
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 10,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: 'rgba(0,207,53,0.25)',
+            backgroundColor: 'rgba(0,207,53,0.07)',
+            padding: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <Text style={{ color: '#00CF35', fontWeight: '800', fontSize: 14 }}>
+            {startLiveMoment.isPending ? 'Starting...' : '▶ Start Live Session'}
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* Tabs */}
       <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 16 }}>

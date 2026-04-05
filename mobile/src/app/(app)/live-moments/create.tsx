@@ -9,7 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -29,6 +29,7 @@ const DURATIONS = [
 export default function CreateMomentScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { roomId: paramRoomId } = useLocalSearchParams<{ roomId?: string }>();
 
   const [title, setTitle] = useState('');
   const [selectedDuration, setSelectedDuration] = useState(DURATIONS[1].value);
@@ -50,6 +51,7 @@ export default function CreateMomentScreen() {
         title: title.trim(),
         expiresAfter: selectedDuration,
         invitedUserIds: selectedUserIds,
+        roomId: paramRoomId || undefined,
       }),
     onSuccess: (moment) => {
       queryClient.invalidateQueries({ queryKey: ['live-moments'] });

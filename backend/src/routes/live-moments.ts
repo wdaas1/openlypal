@@ -52,6 +52,7 @@ async function formatMoment(
     title: string;
     creatorId: string;
     creator: { id: string; name: string; username: string | null; image: string | null };
+    roomId: string | null;
     status: string;
     isLive: boolean;
     expiresAt: Date;
@@ -71,6 +72,7 @@ async function formatMoment(
     title: moment.title,
     creatorId: moment.creatorId,
     creator: moment.creator,
+    roomId: moment.roomId,
     status: moment.status,
     isLive: moment.isLive,
     expiresAt: moment.expiresAt,
@@ -158,6 +160,7 @@ liveMomentsRouter.post(
         z.literal(1440),
       ]),
       invitedUserIds: z.array(z.string()).default([]),
+      roomId: z.string().optional(),
     })
   ),
   async (c) => {
@@ -166,7 +169,20 @@ liveMomentsRouter.post(
       return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
     }
 
-    const { title, expiresAfter, invitedUserIds } = c.req.valid("json");
+    const { title, expiresAfter, invitedUserIds, roomId } = c.req.valid("json");
+
+    // If roomId provided, verify user is a member or owner of that room
+    if (roomId) {
+      const membership = await prisma.roomMember.findFirst({
+        where: { roomId, userId: user.id },
+      });
+      if (!membership) {
+        const room = await prisma.room.findUnique({ where: { id: roomId }, select: { ownerId: true } });
+        if (!room || room.ownerId !== user.id) {
+          return c.json({ error: { message: "Forbidden: not a member of this room", code: "FORBIDDEN" } }, 403);
+        }
+      }
+    }
 
     const expiresAt = new Date(Date.now() + expiresAfter * 60 * 1000);
 
@@ -178,6 +194,7 @@ liveMomentsRouter.post(
         expiresAt,
         invitedUserIds: JSON.stringify(invitedUserIds),
         viewerIds: JSON.stringify([]),
+        roomId: roomId ?? null,
       },
       include: momentInclude,
     });
