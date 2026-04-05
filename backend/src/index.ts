@@ -16,6 +16,7 @@ import { adminRouter } from "./routes/admin";
 import { liveMomentsRouter } from "./routes/live-moments";
 import { relationshipsRouter } from "./routes/relationships";
 import { profileModulesRouter } from "./routes/profile-modules";
+import { roomsRouter } from "./routes/rooms";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -129,6 +130,7 @@ app.route("/api/admin", adminRouter);
 app.route("/api/live-moments", liveMomentsRouter);
 app.route("/api/relationships", relationshipsRouter);
 app.route("/api/profile-modules", profileModulesRouter);
+app.route("/api/rooms", roomsRouter);
 
 // Allowed MIME types for uploads
 const ALLOWED_MIME_TYPES = new Set([

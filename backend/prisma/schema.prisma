@@ -49,6 +49,8 @@ model User {
   publicKey            String?
   pushToken            String?
   profileModules       ProfileModule[]
+  ownedRooms           Room[]       @relation("RoomOwner")
+  roomMembers          RoomMember[]
 }
 
 model Session {
@@ -107,6 +109,8 @@ model Post {
   reportCount  Int      @default(0)
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId       String?
+  room         Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
   likes        Like[]
   reblogs      Reblog[]
   comments     Comment[]
@@ -258,4 +262,28 @@ model ProfileModule {
   position  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Rooms ──────────────────────────────────────────────────
+
+model Room {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User     @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   RoomMember[]
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RoomMember {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([roomId, userId])
 }

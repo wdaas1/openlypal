@@ -91,7 +91,7 @@ postsRouter.get("/", async (c) => {
   const baseHiddenFilter = { hidden: false };
 
   if (!user) {
-    // Unauthenticated: chronological, hide explicit
+    // Unauthenticated: chronological, hide explicit, exclude room posts
     const posts = await prisma.post.findMany({
       where: {
         ...baseHiddenFilter,
@@ -99,6 +99,7 @@ postsRouter.get("/", async (c) => {
         ...cursorFilter,
         isExplicit: false,
         contentScore: { lt: 1.0 },
+        roomId: null,
       },
       include: {
         user: { select: { id: true, name: true, username: true, image: true } },
@@ -122,6 +123,10 @@ postsRouter.get("/", async (c) => {
     ...baseHiddenFilter,
     ...tagFilter,
     ...sensitivityFilter,
+    OR: [
+      { roomId: null },
+      { room: { members: { some: { userId: user.id } } } },
+    ],
   };
 
   const postInclude = {
@@ -219,6 +224,7 @@ postsRouter.get("/feed/unfiltered", async (c) => {
       hidden: false,
       // Only filter illegal content (contentScore >= 1.0)
       contentScore: { lt: 1.0 },
+      roomId: null,
       ...(cursor ? { id: { lt: cursor } } : {}),
     },
     include: {
@@ -264,6 +270,10 @@ postsRouter.get("/feed/following", async (c) => {
       userId: { in: followingIds },
       hidden: false,
       ...sensitivityFilter,
+      OR: [
+        { roomId: null },
+        { room: { members: { some: { userId: user.id } } } },
+      ],
     },
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
@@ -302,6 +312,14 @@ postsRouter.get("/:id", async (c) => {
     return c.json({ error: { message: "Post not found", code: "NOT_FOUND" } }, 404);
   }
 
+  // If post belongs to a room, only members can view it
+  if (post.roomId) {
+    const member = await prisma.roomMember.findUnique({
+      where: { roomId_userId: { roomId: post.roomId, userId: user?.id ?? "" } },
+    });
+    if (!member) return c.json({ error: { message: "Forbidden" } }, 403);
+  }
+
   return c.json({ data: mapPost(post as Parameters<typeof mapPost>[0], user?.id) });
 });
 
@@ -317,6 +335,7 @@ const createPostSchema = z.object({
   isExplicit: z.boolean().default(false),
   category: z.string().optional(),
   contentScore: z.number().min(0).max(1).optional(),
+  roomId: z.string().optional(),
 });
 
 postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
@@ -343,6 +362,7 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
       category: body.category,
       contentScore: body.contentScore ?? 0,
       userId: user.id,
+      roomId: body.roomId,
     },
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },

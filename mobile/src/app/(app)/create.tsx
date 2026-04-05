@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Type, ImageIcon, Quote, Link, X, Video as VideoIcon, Camera } from 'lucide-react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Type, ImageIcon, Quote, Link, X, Video as VideoIcon, Camera, Layers, Lock } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
@@ -42,6 +42,12 @@ export default function CreateScreen() {
   const [isExplicit, setIsExplicit] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+  const { data: rooms } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => api.get<{ id: string; name: string }[]>('/api/rooms'),
+  });
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -110,6 +116,7 @@ export default function CreateScreen() {
         tags: tags.length > 0 ? tags : undefined,
         category: category || undefined,
         isExplicit,
+        roomId: selectedRoomId || undefined,
       });
     },
     onSuccess: () => {
@@ -124,6 +131,7 @@ export default function CreateScreen() {
       setTagsInput('');
       setCategory('');
       setIsExplicit(false);
+      setSelectedRoomId(null);
       router.navigate('/(app)' as any);
     },
   });
@@ -507,6 +515,45 @@ export default function CreateScreen() {
             />
           </Pressable>
         </View>
+
+        {/* Post to Room */}
+        {rooms && rooms.length > 0 ? (
+          <View style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5, paddingTop: 12, marginTop: 4, marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              <Layers size={14} color="#4a6fa5" />
+              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Post to Room</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+              <Pressable
+                onPress={() => setSelectedRoomId(null)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                  backgroundColor: selectedRoomId === null ? '#00CF35' : 'transparent',
+                  borderWidth: 1, borderColor: selectedRoomId === null ? '#00CF35' : '#1a3a5c',
+                }}
+              >
+                <Text style={{ color: selectedRoomId === null ? '#001935' : '#4a6fa5', fontSize: 13, fontWeight: '600' }}>Public</Text>
+              </Pressable>
+              {rooms.map((room) => (
+                <Pressable
+                  key={room.id}
+                  testID={`room-option-${room.id}`}
+                  onPress={() => setSelectedRoomId(selectedRoomId === room.id ? null : room.id)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 5,
+                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                    backgroundColor: selectedRoomId === room.id ? '#00CF35' : 'transparent',
+                    borderWidth: 1, borderColor: selectedRoomId === room.id ? '#00CF35' : '#1a3a5c',
+                  }}
+                >
+                  <Lock size={11} color={selectedRoomId === room.id ? '#001935' : '#4a6fa5'} />
+                  <Text style={{ color: selectedRoomId === room.id ? '#001935' : '#4a6fa5', fontSize: 13, fontWeight: '600' }}>{room.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {createPost.isError ? (
           <Text className="text-red-400 text-center text-sm mt-2">

@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { Home, Compass, PlusCircle, MessageSquare, User, Radio } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -85,6 +85,10 @@ const TABS: TabConfig[] = [
   {
     route: '/(app)/live-moments',
     icon: (color, size) => <Radio size={size} color={color} />,
+  },
+  {
+    route: '/(app)/rooms',
+    icon: (color, size) => <Layers size={size} color={color} />,
   },
   {
     route: '/(app)/profile',
@@ -187,7 +191,8 @@ function FloatingTabBar() {
     if (pathname.includes('/explore')) return 1;
     if (pathname.includes('/create')) return 2;
     if (pathname.includes('/live-moments')) return 3;
-    if (pathname.includes('/profile')) return 4;
+    if (pathname.includes('/rooms')) return 4;
+    if (pathname.includes('/profile')) return 5;
     return -1;
   };
 
@@ -202,7 +207,7 @@ function FloatingTabBar() {
     const isValid = activeIndex !== -1 && !isCenter;
 
     if (isValid && barWidth.value > 0) {
-      const slotWidth = barWidth.value / 5;
+      const slotWidth = barWidth.value / 6;
       const targetLeft = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
       pillLeft.value = withSpring(targetLeft, { damping: 20, stiffness: 200 });
       pillOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
@@ -230,7 +235,7 @@ function FloatingTabBar() {
     const isCenter = activeIndex === 2;
     const isValid = activeIndex !== -1 && !isCenter;
     if (isValid && width > 0) {
-      const slotWidth = width / 5;
+      const slotWidth = width / 6;
       pillLeft.value = activeIndex * slotWidth + (slotWidth - PILL_WIDTH) / 2;
       pillOpacity.value = 1;
     }
@@ -325,6 +330,7 @@ function FloatingTabBar() {
                 '/(app)/explore': '/(app)/explore',
                 '/(app)/create': '/(app)/create',
                 '/(app)/live-moments': '/(app)/live-moments',
+                '/(app)/rooms': '/(app)/rooms',
                 '/(app)/profile': '/(app)/profile',
               };
               router.push(routeMap[tab.route] as any);
@@ -457,6 +463,10 @@ export default function AppLayout() {
         <Tabs.Screen name="live-moments/index" options={{ title: 'Live' }} />
         <Tabs.Screen name="live-moments/create" options={{ href: null }} />
         <Tabs.Screen name="live-moments/[id]" options={{ href: null }} />
+        <Tabs.Screen name="rooms/index" options={{ href: null, title: 'Rooms' }} />
+        <Tabs.Screen name="rooms/[id]" options={{ href: null }} />
+        <Tabs.Screen name="rooms/create" options={{ href: null }} />
+        <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
         <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
         <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
         <Tabs.Screen name="post/[id]" options={{ href: null }} />
