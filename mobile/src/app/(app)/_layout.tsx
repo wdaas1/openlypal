@@ -1,19 +1,16 @@
 import React from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { View, Pressable, Text, LayoutChangeEvent, StyleSheet } from 'react-native';
+import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers, Camera, Video, Users } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withRepeat,
-  withSequence,
   withTiming,
   runOnJS,
-  cancelAnimation,
+  Easing,
 } from 'react-native-reanimated';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -95,6 +92,233 @@ const TABS: TabConfig[] = [
     icon: (color, size) => <User size={size} color={color} />,
   },
 ];
+
+// ─── CreateModal ─────────────────────────────────────────────────────────────
+
+type CreateModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  translateY: Animated.SharedValue<number>;
+  backdropOpacity: Animated.SharedValue<number>;
+};
+
+function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateModalProps) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
+  const navigate = (path: string) => {
+    onClose();
+    setTimeout(() => {
+      router.push(path as any);
+    }, 260);
+  };
+
+  const actions = [
+    {
+      testID: 'create-modal-post',
+      icon: <Camera size={22} color="#00CF35" />,
+      label: 'Post',
+      sub: 'Share a photo or video',
+      onPress: () => navigate('/(app)/create'),
+    },
+    {
+      testID: 'create-modal-live',
+      icon: <Video size={22} color="#00CF35" />,
+      label: 'Go Live',
+      sub: 'Start a live session',
+      onPress: () => navigate('/(app)/live-moments/create'),
+    },
+    {
+      testID: 'create-modal-room',
+      icon: <Users size={22} color="#00CF35" />,
+      label: 'Create Room',
+      sub: 'Start a group space',
+      onPress: () => navigate('/(app)/rooms'),
+    },
+    {
+      testID: 'create-modal-message',
+      icon: <MessageSquare size={22} color="#00CF35" />,
+      label: 'Message',
+      sub: 'Send a direct message',
+      onPress: () => navigate('/(app)/messenger'),
+    },
+  ];
+
+  return (
+    <Modal
+      testID="create-modal"
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      {/* Backdrop */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          backdropStyle,
+          { backgroundColor: '#000' },
+        ]}
+      />
+
+      {/* Full-screen pressable to close on tap outside */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+      />
+
+      {/* Sheet */}
+      <Animated.View
+        style={[
+          sheetStyle,
+          {
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: '#001228',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            paddingBottom: Math.max(insets.bottom, 16),
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.5,
+            shadowRadius: 20,
+            elevation: 24,
+          },
+        ]}
+      >
+        {/* Drag handle */}
+        <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+          <View
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: 'rgba(255,255,255,0.25)',
+            }}
+          />
+        </View>
+
+        {/* Title */}
+        <Text
+          style={{
+            color: '#ffffff',
+            fontSize: 13,
+            fontWeight: '600',
+            letterSpacing: 0.5,
+            textTransform: 'uppercase',
+            opacity: 0.45,
+            textAlign: 'center',
+            paddingTop: 8,
+            paddingBottom: 16,
+          }}
+        >
+          Create something
+        </Text>
+
+        {/* Actions */}
+        <View style={{ paddingHorizontal: 16, gap: 4 }}>
+          {actions.map((action) => (
+            <Pressable
+              key={action.testID}
+              testID={action.testID}
+              onPress={action.onPress}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 18,
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                backgroundColor: pressed
+                  ? 'rgba(0,207,53,0.08)'
+                  : 'rgba(255,255,255,0.04)',
+                gap: 16,
+              })}
+            >
+              {/* Icon container */}
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(0,207,53,0.1)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,207,53,0.2)',
+                }}
+              >
+                {action.icon}
+              </View>
+
+              {/* Labels */}
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 17,
+                    fontWeight: '600',
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  {action.label}
+                </Text>
+                <Text
+                  style={{
+                    color: 'rgba(255,255,255,0.45)',
+                    fontSize: 13,
+                    marginTop: 1,
+                  }}
+                >
+                  {action.sub}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Cancel */}
+        <Pressable
+          testID="create-modal-cancel"
+          onPress={onClose}
+          style={({ pressed }) => ({
+            height: 56,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 8,
+            marginHorizontal: 16,
+            borderRadius: 14,
+            backgroundColor: pressed
+              ? 'rgba(255,255,255,0.06)'
+              : 'transparent',
+          })}
+        >
+          <Text
+            style={{
+              color: 'rgba(255,255,255,0.45)',
+              fontSize: 16,
+              fontWeight: '500',
+            }}
+          >
+            Cancel
+          </Text>
+        </Pressable>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ─── TabButton ────────────────────────────────────────────────────────────────
 
 function TabButton({
   config,
@@ -182,7 +406,13 @@ function TabButton({
   );
 }
 
-function FloatingTabBar() {
+// ─── FloatingTabBar ───────────────────────────────────────────────────────────
+
+type FloatingTabBarProps = {
+  onOpenModal: () => void;
+};
+
+function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -327,6 +557,10 @@ function FloatingTabBar() {
             config={tab}
             isActive={activeIndex === index}
             onPress={() => {
+              if (tab.isCenter) {
+                onOpenModal();
+                return;
+              }
               const isHome = tab.route === '/(app)/index';
               const alreadyOnHome = activeIndex === index;
               if (isHome && alreadyOnHome) {
@@ -336,21 +570,10 @@ function FloatingTabBar() {
               const routeMap: Record<string, string> = {
                 '/(app)/index': '/',
                 '/(app)/explore': '/(app)/explore',
-                '/(app)/create': '/(app)/create',
                 '/(app)/live-moments': '/(app)/live-moments',
                 '/(app)/rooms': '/(app)/rooms',
                 '/(app)/profile': '/(app)/profile',
               };
-              if (tab.route === '/(app)/create') {
-                const roomMatch = pathname.match(/\/rooms\/([^/]+)$/);
-                const roomId = roomMatch ? roomMatch[1] : null;
-                if (roomId) {
-                  router.push({ pathname: '/(app)/create' as any, params: { roomId } });
-                } else {
-                  router.push('/(app)/create' as any);
-                }
-                return;
-              }
               router.push(routeMap[tab.route] as any);
             }}
           />
@@ -360,149 +583,107 @@ function FloatingTabBar() {
   );
 }
 
-function FloatingChatButton() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const pulseScale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const offsetX = useSharedValue(0);
-  const offsetY = useSharedValue(0);
-
-  const startPulse = () => {
-    pulseScale.value = withRepeat(
-      withSequence(
-        withTiming(1.08, { duration: 900 }),
-        withTiming(1, { duration: 900 })
-      ),
-      -1,
-      false
-    );
-  };
-
-  React.useEffect(() => {
-    startPulse();
-  }, [pulseScale]);
-
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(app)/messenger' as any);
-  };
-
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      cancelAnimation(pulseScale);
-      pulseScale.value = withTiming(1, { duration: 100 });
-      offsetX.value = translateX.value;
-      offsetY.value = translateY.value;
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-    })
-    .onChange((e) => {
-      translateX.value = offsetX.value + e.translationX;
-      translateY.value = offsetY.value + e.translationY;
-    })
-    .onEnd(() => {
-      runOnJS(startPulse)();
-    });
-
-  const tapGesture = Gesture.Tap().onEnd(() => {
-    runOnJS(handlePress)();
-  });
-
-  const composed = Gesture.Race(panGesture, tapGesture);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: pulseScale.value },
-    ],
-  }));
-
-  if (pathname.includes('/messenger')) return null;
-  if (pathname.includes('/live-moments')) return null;
-  if (pathname.includes('/post/')) return null;
-
-  const bottomOffset = Math.max(insets.bottom, 12) + 64 + 16;
-
-  return (
-    <GestureDetector gesture={composed}>
-      <Animated.View
-        testID="floating-chat-button"
-        style={[
-          animatedStyle,
-          {
-            position: 'absolute',
-            bottom: bottomOffset,
-            right: 20,
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            backgroundColor: '#00CF35',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#00CF35',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.8,
-            shadowRadius: 16,
-            elevation: 12,
-          },
-        ]}
-      >
-        <MessageSquare size={22} color="#001935" />
-      </Animated.View>
-    </GestureDetector>
-  );
-}
+// ─── E2EInitializer ───────────────────────────────────────────────────────────
 
 function E2EInitializer() {
   useE2EInit();
   return null;
 }
 
+// ─── AppLayout ────────────────────────────────────────────────────────────────
+
 export default function AppLayout() {
+  const [modalVisible, setModalVisible] = React.useState(false);
+
+  // Animation shared values
+  const sheetTranslateY = useSharedValue(600);
+  const backdropOpacity = useSharedValue(0);
+  const contentScale = useSharedValue(1);
+
+  const openModal = () => {
+    setModalVisible(true);
+    sheetTranslateY.value = 600;
+    backdropOpacity.value = 0;
+    contentScale.value = 1;
+
+    sheetTranslateY.value = withTiming(0, {
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+    });
+    backdropOpacity.value = withTiming(0.5, { duration: 250 });
+    contentScale.value = withTiming(0.96, { duration: 250 });
+  };
+
+  const closeModal = () => {
+    sheetTranslateY.value = withTiming(600, {
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+    });
+    backdropOpacity.value = withTiming(0, { duration: 220 });
+    contentScale.value = withTiming(1, {
+      duration: 220,
+    }, () => {
+      runOnJS(setModalVisible)(false);
+    });
+  };
+
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    flex: 1,
+    transform: [{ scale: contentScale.value }],
+    borderRadius: contentScale.value < 1 ? 16 : 0,
+    overflow: 'hidden',
+  }));
+
   return (
     <KeyboardProvider>
-    <View style={{ flex: 1 }}>
-      <E2EInitializer />
-      <Tabs
-        tabBar={() => null}
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-        }}
-      >
-        <Tabs.Screen name="index" options={{ title: 'Home' }} />
-        <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
-        <Tabs.Screen name="create" options={{ title: 'Create' }} />
-        <Tabs.Screen name="activity" options={{ href: null, title: 'Activity' }} />
-        <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-        <Tabs.Screen name="live-moments/index" options={{ title: 'Live' }} />
-        <Tabs.Screen name="live-moments/create" options={{ href: null }} />
-        <Tabs.Screen name="live-moments/[id]" options={{ href: null }} />
-        <Tabs.Screen name="rooms/index" options={{ href: null, title: 'Rooms' }} />
-        <Tabs.Screen name="rooms/[id]" options={{ href: null }} />
-        <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
-        <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
-        <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
-        <Tabs.Screen name="post/[id]" options={{ href: null }} />
-        <Tabs.Screen name="user/[id]" options={{ href: null }} />
-        <Tabs.Screen name="user/followers" options={{ href: null }} />
-        <Tabs.Screen name="interests" options={{ href: null }} />
-        <Tabs.Screen name="support" options={{ href: null }} />
-        <Tabs.Screen name="legal" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
-        <Tabs.Screen name="edit-profile" options={{ href: null }} />
-        <Tabs.Screen name="admin" options={{ href: null }} />
-        <Tabs.Screen name="relationships/index" options={{ href: null }} />
-        <Tabs.Screen name="profile-modules/index" options={{ href: null }} />
-      </Tabs>
-      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-        <FloatingTabBar />
-        <FloatingChatButton />
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <E2EInitializer />
+        <Animated.View style={contentAnimStyle}>
+          <Tabs
+            tabBar={() => null}
+            screenOptions={{
+              headerShown: false,
+              tabBarStyle: { display: 'none' },
+            }}
+          >
+            <Tabs.Screen name="index" options={{ title: 'Home' }} />
+            <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
+            <Tabs.Screen name="create" options={{ title: 'Create' }} />
+            <Tabs.Screen name="activity" options={{ href: null, title: 'Activity' }} />
+            <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+            <Tabs.Screen name="live-moments/index" options={{ title: 'Live' }} />
+            <Tabs.Screen name="live-moments/create" options={{ href: null }} />
+            <Tabs.Screen name="live-moments/[id]" options={{ href: null }} />
+            <Tabs.Screen name="rooms/index" options={{ href: null, title: 'Rooms' }} />
+            <Tabs.Screen name="rooms/[id]" options={{ href: null }} />
+            <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
+            <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
+            <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
+            <Tabs.Screen name="post/[id]" options={{ href: null }} />
+            <Tabs.Screen name="user/[id]" options={{ href: null }} />
+            <Tabs.Screen name="user/followers" options={{ href: null }} />
+            <Tabs.Screen name="interests" options={{ href: null }} />
+            <Tabs.Screen name="support" options={{ href: null }} />
+            <Tabs.Screen name="legal" options={{ href: null }} />
+            <Tabs.Screen name="settings" options={{ href: null }} />
+            <Tabs.Screen name="edit-profile" options={{ href: null }} />
+            <Tabs.Screen name="admin" options={{ href: null }} />
+            <Tabs.Screen name="relationships/index" options={{ href: null }} />
+            <Tabs.Screen name="profile-modules/index" options={{ href: null }} />
+          </Tabs>
+        </Animated.View>
+
+        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+          <FloatingTabBar onOpenModal={openModal} />
+        </View>
+
+        <CreateModal
+          visible={modalVisible}
+          onClose={closeModal}
+          translateY={sheetTranslateY}
+          backdropOpacity={backdropOpacity}
+        />
       </View>
-    </View>
     </KeyboardProvider>
   );
 }
