@@ -24,6 +24,7 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera } from 'lucide-react-native';
+import WebView from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { liveMomentsApi } from '@/lib/api/live-moments';
@@ -338,6 +339,9 @@ export default function LiveMomentRoomScreen() {
   const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingSent = useRef<number>(0);
+  const [streamToken, setStreamToken] = useState<string | null>(null);
+  const [streamWsUrl, setStreamWsUrl] = useState<string | null>(null);
+  const [isStartingStream, setIsStartingStream] = useState(false);
 
   // Fetch moment
   const { data: moment, isLoading } = useQuery({
@@ -544,10 +548,49 @@ export default function LiveMomentRoomScreen() {
     setFacingFront((prev) => !prev);
   }, []);
 
-  const handleGoLive = useCallback(() => {
+  const handleGoLive = useCallback(async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    goLive();
-  }, [goLive]);
+    setIsStartingStream(true);
+    try {
+      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+      const token = await getAuthToken();
+      const res = await fetch(`${backendUrl}/api/stream/live-moments/${id}/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        const json = await res.json() as { data: { token: string; wsUrl: string } };
+        setStreamToken(json.data.token);
+        setStreamWsUrl(json.data.wsUrl);
+      }
+      // Also update isLive in the DB via the existing route
+      goLive();
+    } catch {
+      goLive();
+    } finally {
+      setIsStartingStream(false);
+    }
+  }, [id, goLive]);
+
+  const handleJoinStream = useCallback(async () => {
+    try {
+      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+      const token = await getAuthToken();
+      const res = await fetch(`${backendUrl}/api/stream/live-moments/${id}/viewer-token`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const json = await res.json() as { data: { token: string; wsUrl: string } };
+        setStreamToken(json.data.token);
+        setStreamWsUrl(json.data.wsUrl);
+      }
+    } catch {
+      // ignore — stream might not be available
+    }
+  }, [id]);
 
   const handlePickImage = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -566,6 +609,13 @@ export default function LiveMomentRoomScreen() {
   const isEnded = moment?.status === 'ended' || timeRemaining === 'Ended';
   const isNotLive = !moment?.isLive;
 
+  // Auto-fetch viewer stream token when moment is live
+  useEffect(() => {
+    if (moment?.isLive && !isCreator && !streamToken) {
+      handleJoinStream();
+    }
+  }, [moment?.isLive, isCreator, handleJoinStream]);
+
   if (isLoading || !moment) {
     return (
       <View
@@ -580,6 +630,11 @@ export default function LiveMomentRoomScreen() {
       </View>
     );
   }
+
+  const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+  const streamUrl = streamToken && streamWsUrl
+    ? `${backendBaseUrl}/stream/${id}?token=${encodeURIComponent(streamToken)}&url=${encodeURIComponent(streamWsUrl)}&role=${isCreator ? 'publisher' : 'viewer'}`
+    : null;
 
   // Shared overlay UI rendered on top of both creator and viewer backgrounds
   const overlayContent = (
@@ -703,7 +758,7 @@ export default function LiveMomentRoomScreen() {
           >
             This moment is not live yet. Tap to go live.
           </Text>
-          <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive} />
+          <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive || isStartingStream} />
         </View>
       ) : null}
 
@@ -729,6 +784,31 @@ export default function LiveMomentRoomScreen() {
         >
           {timeRemaining}
         </Text>
+      ) : null}
+
+      {/* Live stream WebView — shown when stream is active */}
+      {streamUrl ? (
+        <View
+          style={{
+            height: 260,
+            backgroundColor: '#000',
+            borderRadius: 0,
+            overflow: 'hidden',
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(255,255,255,0.06)',
+          }}
+        >
+          <WebView
+            testID="stream-webview"
+            source={{ uri: streamUrl }}
+            style={{ flex: 1 }}
+            mediaPlaybackRequiresUserAction={false}
+            allowsInlineMediaPlayback={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            allowsFullscreenVideo={false}
+          />
+        </View>
       ) : null}
 
       {/* Messages — show placeholder for viewers when not live */}
