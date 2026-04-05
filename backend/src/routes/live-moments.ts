@@ -262,7 +262,7 @@ liveMomentsRouter.patch(
 
     const moment = await prisma.liveMoment.findUnique({
       where: { id },
-      select: { creatorId: true },
+      select: { creatorId: true, roomId: true, title: true },
     });
 
     if (!moment) {
@@ -273,11 +273,51 @@ liveMomentsRouter.patch(
       return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
     }
 
+    const { status } = c.req.valid("json");
+
     const updated = await prisma.liveMoment.update({
       where: { id },
-      data: { status: "ended" },
+      data: { status },
       include: momentInclude,
     });
+
+    // If this moment belongs to a room and was live, create a recap post
+    if (status === "ended" && moment.roomId) {
+      // Fetch all messages from this session
+      const messages = await prisma.liveMomentMessage.findMany({
+        where: { momentId: id },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const textCount = messages.filter((m) => m.type === "text").length;
+      const imageCount = messages.filter((m) => m.type === "image").length;
+      const videoCount = messages.filter((m) => m.type === "video").length;
+      const reactionCount = messages.filter((m) => m.type === "reaction").length;
+
+      const parts: string[] = [];
+      if (textCount > 0) parts.push(`${textCount} message${textCount !== 1 ? "s" : ""}`);
+      if (imageCount > 0) parts.push(`${imageCount} photo${imageCount !== 1 ? "s" : ""}`);
+      if (videoCount > 0) parts.push(`${videoCount} video${videoCount !== 1 ? "s" : ""}`);
+      if (reactionCount > 0) parts.push(`${reactionCount} reaction${reactionCount !== 1 ? "s" : ""}`);
+
+      const summary = parts.length > 0 ? parts.join(" · ") : "No activity recorded";
+
+      const firstImage = messages.find((m) => m.type === "image" && m.contentUrl);
+      const firstVideo = messages.find((m) => m.type === "video" && m.contentUrl);
+
+      await prisma.post.create({
+        data: {
+          type: "live_recap",
+          title: moment.title,
+          content: summary,
+          imageUrl: firstImage?.contentUrl ?? null,
+          videoUrl: firstVideo?.contentUrl ?? null,
+          linkUrl: id, // moment ID for future replay feature
+          roomId: moment.roomId,
+          userId: moment.creatorId,
+        },
+      });
+    }
 
     const formatted = await formatMoment(updated);
     return c.json({ data: formatted });

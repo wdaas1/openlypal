@@ -500,37 +500,116 @@ export default function RoomDetailScreen() {
                 <Text style={{ color: '#4a6fa5', fontSize: 15 }}>No posts in this room yet</Text>
               </View>
             }
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => router.push(`/(app)/post/${item.id}` as any)}
-                style={{ backgroundColor: '#0a2d50', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#1a3a5c' }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  {item.user.image ? (
-                    <Image source={{ uri: item.user.image }} style={{ width: 32, height: 32, borderRadius: 16 }} />
-                  ) : (
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#1a3a5c', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{(item.user.name ?? '?')[0].toUpperCase()}</Text>
+            renderItem={({ item }) => {
+              if (item.type === 'live_recap') {
+                return (
+                  <View
+                    style={{
+                      backgroundColor: '#0a1a2e',
+                      borderRadius: 14,
+                      marginBottom: 12,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,59,48,0.25)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Recap header */}
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: 14,
+                      backgroundColor: 'rgba(255,59,48,0.08)',
+                      borderBottomWidth: 1,
+                      borderBottomColor: 'rgba(255,59,48,0.15)',
+                    }}>
+                      <View style={{
+                        width: 8, height: 8, borderRadius: 4,
+                        backgroundColor: '#FF3B30',
+                      }} />
+                      <Text style={{ color: '#FF3B30', fontWeight: '900', fontSize: 12, letterSpacing: 1.5, flex: 1 }}>
+                        LIVE RECAP
+                      </Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+                        {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </Text>
                     </View>
-                  )}
-                  <View>
-                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{item.user.name}</Text>
-                    {item.user.username ? <Text style={{ color: '#4a6fa5', fontSize: 12 }}>@{item.user.username}</Text> : null}
+
+                    <View style={{ padding: 14 }}>
+                      <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
+                        {item.title ?? 'Live Session'}
+                      </Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 18 }}>
+                        {item.content}
+                      </Text>
+
+                      {/* Media preview */}
+                      {item.imageUrl ? (
+                        <Image
+                          source={{ uri: item.imageUrl }}
+                          style={{ width: '100%', height: 160, borderRadius: 10, marginTop: 12 }}
+                          resizeMode="cover"
+                        />
+                      ) : item.videoUrl ? (
+                        <VideoPost uri={item.videoUrl} />
+                      ) : null}
+
+                      {/* Replay chip — placeholder for future feature */}
+                      <View style={{
+                        marginTop: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        alignSelf: 'flex-start',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                      }}>
+                        <Play size={12} color="rgba(255,255,255,0.4)" />
+                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '600' }}>
+                          Replay coming soon
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                </View>
-                {item.title ? <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 6 }}>{item.title}</Text> : null}
-                {item.content ? <Text style={{ color: '#c0d0e0', fontSize: 14, lineHeight: 20 }} numberOfLines={3}>{item.content}</Text> : null}
-                {item.imageUrl ? (
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={{ width: '100%', height: 200, borderRadius: 10, marginTop: 10 }}
-                    resizeMode="cover"
-                  />
-                ) : item.videoUrl ? (
-                  <VideoPost uri={item.videoUrl} />
-                ) : null}
-              </Pressable>
-            )}
+                );
+              }
+
+              return (
+                <Pressable
+                  onPress={() => router.push(`/(app)/post/${item.id}` as any)}
+                  style={{ backgroundColor: '#0a2d50', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#1a3a5c' }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    {item.user.image ? (
+                      <Image source={{ uri: item.user.image }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                    ) : (
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#1a3a5c', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{(item.user.name ?? '?')[0].toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View>
+                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{item.user.name}</Text>
+                      {item.user.username ? <Text style={{ color: '#4a6fa5', fontSize: 12 }}>@{item.user.username}</Text> : null}
+                    </View>
+                  </View>
+                  {item.title ? <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 6 }}>{item.title}</Text> : null}
+                  {item.content ? <Text style={{ color: '#c0d0e0', fontSize: 14, lineHeight: 20 }} numberOfLines={3}>{item.content}</Text> : null}
+                  {item.imageUrl ? (
+                    <Image
+                      source={{ uri: item.imageUrl }}
+                      style={{ width: '100%', height: 200, borderRadius: 10, marginTop: 10 }}
+                      resizeMode="cover"
+                    />
+                  ) : item.videoUrl ? (
+                    <VideoPost uri={item.videoUrl} />
+                  ) : null}
+                </Pressable>
+              );
+            }}
           />
         )
       ) : (
