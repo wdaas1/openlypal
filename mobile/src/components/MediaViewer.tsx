@@ -164,7 +164,7 @@ interface VideoViewerProps {
 function VideoViewerInner({ uri, dragY, bgOpacity, onDismiss }: VideoViewerProps) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
-    p.play();
+    try { p.play(); } catch {}
   });
 
   const pan = Gesture.Pan()

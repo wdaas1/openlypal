@@ -116,9 +116,9 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
   useEffect(() => {
     if (!player) return;
     if (isVisible) {
-      player.play();
+      try { player.play(); } catch {}
     } else {
-      player.pause();
+      try { player.pause(); } catch {}
     }
   }, [isVisible, player]);
 
