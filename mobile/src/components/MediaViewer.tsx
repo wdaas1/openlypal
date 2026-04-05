@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
-import { Modal, View, Pressable, Dimensions, StyleSheet } from 'react-native';
+import { Modal, View, Pressable, Dimensions, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -164,7 +164,7 @@ interface VideoViewerProps {
 function VideoViewerInner({ uri, dragY, bgOpacity, onDismiss }: VideoViewerProps) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
-    try { p.play(); } catch {}
+    if (Platform.OS !== 'web') p.play();
   });
 
   const pan = Gesture.Pan()

@@ -114,11 +114,11 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (!player) return;
+    if (!player || Platform.OS === 'web') return;
     if (isVisible) {
-      try { player.play(); } catch {}
+      player.play();
     } else {
-      try { player.pause(); } catch {}
+      player.pause();
     }
   }, [isVisible, player]);
 
