@@ -554,19 +554,19 @@ export default function LiveMomentRoomScreen() {
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAuthToken();
-      const res = await fetch(`${backendUrl}/api/stream/live-moments/${id}/start`, {
+      const res = await fetch(`${backendUrl}/api/livekit/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({ momentId: id, role: 'publisher' }),
       });
       if (res.ok) {
         const json = await res.json() as { data: { token: string; wsUrl: string } };
         setStreamToken(json.data.token);
         setStreamWsUrl(json.data.wsUrl);
       }
-      // Also update isLive in the DB via the existing route
       goLive();
     } catch {
       goLive();
@@ -579,8 +579,13 @@ export default function LiveMomentRoomScreen() {
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAuthToken();
-      const res = await fetch(`${backendUrl}/api/stream/live-moments/${id}/viewer-token`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const res = await fetch(`${backendUrl}/api/livekit/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ momentId: id, role: 'viewer' }),
       });
       if (res.ok) {
         const json = await res.json() as { data: { token: string; wsUrl: string } };
@@ -588,7 +593,7 @@ export default function LiveMomentRoomScreen() {
         setStreamWsUrl(json.data.wsUrl);
       }
     } catch {
-      // ignore — stream might not be available
+      // ignore
     }
   }, [id]);
 
@@ -608,13 +613,6 @@ export default function LiveMomentRoomScreen() {
   const isCreator = moment?.creatorId === session?.user?.id;
   const isEnded = moment?.status === 'ended' || timeRemaining === 'Ended';
   const isNotLive = !moment?.isLive;
-
-  // Auto-fetch viewer stream token when moment is live
-  useEffect(() => {
-    if (moment?.isLive && !isCreator && !streamToken) {
-      handleJoinStream();
-    }
-  }, [moment?.isLive, isCreator, handleJoinStream]);
 
   if (isLoading || !moment) {
     return (
@@ -812,21 +810,67 @@ export default function LiveMomentRoomScreen() {
       ) : null}
 
       {/* Messages — show placeholder for viewers when not live */}
-      {!isCreator && isNotLive && !isEnded ? (
+      {!isCreator && !isEnded && (isNotLive || (!isNotLive && !streamToken)) ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontSize: 32 }}>📡</Text>
-          <Text
-            style={{
-              color: 'rgba(255,255,255,0.35)',
-              fontSize: 15,
-              fontWeight: '600',
-              marginTop: 12,
-              textAlign: 'center',
-              paddingHorizontal: 40,
-            }}
-          >
-            Creator hasn't gone live yet
-          </Text>
+          {isNotLive ? (
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.35)',
+                fontSize: 15,
+                fontWeight: '600',
+                marginTop: 12,
+                textAlign: 'center',
+                paddingHorizontal: 40,
+              }}
+            >
+              Creator hasn't gone live yet
+            </Text>
+          ) : (
+            <>
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 15,
+                  fontWeight: '600',
+                  marginTop: 12,
+                  textAlign: 'center',
+                  paddingHorizontal: 40,
+                }}
+              >
+                Stream is live!
+              </Text>
+              <Pressable
+                onPress={handleJoinStream}
+                style={{
+                  marginTop: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: '#FF3B30',
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                  borderRadius: 24,
+                  shadowColor: '#FF3B30',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 12,
+                  elevation: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 15,
+                    fontWeight: '900',
+                    letterSpacing: 1,
+                  }}
+                >
+                  JOIN LIVE
+                </Text>
+              </Pressable>
+            </>
+          )}
         </View>
       ) : (
         <ScrollView

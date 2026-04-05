@@ -43,6 +43,80 @@ async function generateToken(
   return await at.toJwt();
 }
 
+// ─── POST /api/livekit/token ────────────────────────────────────────────────
+// Unified token endpoint for publishers and viewers
+streamingRouter.post("/api/livekit/token", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  if (!isLiveKitConfigured()) {
+    return c.json(
+      { error: { message: "Streaming not configured. Add LIVEKIT_API_KEY, LIVEKIT_API_SECRET, and LIVEKIT_URL env vars.", code: "NOT_CONFIGURED" } },
+      503
+    );
+  }
+
+  const body = await c.req.json<{ momentId?: string; role?: string }>();
+  const { momentId, role } = body;
+
+  if (!momentId || (role !== "publisher" && role !== "viewer")) {
+    return c.json(
+      { error: { message: "momentId and role ('publisher' | 'viewer') are required", code: "BAD_REQUEST" } },
+      400
+    );
+  }
+
+  const moment = await prisma.liveMoment.findUnique({
+    where: { id: momentId },
+    select: { creatorId: true, invitedUserIds: true, status: true, isLive: true },
+  });
+
+  if (!moment) {
+    return c.json({ error: { message: "Moment not found", code: "NOT_FOUND" } }, 404);
+  }
+
+  if (moment.status === "ended") {
+    return c.json({ error: { message: "Moment has ended", code: "MOMENT_ENDED" } }, 400);
+  }
+
+  const isCreator = moment.creatorId === user.id;
+  const invitedIds = parseJsonArray(moment.invitedUserIds);
+  const isInvited = invitedIds.includes(user.id);
+
+  if (role === "publisher") {
+    if (!isCreator) {
+      return c.json({ error: { message: "Forbidden: only the creator can publish", code: "FORBIDDEN" } }, 403);
+    }
+    // Mark moment as live when publisher joins
+    await prisma.liveMoment.update({
+      where: { id: momentId },
+      data: { isLive: true },
+    });
+  } else {
+    // viewer
+    if (!isCreator && !isInvited) {
+      return c.json({ error: { message: "Forbidden: you are not invited to this moment", code: "FORBIDDEN" } }, 403);
+    }
+    if (!moment.isLive) {
+      return c.json({ error: { message: "Stream has not started yet", code: "NOT_LIVE" } }, 400);
+    }
+  }
+
+  const roomName = `moment-${momentId}`;
+  const canPublish = role === "publisher";
+  const token = await generateToken(roomName, user.id, user.name, canPublish);
+
+  return c.json({
+    data: {
+      token,
+      wsUrl: env.LIVEKIT_URL!,
+      roomName,
+    },
+  });
+});
+
 // ─── POST /api/stream/live-moments/:id/start ───────────────────────────────
 // Creator starts a stream for their moment
 streamingRouter.post("/api/stream/live-moments/:id/start", async (c) => {
