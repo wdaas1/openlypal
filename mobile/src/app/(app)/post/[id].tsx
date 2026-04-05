@@ -508,9 +508,13 @@ export default function PostDetailScreen() {
   const { id: _idParam, postId, from, roomId, momentId } = useLocalSearchParams<{ id?: string; postId?: string; from?: string; roomId?: string; momentId?: string }>();
   const id = postId ?? _idParam ?? '';
   const router = useRouter();
+  console.log('CAN GO BACK:', router.canGoBack());
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
+    } else if (postId && _idParam) {
+      // Accessed via /rooms/[id]/post/[postId] — _idParam is the roomId
+      router.replace(`/(app)/rooms/${_idParam}` as any);
     } else {
       router.replace('/rooms');
     }

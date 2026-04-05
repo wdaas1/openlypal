@@ -349,11 +349,14 @@ function MessageBubble({
 }
 
 export default function LiveMomentRoomScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, roomId } = useLocalSearchParams<{ id: string; roomId?: string }>();
   const router = useRouter();
+  console.log('CAN GO BACK:', router.canGoBack());
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
+    } else if (roomId) {
+      router.replace(`/(app)/rooms/${roomId}` as any);
     } else {
       router.replace('/rooms');
     }
