@@ -17,6 +17,8 @@ import { liveMomentsRouter } from "./routes/live-moments";
 import { relationshipsRouter } from "./routes/relationships";
 import { profileModulesRouter } from "./routes/profile-modules";
 import { roomsRouter } from "./routes/rooms";
+import { createBunWebSocket } from "hono/bun";
+import { wsManager } from "./ws-manager";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -24,6 +26,8 @@ type Variables = {
 };
 
 const app = new Hono<{ Variables: Variables }>();
+
+const { upgradeWebSocket, websocket } = createBunWebSocket();
 
 // ---------------------------------------------------------------------------
 // In-memory rate limiter
@@ -127,6 +131,57 @@ app.route("/api", messagesRouter);
 app.route("/api", tagFollowsRouter);
 app.route("/api", reportsRouter);
 app.route("/api/admin", adminRouter);
+// WebSocket endpoint for live moment real-time updates
+app.get(
+  "/ws/live-moments/:id",
+  upgradeWebSocket(async (c) => {
+    const momentId = c.req.param("id");
+    const token = c.req.query("token") ?? "";
+
+    // Authenticate via bearer token
+    let userId = "";
+    let userName = "";
+    try {
+      const session = await auth.api.getSession({
+        headers: new Headers({ Authorization: `Bearer ${token}` }),
+      });
+      userId = session?.user?.id ?? "";
+      userName = session?.user?.name ?? "";
+    } catch {
+      // unauthenticated — we still allow connection but won't broadcast typing
+    }
+
+    return {
+      onOpen(_evt, ws) {
+        if (userId) {
+          wsManager.join(momentId, userId, userName, ws);
+        }
+      },
+      onMessage(evt, _ws) {
+        if (!userId) return;
+        try {
+          const data = JSON.parse(evt.data.toString()) as { type?: string };
+          if (data.type === "typing") {
+            // Broadcast typing indicator to everyone else in the room
+            wsManager.broadcast(momentId, userId, {
+              type: "typing",
+              userId,
+              userName,
+            });
+          }
+        } catch {
+          // ignore malformed messages
+        }
+      },
+      onClose(_evt, _ws) {
+        if (userId) {
+          wsManager.leave(momentId, userId);
+        }
+      },
+    };
+  })
+);
+
 app.route("/api/live-moments", liveMomentsRouter);
 app.route("/api/relationships", relationshipsRouter);
 app.route("/api/profile-modules", profileModulesRouter);
@@ -179,4 +234,5 @@ const port = Number(process.env.PORT) || 3000;
 export default {
   port,
   fetch: app.fetch,
+  websocket,
 };

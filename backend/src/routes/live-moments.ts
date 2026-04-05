@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
+import { wsManager } from "../ws-manager";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -400,7 +401,7 @@ liveMomentsRouter.post(
       },
     });
 
-    return c.json({ data: {
+    const formattedMsg = {
       id: message.id,
       momentId: message.momentId,
       userId: message.userId,
@@ -409,7 +410,12 @@ liveMomentsRouter.post(
       contentUrl: message.contentUrl ?? null,
       type: message.type,
       createdAt: message.createdAt,
-    } }, 201);
+    };
+
+    // Broadcast to all other WS clients in this moment (sender gets REST response)
+    wsManager.broadcast(id, user.id, { type: "message", data: formattedMsg });
+
+    return c.json({ data: formattedMsg }, 201);
   }
 );
 

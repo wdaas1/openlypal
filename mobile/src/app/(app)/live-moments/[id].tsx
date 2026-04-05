@@ -28,6 +28,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
+import { getAuthToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
 
 function getTimeRemaining(expiresAt: string): string {
@@ -332,6 +333,11 @@ export default function LiveMomentRoomScreen() {
   const [timeRemaining, setTimeRemaining] = useState('');
   // 'front' | 'back' — tracked for when camera is wired up
   const [facingFront, setFacingFront] = useState(true);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
+  const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const lastTypingSent = useRef<number>(0);
 
   // Fetch moment
   const { data: moment, isLoading } = useQuery({
@@ -365,6 +371,77 @@ export default function LiveMomentRoomScreen() {
     };
   }, [id]);
 
+  // WebSocket real-time connection
+  useEffect(() => {
+    if (!id) return;
+    let ws: WebSocket | null = null;
+
+    const connect = async () => {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+      const wsUrl = backendUrl.replace(/^https/, 'wss').replace(/^http/, 'ws');
+
+      ws = new WebSocket(`${wsUrl}/ws/live-moments/${id}?token=${encodeURIComponent(token)}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => setWsConnected(true);
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data) as
+            | { type: 'message'; data: LiveMomentMessage }
+            | { type: 'typing'; userId: string; userName: string };
+
+          if (data.type === 'message') {
+            queryClient.setQueryData(
+              ['live-moment-messages', id],
+              (old: LiveMomentMessage[] | undefined) => {
+                const existing = old ?? [];
+                if (existing.some((m) => m.id === data.data.id)) return existing;
+                return [...existing, data.data];
+              }
+            );
+          } else if (data.type === 'typing') {
+            setTypingUsers((prev) => {
+              const filtered = prev.filter((u) => u.userId !== data.userId);
+              return [...filtered, { userId: data.userId, userName: data.userName }];
+            });
+            // Clear typing indicator after 3 seconds
+            const existing = typingTimers.current.get(data.userId);
+            if (existing) clearTimeout(existing);
+            const timer = setTimeout(() => {
+              setTypingUsers((prev) => prev.filter((u) => u.userId !== data.userId));
+              typingTimers.current.delete(data.userId);
+            }, 3000);
+            typingTimers.current.set(data.userId, timer);
+          }
+        } catch {
+          // ignore malformed messages
+        }
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        wsRef.current = null;
+      };
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+    };
+
+    connect();
+
+    return () => {
+      ws?.close();
+      wsRef.current = null;
+      // Clear all typing timers
+      for (const timer of typingTimers.current.values()) clearTimeout(timer);
+      typingTimers.current.clear();
+    };
+  }, [id]);
+
   // Countdown timer
   useEffect(() => {
     if (!moment?.expiresAt) return;
@@ -386,8 +463,15 @@ export default function LiveMomentRoomScreen() {
   const sendMessageMutation = useMutation({
     mutationFn: (data: { content: string; type: string; contentUrl?: string }) =>
       liveMomentsApi.sendMessage(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['live-moment-messages', id] });
+    onSuccess: (newMessage) => {
+      queryClient.setQueryData(
+        ['live-moment-messages', id],
+        (old: LiveMomentMessage[] | undefined) => {
+          const existing = old ?? [];
+          if (existing.some((m) => m.id === newMessage.id)) return existing;
+          return [...existing, newMessage];
+        }
+      );
     },
   });
   const sendMessage = sendMessageMutation.mutate;
@@ -408,6 +492,21 @@ export default function LiveMomentRoomScreen() {
       queryClient.invalidateQueries({ queryKey: ['live-moment', id] });
     },
   });
+
+  const handleTextChange = useCallback(
+    (text: string) => {
+      setMessageText(text);
+      const now = Date.now();
+      if (
+        wsRef.current?.readyState === WebSocket.OPEN &&
+        now - lastTypingSent.current > 1500
+      ) {
+        wsRef.current.send(JSON.stringify({ type: 'typing' }));
+        lastTypingSent.current = now;
+      }
+    },
+    []
+  );
 
   const handleSend = useCallback(() => {
     const text = messageText.trim();
@@ -743,6 +842,21 @@ export default function LiveMomentRoomScreen() {
                 paddingBottom: 10,
               }}
             >
+              {/* Typing indicator */}
+              {typingUsers.length > 0 ? (
+                <Text
+                  style={{
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: 12,
+                    fontWeight: '500',
+                    marginBottom: 6,
+                    fontStyle: 'italic',
+                  }}
+                >
+                  {typingUsers.map((u) => u.userName).join(', ')}{' '}
+                  {typingUsers.length === 1 ? 'is' : 'are'} typing...
+                </Text>
+              ) : null}
               {/* Quick reactions */}
               <View
                 style={{
@@ -843,7 +957,7 @@ export default function LiveMomentRoomScreen() {
                   <TextInput
                     testID="message-input"
                     value={messageText}
-                    onChangeText={setMessageText}
+                    onChangeText={handleTextChange}
                     placeholder="Say something..."
                     placeholderTextColor="rgba(255,255,255,0.25)"
                     style={{ color: '#ffffff', fontSize: 15 }}
