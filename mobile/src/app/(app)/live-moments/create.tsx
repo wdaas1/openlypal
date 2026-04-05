@@ -64,7 +64,7 @@ export default function CreateMomentScreen() {
       queryClient.invalidateQueries({ queryKey: ['live-moments'] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (moment?.id) {
-        router.push(`/(app)/live-moments/${moment.id}` as any);
+        router.push(`/(app)/rooms/live-moment/${moment.id}` as any);
       } else {
         router.back();
       }

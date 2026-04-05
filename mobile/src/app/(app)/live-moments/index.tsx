@@ -105,7 +105,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`/(app)/live-moments/${moment.id}` as any);
+    router.push(`/(app)/rooms/live-moment/${moment.id}` as any);
   };
 
   const timeRemaining = getTimeRemaining(moment.expiresAt);

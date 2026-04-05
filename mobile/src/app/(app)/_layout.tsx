@@ -753,7 +753,6 @@ export default function AppLayout() {
             <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
             <Tabs.Screen name="live-moments/index" options={{ title: 'Live' }} />
             <Tabs.Screen name="live-moments/create" options={{ href: null }} />
-            <Tabs.Screen name="live-moments/[id]" options={{ href: null }} />
             <Tabs.Screen name="rooms/index" options={{ href: null, title: 'Rooms' }} />
             <Tabs.Screen name="rooms/[id]" options={{ href: null }} />
             <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
