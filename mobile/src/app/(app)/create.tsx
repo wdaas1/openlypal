@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Type, ImageIcon, Quote, Link, X, Video as VideoIcon, Camera, Layers, Lock } from 'lucide-react-native';
 import { Image } from 'expo-image';
@@ -31,6 +31,7 @@ const CATEGORIES = [
 export default function CreateScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { roomId: paramRoomId } = useLocalSearchParams<{ roomId?: string }>();
   const [postType, setPostType] = useState<PostType>('text');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -42,7 +43,7 @@ export default function CreateScreen() {
   const [isExplicit, setIsExplicit] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(paramRoomId ?? null);
 
   const { data: rooms } = useQuery({
     queryKey: ['rooms'],

@@ -333,6 +333,16 @@ function FloatingTabBar() {
                 '/(app)/rooms': '/(app)/rooms',
                 '/(app)/profile': '/(app)/profile',
               };
+              if (tab.route === '/(app)/create') {
+                const roomMatch = pathname.match(/\/rooms\/([^/]+)$/);
+                const roomId = roomMatch ? roomMatch[1] : null;
+                if (roomId) {
+                  router.push({ pathname: '/(app)/create' as any, params: { roomId } });
+                } else {
+                  router.push('/(app)/create' as any);
+                }
+                return;
+              }
               router.push(routeMap[tab.route] as any);
             }}
           />

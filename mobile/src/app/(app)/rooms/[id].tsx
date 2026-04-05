@@ -47,6 +47,8 @@ export default function RoomDetailScreen() {
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [activeTab, setActiveTab] = useState<'posts' | 'members'>('posts');
+  const [composeText, setComposeText] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
 
   const { data: room, isLoading } = useQuery({
     queryKey: ['room', id],
@@ -89,6 +91,15 @@ export default function RoomDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
       router.push('/(app)/rooms' as any);
+    },
+  });
+
+  const createPostMutation = useMutation({
+    mutationFn: (content: string) =>
+      api.post('/api/posts', { content, type: 'text', roomId: id }),
+    onSuccess: () => {
+      setComposeText('');
+      queryClient.invalidateQueries({ queryKey: ['room-posts', id] });
     },
   });
 
@@ -191,6 +202,56 @@ export default function RoomDetailScreen() {
             data={posts ?? []}
             keyExtractor={(p) => p.id}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+            ListHeaderComponent={
+              <View
+                style={{
+                  marginHorizontal: -4,
+                  marginTop: 0,
+                  marginBottom: 8,
+                  backgroundColor: '#0a2d50',
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: '#1a3a5c',
+                  padding: 12,
+                }}
+              >
+                <TextInput
+                  placeholder={`Post in ${room.name}...`}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  value={composeText}
+                  onChangeText={setComposeText}
+                  multiline
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 15,
+                    minHeight: 60,
+                    textAlignVertical: 'top',
+                  }}
+                />
+                {composeText.trim().length > 0 ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <Pressable
+                      onPress={() => {
+                        if (!composeText.trim()) return;
+                        createPostMutation.mutate(composeText.trim());
+                      }}
+                      disabled={createPostMutation.isPending}
+                      style={{
+                        backgroundColor: '#00CF35',
+                        paddingHorizontal: 18,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        opacity: createPostMutation.isPending ? 0.6 : 1,
+                      }}
+                    >
+                      <Text style={{ color: '#001935', fontSize: 14, fontWeight: '800' }}>
+                        {createPostMutation.isPending ? 'Posting...' : 'Post'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+            }
             ListEmptyComponent={
               <View style={{ alignItems: 'center', paddingTop: 60, gap: 10 }}>
                 <FileText size={40} color="#1a3a5c" />
