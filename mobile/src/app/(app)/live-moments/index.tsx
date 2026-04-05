@@ -105,7 +105,11 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`/(app)/rooms/live-moment/${moment.id}` as any);
+    if (moment.roomId) {
+      router.push(`/(app)/rooms/${moment.roomId}/live-moment/${moment.id}` as any);
+    } else {
+      router.push(`/(app)/rooms/live-moment/${moment.id}` as any);
+    }
   };
 
   const timeRemaining = getTimeRemaining(moment.expiresAt);

@@ -529,7 +529,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   if (pathname.includes('/post/')) return null;
   // Hide tab bar inside a live moment room (but not the list or create screens)
   if (/\/live-moments\/(?!create)[^/]+/.test(pathname)) return null;
-  if (/\/rooms\/live-moment\//.test(pathname)) return null;
+  if (/\/rooms\/[^/]+\/live-moment\//.test(pathname)) return null;
 
   const handleCreatePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -757,6 +757,7 @@ export default function AppLayout() {
             <Tabs.Screen name="rooms/[id]/index" options={{ href: null }} />
             <Tabs.Screen name="rooms/[id]/post/[postId]" options={{ href: null }} />
             <Tabs.Screen name="rooms/[id]/media/[mediaId]" options={{ href: null }} />
+            <Tabs.Screen name="rooms/[id]/live-moment/[momentId]" options={{ href: null }} />
             <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
             <Tabs.Screen name="rooms/live-moment/[id]" options={{ href: null }} />
             <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
