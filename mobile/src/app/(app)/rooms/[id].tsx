@@ -389,7 +389,7 @@ export default function RoomDetailScreen() {
       {/* Live Session Banner */}
       {activeLiveMoment ? (
         <Pressable
-          onPress={() => router.push(`/(app)/live-moments/${activeLiveMoment.id}` as any)}
+          onPress={() => router.push(`/(app)/rooms/live-moment/${activeLiveMoment.id}` as any)}
           style={{
             marginHorizontal: 16,
             marginBottom: 10,
