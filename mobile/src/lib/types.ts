@@ -151,7 +151,7 @@ export interface LiveMomentMessage {
   userId: string
   user: User
   content: string
-  type: 'text' | 'image' | 'reaction'
+  type: 'text' | 'image' | 'reaction' | 'video'
   contentUrl?: string
   createdAt: string
 }

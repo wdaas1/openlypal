@@ -27,6 +27,7 @@ import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera } from 'lucide
 import WebView from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
 import { getAuthToken } from '@/lib/auth/auth-client';
@@ -225,6 +226,32 @@ function FloatingReaction({ emoji, id }: { emoji: string; id: number }) {
   );
 }
 
+function VideoMessage({ uri, isOwn }: { uri: string; isOwn: boolean }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+  });
+  return (
+    <View
+      style={{
+        borderRadius: 14,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: isOwn ? 'rgba(0,207,53,0.3)' : 'rgba(255,255,255,0.1)',
+        width: 220,
+        height: 160,
+      }}
+    >
+      <VideoView
+        player={player}
+        style={{ width: 220, height: 160 }}
+        allowsFullscreen
+        allowsPictureInPicture={false}
+        contentFit="cover"
+      />
+    </View>
+  );
+}
+
 function MessageBubble({
   message,
   isOwn,
@@ -291,6 +318,8 @@ function MessageBubble({
               resizeMode="cover"
             />
           </View>
+        ) : message.type === 'video' && message.contentUrl ? (
+          <VideoMessage uri={message.contentUrl} isOwn={isOwn} />
         ) : (
           <View
             style={{
@@ -597,16 +626,59 @@ export default function LiveMomentRoomScreen() {
     }
   }, [id]);
 
-  const handlePickImage = useCallback(async () => {
+  const handlePickMedia = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: false,
       quality: 0.8,
+      videoMaxDuration: 60,
     });
-    if (!result.canceled && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      sendMessage({ content: 'Photo', type: 'image', contentUrl: uri });
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    const isVideo = asset.type === 'video';
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      // Upload to server
+      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+      const token = await getAuthToken();
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: asset.uri,
+        type: isVideo ? (asset.mimeType ?? 'video/mp4') : (asset.mimeType ?? 'image/jpeg'),
+        name: isVideo ? 'video.mp4' : 'photo.jpg',
+      } as any);
+
+      const uploadRes = await fetch(`${backendUrl}/api/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        // fallback: send local uri for images only
+        if (!isVideo) {
+          sendMessage({ content: 'Photo', type: 'image', contentUrl: asset.uri });
+        }
+        return;
+      }
+
+      const uploadJson = await uploadRes.json() as { data: { url: string } };
+      const remoteUrl = uploadJson.data.url;
+
+      sendMessage({
+        content: isVideo ? 'Video' : 'Photo',
+        type: isVideo ? 'video' : 'image',
+        contentUrl: remoteUrl,
+      });
+    } catch {
+      // fallback for images
+      if (asset.type !== 'video') {
+        sendMessage({ content: 'Photo', type: 'image', contentUrl: asset.uri });
+      }
     }
   }, [sendMessage]);
 
@@ -1052,7 +1124,7 @@ export default function LiveMomentRoomScreen() {
                 {/* Photo picker button */}
                 <Pressable
                   testID="photo-picker-button"
-                  onPress={handlePickImage}
+                  onPress={handlePickMedia}
                   style={{
                     width: 42,
                     height: 42,

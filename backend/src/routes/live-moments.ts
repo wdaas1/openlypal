@@ -353,7 +353,7 @@ liveMomentsRouter.post(
     "json",
     z.object({
       content: z.string().min(1),
-      type: z.enum(["text", "image", "reaction"]).default("text"),
+      type: z.enum(["text", "image", "reaction", "video"]).default("text"),
       contentUrl: z.string().optional(),
     })
   ),
