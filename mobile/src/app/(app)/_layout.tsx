@@ -66,6 +66,10 @@ function ChatIcon({ color, size, isActive }: { color: string; size: number; isAc
   );
 }
 
+const BAR_HEIGHT = 64;
+const BUTTON_SIZE = 54;
+const PROTRUSION = 14;
+
 const TABS: TabConfig[] = [
   {
     route: '/(app)/index',
@@ -77,8 +81,8 @@ const TABS: TabConfig[] = [
   },
   {
     route: '/(app)/create',
-    icon: (color, size) => <PlusCircle size={size} color={color} />,
     isCenter: true,
+    icon: () => null,
   },
   {
     route: '/(app)/live-moments',
@@ -413,37 +417,6 @@ function TabButton({
     onPress();
   };
 
-  if (config.isCenter) {
-    return (
-      <Pressable
-        testID="tab-create"
-        onPress={handlePress}
-        style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}
-      >
-        <Animated.View
-          style={[
-            animStyle,
-            {
-              width: 46,
-              height: 46,
-              borderRadius: 23,
-              backgroundColor: '#00CF35',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#00CF35',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.5,
-              shadowRadius: 10,
-              elevation: 6,
-            },
-          ]}
-        >
-          {config.icon('#001935', 20, false)}
-        </Animated.View>
-      </Pressable>
-    );
-  }
-
   const iconColor = isActive ? '#00CF35' : 'rgba(255,255,255,0.38)';
 
   return (
@@ -464,8 +437,8 @@ function TabButton({
             ...(isActive ? {
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.35,
-              shadowRadius: 8,
+              shadowOpacity: 0.25,
+              shadowRadius: 6,
             } : {}),
           },
         ]}
@@ -488,10 +461,14 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
 
   const insets = useSafeAreaInsets();
 
-  const barWidth = useSharedValue(0);
   const barWidthRef = React.useRef(0);
   const pillLeft = useSharedValue(0);
   const pillOpacity = useSharedValue(0);
+
+  const createScale = useSharedValue(1);
+  const createAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: createScale.value }],
+  }));
 
   const getActiveIndex = () => {
     if (pathname === '/' || pathname === '/index' || pathname.endsWith('/(app)')) return 0;
@@ -507,7 +484,6 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   const bottomOffset = Math.max(insets.bottom, 12);
 
   const PILL_WIDTH = 46;
-  const BAR_HEIGHT = 68;
 
   React.useEffect(() => {
     const isCenter = activeIndex === 2;
@@ -538,7 +514,6 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
-    barWidth.value = width;
     barWidthRef.current = width;
     const isCenter = activeIndex === 2;
     const isValid = activeIndex !== -1 && !isCenter;
@@ -553,101 +528,154 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   // Hide tab bar inside a live moment room (but not the list or create screens)
   if (/\/live-moments\/(?!create)[^/]+/.test(pathname)) return null;
 
+  const handleCreatePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    createScale.value = withSpring(0.9, { damping: 8, stiffness: 300 }, () => {
+      createScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+    });
+    onOpenModal();
+  };
+
   return (
     <View
       pointerEvents="box-none"
-      onLayout={handleLayout}
-      style={{
-        position: 'absolute',
-        bottom: bottomOffset,
-        left: 16,
-        right: 16,
-        height: BAR_HEIGHT,
-        borderRadius: 34,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 12,
-      }}
+      style={StyleSheet.absoluteFill}
     >
-      {/* Blur layer */}
-      <BlurView
-        intensity={70}
-        tint="dark"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
-      />
-      {/* Glass tint overlay */}
+      {/* Tab bar */}
       <View
+        onLayout={handleLayout}
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,12,28,0.72)',
+          bottom: bottomOffset,
+          left: 16,
+          right: 16,
+          height: BAR_HEIGHT,
+          borderRadius: 34,
+          overflow: 'hidden',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 16,
+          elevation: 12,
         }}
-      />
-      {/* Top specular highlight */}
+      >
+        {/* Blur layer */}
+        <BlurView
+          intensity={70}
+          tint="dark"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        />
+        {/* Glass tint overlay */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,12,28,0.78)',
+          }}
+        />
+        {/* Top specular highlight */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 1,
+            backgroundColor: 'rgba(255,255,255,0.18)',
+          }}
+        />
+        {/* Bottom edge highlight */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 1,
+            backgroundColor: 'rgba(255,255,255,0.06)',
+          }}
+        />
+        {/* Sliding pill indicator */}
+        <Animated.View style={pillStyle} />
+        {/* Tab buttons row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', height: '100%' }}>
+          {TABS.map((tab, index) => {
+            if (tab.isCenter) {
+              // Transparent spacer for the center slot
+              return <View key={tab.route} style={{ flex: 1 }} />;
+            }
+            return (
+              <TabButton
+                key={tab.route}
+                config={tab}
+                isActive={activeIndex === index}
+                onPress={() => {
+                  const isHome = tab.route === '/(app)/index';
+                  const alreadyOnHome = activeIndex === index;
+                  if (isHome && alreadyOnHome) {
+                    fireHomeTabPress();
+                    return;
+                  }
+                  const routeMap: Record<string, string> = {
+                    '/(app)/index': '/',
+                    '/(app)/explore': '/(app)/explore',
+                    '/(app)/live-moments': '/(app)/live-moments',
+                    '/(app)/rooms': '/(app)/rooms',
+                    '/(app)/profile': '/(app)/profile',
+                  };
+                  router.push(routeMap[tab.route] as any);
+                }}
+              />
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Floating "+" button — sits above the bar */}
       <View
+        pointerEvents="box-none"
         style={{
           position: 'absolute',
-          top: 0,
+          bottom: bottomOffset + BAR_HEIGHT - BUTTON_SIZE + PROTRUSION,
           left: 0,
           right: 0,
-          height: 1,
-          backgroundColor: 'rgba(255,255,255,0.18)',
+          alignItems: 'center',
         }}
-      />
-      {/* Bottom edge highlight */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 1,
-          backgroundColor: 'rgba(255,255,255,0.06)',
-        }}
-      />
-      {/* Sliding pill indicator */}
-      <Animated.View style={pillStyle} />
-      {/* Tab buttons */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', height: '100%' }}>
-        {TABS.map((tab, index) => (
-          <TabButton
-            key={tab.route}
-            config={tab}
-            isActive={activeIndex === index}
-            onPress={() => {
-              if (tab.isCenter) {
-                onOpenModal();
-                return;
-              }
-              const isHome = tab.route === '/(app)/index';
-              const alreadyOnHome = activeIndex === index;
-              if (isHome && alreadyOnHome) {
-                fireHomeTabPress();
-                return;
-              }
-              const routeMap: Record<string, string> = {
-                '/(app)/index': '/',
-                '/(app)/explore': '/(app)/explore',
-                '/(app)/live-moments': '/(app)/live-moments',
-                '/(app)/rooms': '/(app)/rooms',
-                '/(app)/profile': '/(app)/profile',
-              };
-              router.push(routeMap[tab.route] as any);
-            }}
-          />
-        ))}
+      >
+        <Pressable
+          testID="tab-create"
+          onPress={handleCreatePress}
+        >
+          <Animated.View
+            style={[
+              createAnimStyle,
+              {
+                width: BUTTON_SIZE,
+                height: BUTTON_SIZE,
+                borderRadius: BUTTON_SIZE / 2,
+                backgroundColor: '#00CF35',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#00CF35',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.6,
+                shadowRadius: 14,
+                elevation: 10,
+              },
+            ]}
+          >
+            <PlusCircle size={24} color="#001935" />
+          </Animated.View>
+        </Pressable>
       </View>
     </View>
   );
@@ -743,9 +771,7 @@ export default function AppLayout() {
           </Tabs>
         </Animated.View>
 
-        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-          <FloatingTabBar onOpenModal={openModal} />
-        </View>
+        <FloatingTabBar onOpenModal={openModal} />
 
         <CreateModal
           visible={modalVisible}
