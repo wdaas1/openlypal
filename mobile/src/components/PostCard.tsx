@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -24,7 +24,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { Swipeable, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import Animated, {
   useSharedValue,
@@ -32,6 +32,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
@@ -89,6 +90,14 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const [captionCopied, setCaptionCopied] = useState(false);
   const lastTapRef = useRef<number>(0);
   const imageLastTapRef = useRef<number>(0);
+
+  // Video scrubbing state
+  const [scrubbing, setScrubbing] = useState(false);
+  const [scrubTime, setScrubTime] = useState(0);
+  const scrubDimOpacity = useSharedValue(0);
+  const scrubStartTimeRef = useRef(0);
+  const lastSeekTimeRef = useRef(0);
+  const lastScrubDirectionRef = useRef(0);
   const player = useVideoPlayer(
     post.type === 'video' && post.videoUrl ? post.videoUrl : null,
     (p) => { p.loop = true; p.muted = true; }
@@ -107,6 +116,61 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   useEffect(() => {
     if (player) player.muted = muted;
   }, [muted, player]);
+
+  const formatScrubTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const seekTo = (time: number) => {
+    if (!player) return;
+    player.currentTime = time;
+    setScrubTime(time);
+  };
+
+  const scrubDimStyle = useAnimatedStyle(() => ({
+    opacity: scrubDimOpacity.value,
+  }));
+
+  const videoScrubGesture = Gesture.Pan()
+    .activeOffsetX([-8, 8])
+    .failOffsetY([-15, 15])
+    .onStart(() => {
+      scrubStartTimeRef.current = player?.currentTime ?? 0;
+      lastScrubDirectionRef.current = 0;
+      scrubDimOpacity.value = withTiming(0.35, { duration: 150 });
+      runOnJS(setScrubbing)(true);
+    })
+    .onUpdate((e) => {
+      if (!player) return;
+      const duration = player.duration || 0;
+      if (duration <= 0) return;
+      const newTime = Math.max(0, Math.min(duration, scrubStartTimeRef.current + e.translationX * 0.05));
+      const now = Date.now();
+      if (now - lastSeekTimeRef.current >= 33) {
+        lastSeekTimeRef.current = now;
+        runOnJS(seekTo)(newTime);
+      }
+      const dir = e.translationX >= 0 ? 1 : -1;
+      if (lastScrubDirectionRef.current !== 0 && dir !== lastScrubDirectionRef.current) {
+        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+      }
+      lastScrubDirectionRef.current = dir;
+    })
+    .onEnd(() => {
+      scrubDimOpacity.value = withTiming(0, { duration: 300 });
+      runOnJS(setScrubbing)(false);
+      lastScrubDirectionRef.current = 0;
+    });
+
+  const tapToFullscreenGesture = Gesture.Tap()
+    .onEnd(() => {
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+      runOnJS(setMediaViewer)({ visible: true, type: 'video', uri: post.videoUrl! });
+    });
+
+  const videoGesture = Gesture.Exclusive(videoScrubGesture, tapToFullscreenGesture);
 
   // Read user's explicit content preference from cache
   const { data: profile } = useQuery({
@@ -579,57 +643,83 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
             </Pressable>
           </View>
         ) : (
-          <Pressable
-            testID={`video-tap-fullscreen-${post.id}`}
-            onPress={(e) => {
-              e.stopPropagation();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
-            }}
-            style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}
-          >
-            <VideoView
-              testID={`post-video-${post.id}`}
-              player={player}
-              style={{ width: '100%', height: videoHeight }}
-              contentFit="cover"
-              allowsFullscreen={false}
-              allowsPictureInPicture={false}
-            />
-            <Pressable
-              testID={`mute-button-${post.id}`}
-              onPress={(e) => {
-                e.stopPropagation();
-                setMuted(!muted);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              style={{
-                position: 'absolute', bottom: 10, left: 12,
-                backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
-                flexDirection: 'row', alignItems: 'center',
-                paddingHorizontal: 10, paddingVertical: 5, gap: 5,
-              }}
+          <GestureDetector gesture={videoGesture}>
+            <View
+              testID={`video-tap-fullscreen-${post.id}`}
+              style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}
             >
-              {muted ? <VolumeX size={14} color="#ffffff" /> : <Volume2 size={14} color="#ffffff" />}
-              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
-                {muted ? 'Tap to unmute' : 'Muted off'}
-              </Text>
-            </Pressable>
-            <Pressable
-              testID={`fullscreen-button-${post.id}`}
-              onPress={(e) => {
-                e.stopPropagation();
-                setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
-              }}
-              style={{
-                position: 'absolute', bottom: 10, right: 12,
-                backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
-                alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
-              }}
-            >
-              <Maximize size={15} color="#ffffff" />
-            </Pressable>
-          </Pressable>
+              <VideoView
+                testID={`post-video-${post.id}`}
+                player={player}
+                style={{ width: '100%', height: videoHeight }}
+                contentFit="cover"
+                allowsFullscreen={false}
+                allowsPictureInPicture={false}
+              />
+
+              {/* Scrub dim overlay + time indicator */}
+              <Animated.View
+                style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, scrubDimStyle]}
+                pointerEvents="none"
+              />
+              {scrubbing ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View style={{
+                    backgroundColor: 'rgba(0,0,0,0.72)',
+                    borderRadius: 10,
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', letterSpacing: 0.3 }}>
+                      {formatScrubTime(scrubTime)} / {formatScrubTime(player?.duration ?? 0)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              <Pressable
+                testID={`mute-button-${post.id}`}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setMuted(!muted);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                style={{
+                  position: 'absolute', bottom: 10, left: 12,
+                  backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingHorizontal: 10, paddingVertical: 5, gap: 5,
+                }}
+              >
+                {muted ? <VolumeX size={14} color="#ffffff" /> : <Volume2 size={14} color="#ffffff" />}
+                <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
+                  {muted ? 'Tap to unmute' : 'Muted off'}
+                </Text>
+              </Pressable>
+              <Pressable
+                testID={`fullscreen-button-${post.id}`}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
+                }}
+                style={{
+                  position: 'absolute', bottom: 10, right: 12,
+                  backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
+                  alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
+                }}
+              >
+                <Maximize size={15} color="#ffffff" />
+              </Pressable>
+            </View>
+          </GestureDetector>
         )
       ) : null}
 
