@@ -137,7 +137,7 @@ export default function RoomDetailScreen() {
     mutationFn: () => api.delete(`/api/rooms/${id}/members/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      router.push('/(app)/rooms' as any);
+      router.replace('/(app)/rooms' as any);
     },
   });
 
@@ -145,7 +145,7 @@ export default function RoomDetailScreen() {
     mutationFn: () => api.delete(`/api/rooms/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      router.push('/(app)/rooms' as any);
+      router.replace('/(app)/rooms' as any);
     },
   });
 
@@ -343,7 +343,7 @@ export default function RoomDetailScreen() {
     <SafeAreaView testID="room-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Pressable testID="back-button" onPress={() => router.push('/(app)/rooms' as any)}>
+        <Pressable testID="back-button" onPress={() => router.back()}>
           <ArrowLeft size={22} color="#fff" />
         </Pressable>
         <View style={{ flex: 1 }}>
