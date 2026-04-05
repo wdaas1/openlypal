@@ -177,8 +177,8 @@ function GoLivePulseButton({ onPress, isPending }: { onPress: () => void; isPend
           borderRadius: 24,
           shadowColor: '#00CF35',
           shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.9,
-          shadowRadius: 14,
+          shadowOpacity: 0.2,
+          shadowRadius: 5,
           elevation: 10,
         }}
       >
@@ -925,8 +925,8 @@ export default function LiveMomentRoomScreen() {
                   borderRadius: 24,
                   shadowColor: '#FF3B30',
                   shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.8,
-                  shadowRadius: 12,
+                  shadowOpacity: 0.2,
+                  shadowRadius: 5,
                   elevation: 8,
                 }}
               >
@@ -1028,7 +1028,7 @@ export default function LiveMomentRoomScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <BlurView intensity={40} tint="dark">
+          <BlurView intensity={20} tint="dark">
             <View
               style={{
                 borderTopWidth: 1,
@@ -1177,8 +1177,8 @@ export default function LiveMomentRoomScreen() {
                     justifyContent: 'center',
                     shadowColor: messageText.trim() ? '#00CF35' : 'transparent',
                     shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 10,
+                    shadowOpacity: 0.2,
+                    shadowRadius: 5,
                     elevation: messageText.trim() ? 6 : 0,
                   }}
                 >

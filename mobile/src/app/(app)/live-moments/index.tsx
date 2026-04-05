@@ -64,8 +64,8 @@ function LivePulse() {
             backgroundColor: '#FF3B30',
             shadowColor: '#FF3B30',
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 6,
+            shadowOpacity: 0.2,
+            shadowRadius: 5,
             elevation: 6,
           },
         ]}
@@ -129,7 +129,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
             : 'rgba(255,59,48,0.35)',
         }}
       >
-        <BlurView intensity={30} tint="dark" style={{ padding: 18 }}>
+        <BlurView intensity={15} tint="dark" style={{ padding: 18 }}>
           {/* Glow overlay */}
           {!isEnded && (
             <Animated.View
@@ -237,8 +237,8 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
                       borderRadius: 20,
                       shadowColor: '#00CF35',
                       shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.7,
-                      shadowRadius: 8,
+                      shadowOpacity: 0.2,
+                      shadowRadius: 5,
                       elevation: 6,
                     }}
                   >
@@ -348,8 +348,8 @@ function EmptyState() {
           style={{
             shadowColor: '#00CF35',
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 1,
-            shadowRadius: 20,
+            shadowOpacity: 0.2,
+            shadowRadius: 5,
           }}
         />
       </Animated.View>
@@ -389,8 +389,8 @@ function EmptyState() {
           borderRadius: 30,
           shadowColor: '#00CF35',
           shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.7,
-          shadowRadius: 16,
+          shadowOpacity: 0.2,
+          shadowRadius: 5,
           elevation: 10,
         }}
       >
@@ -474,8 +474,8 @@ export default function LiveMomentsScreen() {
               justifyContent: 'center',
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: 12,
+              shadowOpacity: 0.2,
+              shadowRadius: 5,
               elevation: 8,
             }}
           >

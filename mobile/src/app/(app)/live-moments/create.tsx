@@ -137,7 +137,7 @@ export default function CreateMomentScreen() {
               marginBottom: 28,
             }}
           >
-            <BlurView intensity={30} tint="dark">
+            <BlurView intensity={15} tint="dark">
               <TextInput
                 testID="moment-title-input"
                 value={title}
@@ -197,8 +197,8 @@ export default function CreateMomentScreen() {
                     borderColor: isSelected ? '#00CF35' : 'rgba(255,255,255,0.1)',
                     shadowColor: isSelected ? '#00CF35' : 'transparent',
                     shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: isSelected ? 0.6 : 0,
-                    shadowRadius: 10,
+                    shadowOpacity: isSelected ? 0.2 : 0,
+                    shadowRadius: 5,
                     elevation: isSelected ? 6 : 0,
                   }}
                 >
@@ -237,7 +237,7 @@ export default function CreateMomentScreen() {
               marginBottom: 16,
             }}
           >
-            <BlurView intensity={30} tint="dark">
+            <BlurView intensity={15} tint="dark">
               <View
                 style={{
                   flexDirection: 'row',
@@ -273,7 +273,7 @@ export default function CreateMomentScreen() {
                 marginBottom: 24,
               }}
             >
-              <BlurView intensity={20} tint="dark">
+              <BlurView intensity={10} tint="dark">
                 {(searchResults ?? []).map((user, index) => {
                   const isSelected = selectedUserIds.includes(user.id);
                   return (
@@ -376,8 +376,8 @@ export default function CreateMomentScreen() {
               opacity: canGoLive ? 1 : 0.4,
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: canGoLive ? 0.8 : 0,
-              shadowRadius: 24,
+              shadowOpacity: canGoLive ? 0.2 : 0,
+              shadowRadius: 5,
               elevation: canGoLive ? 12 : 0,
               marginTop: 8,
             }}

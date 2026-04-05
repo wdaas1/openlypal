@@ -867,8 +867,8 @@ export default function PostDetailScreen() {
               backgroundColor: isSendActive ? '#00CF35' : '#1a3a5c',
               shadowColor: isSendActive ? '#00CF35' : 'transparent',
               shadowOffset: { width: 0, height: 0 },
-              shadowRadius: isSendActive ? 8 : 0,
-              shadowOpacity: isSendActive ? 0.6 : 0,
+              shadowRadius: isSendActive ? 5 : 0,
+              shadowOpacity: isSendActive ? 0.2 : 0,
               elevation: isSendActive ? 8 : 0,
             }}
           >

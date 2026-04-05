@@ -639,7 +639,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
               source={{ uri: post.imageUrl }}
               style={{ width: '100%', aspectRatio: imageAspectRatio }}
               contentFit="contain"
-              blurRadius={25}
+              blurRadius={5}
               onLoad={(e) => {
                 const { width: w, height: h } = e.source;
                 if (w && h) setImageAspectRatio(w / h);
@@ -860,8 +860,8 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
             heartAnimatedStyle,
             localIsLiked ? {
               shadowColor: '#FF4E6A',
-              shadowOpacity: 0.8,
-              shadowRadius: 6,
+              shadowOpacity: 0.2,
+              shadowRadius: 5,
               shadowOffset: { width: 0, height: 0 },
             } : undefined,
           ]}>
@@ -876,8 +876,8 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
               { marginLeft: 6, fontSize: 12, color: localIsLiked ? '#FF4E6A' : '#4a6fa5' },
               localIsLiked ? {
                 shadowColor: '#FF4E6A',
-                shadowOpacity: 0.8,
-                shadowRadius: 6,
+                shadowOpacity: 0.2,
+                shadowRadius: 5,
                 shadowOffset: { width: 0, height: 0 },
               } : undefined,
             ]}>

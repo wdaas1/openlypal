@@ -156,8 +156,8 @@ function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
             borderColor: 'rgba(0,207,53,0.2)',
             shadowColor: '#00CF35',
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
+            shadowOpacity: 0.2,
+            shadowRadius: 5,
           }}
         >
           {icon}
@@ -272,7 +272,7 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
     >
       {/* Blur backdrop */}
       <BlurView
-        intensity={20}
+        intensity={10}
         tint="dark"
         style={{
           position: 'absolute',
@@ -314,8 +314,8 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
               paddingBottom: Math.max(insets.bottom, 16),
               shadowColor: '#000',
               shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 20,
+              shadowOpacity: 0.2,
+              shadowRadius: 5,
               elevation: 24,
             },
           ]}
@@ -440,8 +440,8 @@ function TabButton({
             ...(isActive ? {
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.25,
-              shadowRadius: 6,
+              shadowOpacity: 0.2,
+              shadowRadius: 5,
             } : {}),
           },
         ]}
@@ -557,13 +557,13 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.2,
-          shadowRadius: 16,
+          shadowRadius: 5,
           elevation: 12,
         }}
       >
         {/* Blur layer */}
         <BlurView
-          intensity={70}
+          intensity={30}
           tint="dark"
           style={{
             position: 'absolute',
@@ -668,8 +668,8 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
                 justifyContent: 'center',
                 shadowColor: '#00CF35',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.6,
-                shadowRadius: 14,
+                shadowOpacity: 0.2,
+                shadowRadius: 5,
                 elevation: 10,
               },
             ]}

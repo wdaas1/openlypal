@@ -250,8 +250,8 @@ export default function MessengerScreen() {
           <View
             style={{
               shadowColor: '#00CF35',
-              shadowOpacity: 0.8,
-              shadowRadius: 8,
+              shadowOpacity: 0.2,
+              shadowRadius: 5,
             }}
           >
             <MessageSquare size={20} color="#00CF35" />

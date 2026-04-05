@@ -119,7 +119,7 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
         borderColor: 'rgba(0,207,53,0.2)',
       }}
     >
-      <BlurView intensity={20} tint="dark" style={{ padding: 14 }}>
+      <BlurView intensity={10} tint="dark" style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
             <View
@@ -533,7 +533,7 @@ export default function ProfileModulesScreen() {
               borderColor: 'rgba(0,207,53,0.3)',
             }}
           >
-            <BlurView intensity={25} tint="dark" style={{ padding: 16 }}>
+            <BlurView intensity={12} tint="dark" style={{ padding: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Text style={{ fontSize: 22 }}>
                   {MODULE_TYPES.find(t => t.type === selectedType)?.emoji}

@@ -177,8 +177,8 @@ function RelationshipMap({
           justifyContent: 'center',
           shadowColor: '#00CF35',
           shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: 12,
+          shadowOpacity: 0.2,
+          shadowRadius: 5,
           elevation: 8,
         }}
       >

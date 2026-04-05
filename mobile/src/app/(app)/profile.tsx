@@ -292,7 +292,7 @@ export default function ProfileScreen() {
             <View style={{
               borderColor: '#001935', borderWidth: 4, borderRadius: 50,
               shadowColor: '#00CF35', shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.7, shadowRadius: 16, elevation: 8,
+              shadowOpacity: 0.2, shadowRadius: 5, elevation: 8,
             }}>
               <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={88} />
             </View>

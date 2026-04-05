@@ -219,7 +219,7 @@ export default function ExploreScreen() {
           borderColor: focused ? 'rgba(0,207,53,0.4)' : '#1a3a5c',
         }}>
           <BlurView
-            intensity={40}
+            intensity={20}
             tint="dark"
             style={{
               position: 'absolute',
@@ -319,8 +319,8 @@ export default function ExploreScreen() {
                     borderWidth: 1,
                     borderColor: isSelected ? '#00CF35' : '#1a3a5c',
                     shadowColor: isSelected ? '#00CF35' : 'transparent',
-                    shadowOpacity: isSelected ? 0.5 : 0,
-                    shadowRadius: isSelected ? 8 : 0,
+                    shadowOpacity: isSelected ? 0.2 : 0,
+                    shadowRadius: isSelected ? 5 : 0,
                     elevation: isSelected ? 4 : 0,
                   }}
                 >
