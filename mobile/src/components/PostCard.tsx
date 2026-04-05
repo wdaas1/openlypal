@@ -29,7 +29,6 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
   withSequence,
   withSpring,
   withTiming,
@@ -43,8 +42,6 @@ import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
 import { useSession } from '@/lib/auth/use-session';
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 interface PostCardProps {
   post: Post;
@@ -95,13 +92,16 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
 
   // Video scrubbing — zero React state on hot path, all via Reanimated shared values
   const scrubDimOpacity = useSharedValue(0);
-  const scrubPillOpacity = useSharedValue(0);
-  const scrubDisplayText = useSharedValue('0:00 / 0:00');
+  const progressOpacity = useSharedValue(0);
+  const progressFraction = useSharedValue(0);
+  const thumbOpacity = useSharedValue(0);
   const scrubStartTimeRef = useRef(0);
   const targetTimeRef = useRef(0);
   const currentTimeRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastScrubDirectionRef = useRef(0);
+  const isScrubbingRef = useRef(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const player = useVideoPlayer(
     post.type === 'video' && post.videoUrl ? post.videoUrl : null,
     (p) => { p.loop = true; p.muted = true; }
@@ -121,10 +121,17 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     if (player) player.muted = muted;
   }, [muted, player]);
 
-  const formatScrubTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
+  const scheduleBarHide = () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      progressOpacity.value = withTiming(0, { duration: 400 });
+      thumbOpacity.value = withTiming(0, { duration: 200 });
+    }, 2000);
+  };
+
+  const showBar = () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    progressOpacity.value = withTiming(1, { duration: 180 });
   };
 
   const startLerpLoop = (duration: number) => {
@@ -136,7 +143,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       currentTimeRef.current = snapped;
       if (player) {
         player.currentTime = snapped;
-        scrubDisplayText.value = `${formatScrubTime(snapped)} / ${formatScrubTime(duration)}`;
+        if (duration > 0) progressFraction.value = snapped / duration;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -154,13 +161,22 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     opacity: scrubDimOpacity.value,
   }));
 
-  const scrubPillStyle = useAnimatedStyle(() => ({
-    opacity: scrubPillOpacity.value,
+  const progressBarStyle = useAnimatedStyle(() => ({
+    opacity: progressOpacity.value,
   }));
 
-  const animatedTimeProps = useAnimatedProps(() => ({
-    text: scrubDisplayText.value,
-    defaultValue: scrubDisplayText.value,
+  const fillFlexStyle = useAnimatedStyle(() => ({
+    flex: Math.max(progressFraction.value, 0.001),
+  }));
+
+  const remainingFlexStyle = useAnimatedStyle(() => ({
+    flex: Math.max(1 - progressFraction.value, 0.001),
+  }));
+
+  const thumbAnimStyle = useAnimatedStyle(() => ({
+    opacity: progressFraction.value > 0.02 && progressFraction.value < 0.98
+      ? thumbOpacity.value
+      : 0,
   }));
 
   const videoScrubGesture = Gesture.Pan()
@@ -169,13 +185,17 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
     .failOffsetY([-15, 15])
     .onStart(() => {
       const start = player?.currentTime ?? 0;
+      const duration = player?.duration || 0;
       scrubStartTimeRef.current = start;
       currentTimeRef.current = start;
       targetTimeRef.current = start;
       lastScrubDirectionRef.current = 0;
+      isScrubbingRef.current = true;
+      if (duration > 0) progressFraction.value = start / duration;
       scrubDimOpacity.value = withTiming(0.3, { duration: 150 });
-      scrubPillOpacity.value = withTiming(1, { duration: 150 });
-      startLerpLoop(player?.duration || 0);
+      thumbOpacity.value = withTiming(1, { duration: 150 });
+      showBar();
+      startLerpLoop(duration);
     })
     .onUpdate((e) => {
       if (!player) return;
@@ -192,13 +212,11 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       lastScrubDirectionRef.current = dir;
     })
     .onEnd(() => {
+      isScrubbingRef.current = false;
       stopLerpLoop();
-      // Snap to final target
-      if (player) {
-        player.currentTime = targetTimeRef.current;
-      }
+      if (player) player.currentTime = targetTimeRef.current;
       scrubDimOpacity.value = withTiming(0, { duration: 300 });
-      scrubPillOpacity.value = withTiming(0, { duration: 250 });
+      scheduleBarHide();
       lastScrubDirectionRef.current = 0;
     });
 
@@ -702,32 +720,20 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
                 pointerEvents="none"
               />
 
-              {/* Small pill time indicator — always mounted, fades in/out via Reanimated */}
+              {/* Thin progress bar — fades in on scrub/tap, auto-hides after 2s */}
               <Animated.View
                 pointerEvents="none"
-                style={[
-                  scrubPillStyle,
-                  {
-                    position: 'absolute',
-                    top: 10,
-                    alignSelf: 'center',
-                    left: 0,
-                    right: 0,
-                    alignItems: 'center',
-                  },
-                ]}
+                style={[progressBarStyle, { position: 'absolute', bottom: 0, left: 0, right: 0 }]}
               >
-                <View style={{
-                  backgroundColor: 'rgba(0,0,0,0.65)',
-                  borderRadius: 20,
-                  paddingHorizontal: 12,
-                  paddingVertical: 5,
-                }}>
-                  <AnimatedTextInput
-                    animatedProps={animatedTimeProps}
-                    editable={false}
-                    style={{ color: '#fff', fontSize: 13, fontWeight: '600', padding: 0 }}
-                  />
+                <View style={{ height: 3, flexDirection: 'row' }}>
+                  <Animated.View style={[{ height: 3, backgroundColor: '#00CF35' }, fillFlexStyle]}>
+                    <Animated.View style={[thumbAnimStyle, {
+                      position: 'absolute', right: -5, top: -3.5,
+                      width: 10, height: 10, borderRadius: 5,
+                      backgroundColor: '#ffffff',
+                    }]} />
+                  </Animated.View>
+                  <Animated.View style={[{ height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }, remainingFlexStyle]} />
                 </View>
               </Animated.View>
 
