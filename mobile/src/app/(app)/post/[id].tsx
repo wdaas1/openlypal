@@ -514,6 +514,8 @@ export default function PostDetailScreen() {
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const [commentSort, setCommentSort] = useState<CommentSort>('top');
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
+  const [localIsLiked, setLocalIsLiked] = useState(false);
+  const [localLikeCount, setLocalLikeCount] = useState(0);
   const heartScale = useSharedValue(1);
 
   const heartAnimatedStyle = useAnimatedStyle(() => ({
@@ -525,6 +527,13 @@ export default function PostDetailScreen() {
     queryFn: () => api.get<Post>(`/api/posts/${id}`),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (post) {
+      setLocalIsLiked(post.isLiked);
+      setLocalLikeCount(post.likeCount);
+    }
+  }, [post?.id]);
 
   const { data: comments, isLoading: loadingComments } = useQuery({
     queryKey: ['comments', id, commentSort],
@@ -548,6 +557,9 @@ export default function PostDetailScreen() {
       withSpring(1.4, { damping: 4 }),
       withSpring(1, { damping: 6 })
     );
+    const nowLiked = !localIsLiked;
+    setLocalIsLiked(nowLiked);
+    setLocalLikeCount(prev => prev + (nowLiked ? 1 : -1));
     likeMutation.mutate();
   };
 
@@ -688,10 +700,10 @@ export default function PostDetailScreen() {
             }}>
               <Pressable testID="detail-like-button" onPress={handleLike} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
                 <Animated.View style={heartAnimatedStyle}>
-                  <Heart size={22} color={post.isLiked ? '#FF4E6A' : '#4a6fa5'} fill={post.isLiked ? '#FF4E6A' : 'transparent'} />
+                  <Heart size={22} color={localIsLiked ? '#FF4E6A' : '#4a6fa5'} fill={localIsLiked ? '#FF4E6A' : 'transparent'} />
                 </Animated.View>
-                <Text style={{ marginLeft: 8, fontSize: 13, color: post.isLiked ? '#FF4E6A' : '#4a6fa5' }}>
-                  {post.likeCount}
+                <Text style={{ marginLeft: 8, fontSize: 13, color: localIsLiked ? '#FF4E6A' : '#4a6fa5' }}>
+                  {localLikeCount}
                 </Text>
               </Pressable>
               <Pressable testID="detail-reblog-button" onPress={() => reblogMutation.mutate()} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>

@@ -72,6 +72,8 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
   const { width } = useWindowDimensions();
   const heartScale = useSharedValue(1);
   const doubleTapHeartScale = useSharedValue(0);
+  const [localIsLiked, setLocalIsLiked] = useState(post.isLiked);
+  const [localLikeCount, setLocalLikeCount] = useState(post.likeCount);
   const [revealed, setRevealed] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [muted, setMuted] = useState(true);
@@ -343,6 +345,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
       withSpring(1.4, { damping: 4 }),
       withSpring(1, { damping: 6 })
     );
+    const nowLiked = !localIsLiked;
+    setLocalIsLiked(nowLiked);
+    setLocalLikeCount(prev => prev + (nowLiked ? 1 : -1));
     likeMutation.mutate();
   };
 
@@ -357,7 +362,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
         withTiming(1.4, { duration: 200 }),
         withSpring(0, { damping: 6 })
       );
-      if (!post.isLiked) {
+      if (!localIsLiked) {
+        setLocalIsLiked(true);
+        setLocalLikeCount(prev => prev + 1);
         likeMutation.mutate();
       }
     } else {
@@ -384,7 +391,9 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
         withTiming(1.4, { duration: 200 }),
         withSpring(0, { damping: 6 })
       );
-      if (!post.isLiked) {
+      if (!localIsLiked) {
+        setLocalIsLiked(true);
+        setLocalLikeCount(prev => prev + 1);
         likeMutation.mutate();
       }
     } else {
@@ -846,7 +855,7 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
         >
           <Animated.View style={[
             heartAnimatedStyle,
-            post.isLiked ? {
+            localIsLiked ? {
               shadowColor: '#FF4E6A',
               shadowOpacity: 0.8,
               shadowRadius: 6,
@@ -855,21 +864,21 @@ export function PostCard({ post, isVisible = true }: PostCardProps) {
           ]}>
             <Heart
               size={20}
-              color={post.isLiked ? '#FF4E6A' : '#4a6fa5'}
-              fill={post.isLiked ? '#FF4E6A' : 'transparent'}
+              color={localIsLiked ? '#FF4E6A' : '#4a6fa5'}
+              fill={localIsLiked ? '#FF4E6A' : 'transparent'}
             />
           </Animated.View>
-          {post.likeCount > 0 ? (
+          {localLikeCount > 0 ? (
             <Text style={[
-              { marginLeft: 6, fontSize: 12, color: post.isLiked ? '#FF4E6A' : '#4a6fa5' },
-              post.isLiked ? {
+              { marginLeft: 6, fontSize: 12, color: localIsLiked ? '#FF4E6A' : '#4a6fa5' },
+              localIsLiked ? {
                 shadowColor: '#FF4E6A',
                 shadowOpacity: 0.8,
                 shadowRadius: 6,
                 shadowOffset: { width: 0, height: 0 },
               } : undefined,
             ]}>
-              {post.likeCount}
+              {localLikeCount}
             </Text>
           ) : null}
         </Pressable>
