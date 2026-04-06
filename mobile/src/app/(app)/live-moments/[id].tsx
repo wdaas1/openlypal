@@ -352,7 +352,7 @@ export default function LiveMomentScreen() {
   const { id: momentId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const handleBack = () => {
-    router.back();
+    router.replace('/(app)/live-moments' as any);
   };
   const queryClient = useQueryClient();
   const { data: session } = useSession();

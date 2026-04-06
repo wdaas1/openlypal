@@ -111,15 +111,17 @@ export default function RoomDetailScreen() {
 
   const startLiveMoment = useMutation({
     mutationFn: () =>
-      api.post('/api/live-moments', {
+      api.post<{ id: string }>('/api/live-moments', {
         title: `${room?.name ?? 'Room'} Live`,
         expiresAfter: 60,
         invitedUserIds: (room?.members ?? []).map((m: Member) => m.userId).filter((uid: string) => uid !== userId),
         roomId: id,
       }),
-    onSuccess: () => {
+    onSuccess: (moment) => {
       queryClient.invalidateQueries({ queryKey: ['room-live-moment', id] });
-      refetchLiveMoment();
+      if (moment?.id) {
+        router.push(`/(app)/live-moments/${moment.id}` as any);
+      }
     },
   });
 
@@ -396,7 +398,7 @@ export default function RoomDetailScreen() {
       {/* Live Session Banner */}
       {activeLiveMoment ? (
         <Pressable
-          onPress={() => router.push(`/(app)/rooms/${id}/live-moment/${activeLiveMoment.id}` as any)}
+          onPress={() => router.push(`/(app)/live-moments/${activeLiveMoment.id}` as any)}
           style={{
             marginHorizontal: 16,
             marginBottom: 10,
