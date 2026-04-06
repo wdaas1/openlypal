@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, usePathname, useRouter } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers, Camera, Video, Users } from 'lucide-react-native';
@@ -739,41 +739,35 @@ export default function AppLayout() {
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         <E2EInitializer />
         <Animated.View style={contentAnimStyle}>
-          <Tabs
-            tabBar={() => null}
-            screenOptions={{
-              headerShown: false,
-              tabBarStyle: { display: 'none' },
-            }}
-          >
-            <Tabs.Screen name="index" options={{ title: 'Home' }} />
-            <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
-            <Tabs.Screen name="create" options={{ title: 'Create' }} />
-            <Tabs.Screen name="activity" options={{ href: null, title: 'Activity' }} />
-            <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-            <Tabs.Screen name="live-moments/index" options={{ title: 'Live' }} />
-            <Tabs.Screen name="live-moments/create" options={{ href: null }} />
-            <Tabs.Screen name="rooms/index" options={{ href: null, title: 'Rooms' }} />
-            <Tabs.Screen name="rooms/[id]/index" options={{ href: null }} />
-            <Tabs.Screen name="rooms/[id]/post/[postId]" options={{ href: null }} />
-            <Tabs.Screen name="rooms/[id]/media/[mediaId]" options={{ href: null }} />
-            <Tabs.Screen name="rooms/[id]/live-moment/[momentId]" options={{ href: null }} />
-            <Tabs.Screen name="rooms/add-members" options={{ href: null }} />
-            <Tabs.Screen name="rooms/live-moment/[id]" options={{ href: null }} />
-            <Tabs.Screen name="messenger/index" options={{ href: null, title: 'Chat' }} />
-            <Tabs.Screen name="messenger/[userId]" options={{ href: null }} />
-            <Tabs.Screen name="post/[id]" options={{ href: null }} />
-            <Tabs.Screen name="user/[id]" options={{ href: null }} />
-            <Tabs.Screen name="user/followers" options={{ href: null }} />
-            <Tabs.Screen name="interests" options={{ href: null }} />
-            <Tabs.Screen name="support" options={{ href: null }} />
-            <Tabs.Screen name="legal" options={{ href: null }} />
-            <Tabs.Screen name="settings" options={{ href: null }} />
-            <Tabs.Screen name="edit-profile" options={{ href: null }} />
-            <Tabs.Screen name="admin" options={{ href: null }} />
-            <Tabs.Screen name="relationships/index" options={{ href: null }} />
-            <Tabs.Screen name="profile-modules/index" options={{ href: null }} />
-          </Tabs>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="explore" />
+            <Stack.Screen name="create" />
+            <Stack.Screen name="activity" />
+            <Stack.Screen name="profile" />
+            <Stack.Screen name="live-moments/index" />
+            <Stack.Screen name="live-moments/create" />
+            <Stack.Screen name="rooms/index" />
+            <Stack.Screen name="rooms/[id]/index" />
+            <Stack.Screen name="rooms/[id]/post/[postId]" />
+            <Stack.Screen name="rooms/[id]/media/[mediaId]" />
+            <Stack.Screen name="rooms/[id]/live-moment/[momentId]" />
+            <Stack.Screen name="rooms/add-members" />
+            <Stack.Screen name="rooms/live-moment/[id]" />
+            <Stack.Screen name="messenger/index" />
+            <Stack.Screen name="messenger/[userId]" />
+            <Stack.Screen name="post/[id]" />
+            <Stack.Screen name="user/[id]" />
+            <Stack.Screen name="user/followers" />
+            <Stack.Screen name="interests" />
+            <Stack.Screen name="support" />
+            <Stack.Screen name="legal" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="edit-profile" />
+            <Stack.Screen name="admin" />
+            <Stack.Screen name="relationships/index" />
+            <Stack.Screen name="profile-modules/index" />
+          </Stack>
         </Animated.View>
 
         <FloatingTabBar onOpenModal={openModal} />
