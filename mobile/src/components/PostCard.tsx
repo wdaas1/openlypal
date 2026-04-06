@@ -435,26 +435,29 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
     ? post.poll.options.reduce((sum, o) => sum + o.votes, 0)
     : 0;
 
-  const renderRightActions = () => (
-    <Pressable
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
-      }}
-      style={{
-        backgroundColor: '#00CF35',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 72,
-        marginBottom: 10,
-        marginHorizontal: 12,
-        borderRadius: 16,
-      }}
-    >
-      <MessageSquare size={24} color="#001935" />
-      <Text style={{ color: '#001935', fontSize: 10, fontWeight: '700', marginTop: 4 }}>DM</Text>
-    </Pressable>
-  );
+  const renderRightActions = () => {
+    if (isOwnPost) return null;
+    return (
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
+        }}
+        style={{
+          backgroundColor: '#00CF35',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: 72,
+          marginBottom: 10,
+          marginHorizontal: 12,
+          borderRadius: 16,
+        }}
+      >
+        <MessageSquare size={24} color="#001935" />
+        <Text style={{ color: '#001935', fontSize: 10, fontWeight: '700', marginTop: 4 }}>DM</Text>
+      </Pressable>
+    );
+  };
 
   return (
     <Swipeable renderRightActions={renderRightActions} friction={2} rightThreshold={40}>

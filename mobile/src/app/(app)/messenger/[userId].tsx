@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -84,12 +85,17 @@ export default function ChatScreen() {
 
   const { mutate: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (content: string) => {
-      await api.post(`/api/conversations/${userId}`, { content });
+      const result = await api.post(`/api/conversations/${userId}`, { content });
+      if (!result) throw new Error('Failed to send message');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', userId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    onError: () => {
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     },
   });
 
@@ -97,7 +103,11 @@ export default function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed || isSending) return;
     setText('');
-    sendMessage(trimmed);
+    sendMessage(trimmed, {
+      onError: () => {
+        setText(trimmed);
+      },
+    });
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
