@@ -67,7 +67,7 @@ export default function CreateMomentScreen() {
         if (moment.roomId) {
           router.push(`/(app)/rooms/${moment.roomId}/live-moment/${moment.id}` as any);
         } else {
-          router.push(`/(app)/rooms/live-moment/${moment.id}` as any);
+          router.push(`/(app)/live-moments/${moment.id}` as any);
         }
       } else {
         router.back();
