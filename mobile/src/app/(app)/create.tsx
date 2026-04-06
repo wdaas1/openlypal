@@ -118,7 +118,7 @@ export default function CreateScreen() {
         type: postType,
         title: title || undefined,
         content: content || undefined,
-        imageUrl: postType === 'photo' ? imageUrls.length > 0 ? imageUrls : undefined : undefined,
+        imageUrls: postType === 'photo' ? (imageUrls.length > 0 ? imageUrls : undefined) : undefined,
         videoUrl: postType === 'video' ? videoUrl || undefined : undefined,
         linkUrl: postType === 'link' ? linkUrl || undefined : undefined,
         tags: tags.length > 0 ? tags : undefined,
