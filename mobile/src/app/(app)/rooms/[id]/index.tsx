@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '@/lib/api/api';
+import { liveMomentsApi } from '@/lib/api/live-moments';
 import { ArrowLeft, UserPlus, Pencil, Check, X, LogOut, Trash2, Lock, FileText, Camera, Play } from 'lucide-react-native';
 import { useSession } from '@/lib/auth/use-session';
 import { getAuthToken } from '@/lib/auth/auth-client';
@@ -111,16 +112,21 @@ export default function RoomDetailScreen() {
 
   const startLiveMoment = useMutation({
     mutationFn: () =>
-      api.post<{ id: string }>('/api/live-moments', {
+      liveMomentsApi.create({
         title: `${room?.name ?? 'Room'} Live`,
         expiresAfter: 60,
         invitedUserIds: (room?.members ?? []).map((m: Member) => m.userId).filter((uid: string) => uid !== userId),
         roomId: id,
       }),
-    onSuccess: (moment) => {
+    onSuccess: async (moment) => {
       queryClient.invalidateQueries({ queryKey: ['room-live-moment', id] });
       if (moment?.id) {
         router.push(`/(app)/live-moments/${moment.id}` as any);
+      } else {
+        const result = await refetchLiveMoment();
+        if (result.data?.id) {
+          router.push(`/(app)/live-moments/${result.data.id}` as any);
+        }
       }
     },
   });

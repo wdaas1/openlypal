@@ -508,6 +508,7 @@ export default function LiveMomentScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['live-moments'] });
       queryClient.invalidateQueries({ queryKey: ['live-moment', momentId] });
+      router.replace('/(app)/live-moments' as any);
     },
   });
   const endMoment = endMomentMutation.mutate;
