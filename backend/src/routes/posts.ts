@@ -18,6 +18,7 @@ function mapPost(
     title: string | null;
     content: string | null;
     imageUrl: string | null;
+    imageUrls?: string | null;
     videoUrl: string | null;
     linkUrl: string | null;
     tags: string | null;
@@ -45,6 +46,7 @@ function mapPost(
     title: post.title,
     content: post.content,
     imageUrl: post.imageUrl,
+    imageUrls: post.imageUrls ? JSON.parse(post.imageUrls as string) as string[] : [],
     videoUrl: post.videoUrl ?? null,
     linkUrl: post.linkUrl,
     tags: post.tags ? post.tags.split(",").map((t: string) => t.trim()) : [],
@@ -329,6 +331,7 @@ const createPostSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
   imageUrl: z.string().optional(),
+  imageUrls: z.array(z.string()).optional(),
   videoUrl: z.string().optional(),
   linkUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -355,6 +358,7 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
       title: body.title,
       content: body.content,
       imageUrl: body.imageUrl,
+      imageUrls: body.imageUrls ? JSON.stringify(body.imageUrls) : undefined,
       videoUrl: body.videoUrl,
       linkUrl: body.linkUrl,
       tags: body.tags?.join(", "),
@@ -376,6 +380,7 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
       title: post.title,
       content: post.content,
       imageUrl: post.imageUrl,
+      imageUrls: post.imageUrls ? JSON.parse(post.imageUrls) : [],
       videoUrl: post.videoUrl ?? null,
       linkUrl: post.linkUrl,
       tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],

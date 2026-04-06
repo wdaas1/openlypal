@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { cn } from '@/lib/cn';
-import { pickImage, pickVideo, takePhoto, recordVideo } from '@/lib/file-picker';
+import { pickMultipleImages, pickVideo, takePhoto, recordVideo } from '@/lib/file-picker';
 import { uploadFile, uploadFileWithProgress } from '@/lib/upload';
 
 type PostType = 'text' | 'photo' | 'quote' | 'link' | 'video';
@@ -42,13 +42,12 @@ export default function CreateScreen() {
   const [postType, setPostType] = useState<PostType>('text');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [linkUrl, setLinkUrl] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [category, setCategory] = useState<string>('');
   const [isExplicit, setIsExplicit] = useState(false);
-  const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(paramRoomId ?? null);
 
@@ -59,12 +58,13 @@ export default function CreateScreen() {
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      const file = await pickImage();
-      if (!file) return null;
-      return uploadFile(file.uri, file.filename, file.mimeType);
+      const files = await pickMultipleImages();
+      if (!files.length) return [];
+      return Promise.all(files.map((f) => uploadFile(f.uri, f.filename, f.mimeType)));
     },
-    onSuccess: (result) => {
-      if (result) setImageUrl(result.url);
+    onSuccess: (results) => {
+      const urls = results.filter(Boolean).map((r) => r!.url);
+      setImageUrls((prev) => [...prev, ...urls]);
     },
   });
 
@@ -75,7 +75,7 @@ export default function CreateScreen() {
       return uploadFile(file.uri, file.filename, file.mimeType);
     },
     onSuccess: (result) => {
-      if (result) setImageUrl(result.url);
+      if (result) setImageUrls((prev) => [...prev, result.url]);
     },
   });
 
@@ -118,7 +118,7 @@ export default function CreateScreen() {
         type: postType,
         title: title || undefined,
         content: content || undefined,
-        imageUrl: postType === 'photo' ? imageUrl || undefined : undefined,
+        imageUrl: postType === 'photo' ? imageUrls.length > 0 ? imageUrls : undefined : undefined,
         videoUrl: postType === 'video' ? videoUrl || undefined : undefined,
         linkUrl: postType === 'link' ? linkUrl || undefined : undefined,
         tags: tags.length > 0 ? tags : undefined,
@@ -133,7 +133,7 @@ export default function CreateScreen() {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       setTitle('');
       setContent('');
-      setImageUrl('');
+      setImageUrls([]);
       setVideoUrl('');
       setLinkUrl('');
       setTagsInput('');
@@ -149,7 +149,7 @@ export default function CreateScreen() {
     .map((t) => t.trim())
     .filter(Boolean);
 
-  const canPost = content.trim().length > 0 || imageUrl.trim().length > 0 || videoUrl.trim().length > 0;
+  const canPost = content.trim().length > 0 || imageUrls.length > 0 || videoUrl.trim().length > 0;
   const isUploading = uploadMutation.isPending || takePictureMutation.isPending;
   const isVideoUploading = uploadVideoMutation.isPending || recordVideoMutation.isPending;
 
@@ -243,34 +243,44 @@ export default function CreateScreen() {
         {/* Image picker for photo posts */}
         {postType === 'photo' ? (
           <View className="mb-4">
-            {imageUrl ? (
-              <View className="rounded-xl overflow-hidden" style={{ position: 'relative', backgroundColor: '#0a2d50' }}>
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={{ width: '100%', aspectRatio: imageAspectRatio, borderRadius: 12 }}
-                  contentFit="contain"
-                  onLoad={(e) => {
-                    const { width: w, height: h } = e.source;
-                    if (w && h) setImageAspectRatio(w / h);
-                  }}
-                />
-                <Pressable
-                  testID="remove-image-button"
-                  onPress={() => setImageUrl('')}
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    borderRadius: 16,
-                    width: 32,
-                    height: 32,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <X size={16} color="#FFFFFF" />
-                </Pressable>
+            {imageUrls.length > 0 ? (
+              <View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+                  {imageUrls.map((url, index) => (
+                    <View key={url} style={{ width: 120, height: 120, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: '#0a2d50' }}>
+                      <Image
+                        source={{ uri: url }}
+                        style={{ width: 120, height: 120, borderRadius: 12 }}
+                        contentFit="cover"
+                      />
+                      <Pressable
+                        onPress={() => setImageUrls((prev) => prev.filter((_, i) => i !== index))}
+                        style={{
+                          position: 'absolute', top: 4, right: 4,
+                          backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12,
+                          width: 24, height: 24, alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <X size={12} color="#FFFFFF" />
+                      </Pressable>
+                    </View>
+                  ))}
+                  <Pressable
+                    onPress={() => uploadMutation.mutate()}
+                    disabled={isUploading}
+                    style={{ width: 120, height: 120, borderRadius: 12, backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    {uploadMutation.isPending ? (
+                      <ActivityIndicator color="#00CF35" />
+                    ) : (
+                      <>
+                        <ImageIcon size={20} color="#4a6fa5" />
+                        <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 4 }}>Add more</Text>
+                      </>
+                    )}
+                  </Pressable>
+                </ScrollView>
+                <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 4 }}>{imageUrls.length} photo{imageUrls.length !== 1 ? 's' : ''} selected</Text>
               </View>
             ) : (
               <View className="flex-row gap-3">

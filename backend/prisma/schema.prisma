@@ -99,6 +99,7 @@ model Post {
   title        String?
   content      String?
   imageUrl     String?
+  imageUrls    String?
   videoUrl     String?
   linkUrl      String?
   tags         String?  // comma-separated tags
