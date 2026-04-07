@@ -1358,9 +1358,9 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
                         : `${author} on Openly\n${postUrl}`;
                       const thumbnail = post.imageUrls?.[0] ?? post.imageUrl ?? null;
                       const shareOptions: Parameters<typeof Share.share>[0] = { message };
-                      if (Platform.OS === 'ios') shareOptions.url = thumbnail ?? postUrl;
+                      if (Platform.OS === 'ios') shareOptions.url = postUrl;
                       setShareModalVisible(false);
-                      Share.share(shareOptions);
+                      setTimeout(() => Share.share(shareOptions), 300);
                     }}
                     style={{
                       flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
