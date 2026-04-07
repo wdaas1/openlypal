@@ -231,6 +231,42 @@ app.post("/api/upload", async (c) => {
   return c.json({ data: result.file });
 });
 
+// Link preview - fetch OG metadata from a URL
+app.get('/api/link-preview', async (c) => {
+  const url = c.req.query('url');
+  if (!url) return c.json({ error: { message: 'url is required' } }, 400);
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
+        'Accept': 'text/html',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    const html = await res.text();
+
+    const getMeta = (prop: string, attr = 'property') => {
+      const match = html.match(new RegExp(`<meta[^>]+${attr}=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i'))
+        ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+${attr}=["']${prop}["']`, 'i'));
+      return match?.[1] ?? null;
+    };
+    const getTitle = () => {
+      const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      return m?.[1]?.trim() ?? null;
+    };
+
+    const title = getMeta('og:title') ?? getMeta('twitter:title') ?? getTitle();
+    const description = getMeta('og:description') ?? getMeta('twitter:description') ?? getMeta('description', 'name');
+    const image = getMeta('og:image') ?? getMeta('twitter:image');
+    const siteName = getMeta('og:site_name');
+
+    return c.json({ data: { url, title, description, image, siteName } });
+  } catch {
+    return c.json({ data: { url, title: null, description: null, image: null, siteName: null } });
+  }
+});
+
 const port = Number(process.env.PORT) || 3000;
 
 export default {

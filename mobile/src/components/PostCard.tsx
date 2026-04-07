@@ -41,6 +41,7 @@ import { api } from '@/lib/api/api';
 import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
+import { LinkPreview } from './LinkPreview';
 import { useSession } from '@/lib/auth/use-session';
 
 interface PostCardProps {
@@ -840,24 +841,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
       </View>
 
       {/* Link */}
-      {post.linkUrl ? (
-        <View style={{
-          marginHorizontal: 14,
-          marginBottom: 10,
-          borderRadius: 10,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          backgroundColor: '#001935',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <ExternalLink size={12} color="#00CF35" />
-          <Text style={{ color: '#00CF35', fontSize: 12, flex: 1 }} numberOfLines={1}>
-            {post.linkUrl}
-          </Text>
-        </View>
-      ) : null}
+      {post.linkUrl ? <LinkPreview url={post.linkUrl} /> : null}
 
       {/* Tags */}
       {tags.length > 0 ? (
