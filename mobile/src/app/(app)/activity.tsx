@@ -154,13 +154,29 @@ export default function ActivityScreen() {
             </View>
           ) : (
             (activities ?? []).map((item) => (
-              <View
+              <Pressable
                 key={item.id}
                 testID={`activity-item-${item.id}`}
-                className="flex-row items-center px-4 py-3"
-                style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+                onPress={() => {
+                  if (item.type === 'follow') {
+                    router.push(`/(app)/user/${item.userId}` as any);
+                  } else if (item.postId) {
+                    router.push(`/(app)/post/${item.postId}` as any);
+                  }
+                }}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomColor: '#1a3a5c',
+                  borderBottomWidth: 0.5,
+                  opacity: pressed ? 0.6 : 1,
+                })}
               >
-                <UserAvatar uri={item.user.image} name={item.user.name} size={40} />
+                <Pressable onPress={() => router.push(`/(app)/user/${item.userId}` as any)}>
+                  <UserAvatar uri={item.user.image} name={item.user.name} size={40} />
+                </Pressable>
                 <View className="flex-1 ml-3">
                   <View className="flex-row items-center gap-2">
                     {getActivityIcon(item.type)}
@@ -178,7 +194,10 @@ export default function ActivityScreen() {
                     {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                   </Text>
                 </View>
-              </View>
+                {(item.postId || item.type === 'follow') ? (
+                  <Text style={{ color: '#4a6fa5', fontSize: 18, marginLeft: 8 }}>{'›'}</Text>
+                ) : null}
+              </Pressable>
             ))
           )}
           <View className="h-8" />
