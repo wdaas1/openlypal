@@ -1123,34 +1123,68 @@ export default function LiveMomentRoomScreen() {
   if (isCreator) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {/* Full-screen stream when live, dark background when not live */}
-        {streamUrl && !isNotLive ? (
-          <WebView
-            source={{ uri: streamUrl }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsFullscreenVideo={false}
-          />
-        ) : (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: facingFront ? '#0a0a12' : '#0a120a',
-            }}
-          />
-        )}
+        {/* Always show dark background for creator so chat is visible */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#0a0a12',
+          }}
+        />
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.75)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
         {overlayContent}
+        {/* Small PIP stream preview in top-right corner when live */}
+        {streamUrl && !isNotLive ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 96,
+              right: 16,
+              width: 108,
+              height: 160,
+              borderRadius: 16,
+              overflow: 'hidden',
+              borderWidth: 2,
+              borderColor: '#FF3B30',
+              shadowColor: '#FF3B30',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.6,
+              shadowRadius: 10,
+              elevation: 12,
+            }}
+          >
+            <WebView
+              source={{ uri: streamUrl }}
+              style={{ flex: 1 }}
+              mediaPlaybackRequiresUserAction={false}
+              allowsInlineMediaPlayback={true}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              allowsFullscreenVideo={false}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                top: 6,
+                left: 6,
+                backgroundColor: '#FF3B30',
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }}>
+                LIVE
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </View>
     );
   }
