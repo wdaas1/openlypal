@@ -636,8 +636,8 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
         </View>
       ) : null}
 
-      {/* Image - full width (supports multiple) */}
-      {(() => {
+      {/* Image - full width (supports multiple, photo posts only) */}
+      {post.type === 'photo' && (() => {
         const images = (post.imageUrls && post.imageUrls.length > 0)
           ? post.imageUrls
           : post.imageUrl ? [post.imageUrl] : [];
