@@ -1316,7 +1316,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
                         {caption ? (
                           <Text style={{ color: '#c8d8e8', fontSize: 13, lineHeight: 18 }} numberOfLines={2}>{caption}</Text>
                         ) : null}
-                        <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 2 }}>openly.app/post/{post.id}</Text>
+                        <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 2 }}>openlypal.com/post/{post.id}</Text>
                       </View>
                     </View>
                   );
@@ -1327,7 +1327,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
                   <Pressable
                     testID="share-copy-button"
                     onPress={() => {
-                      const url = `https://openly.app/post/${post.id}`;
+                      const url = `https://openlypal.com/post/${post.id}`;
                       Clipboard.setStringAsync(url).then(() => {
                         setCaptionCopied(true);
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1350,7 +1350,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
                     testID="share-open-button"
                     onPress={() => {
                       const author = post.user.username ? `@${post.user.username}` : post.user.name;
-                      const postUrl = `https://openly.app/post/${post.id}`;
+                      const postUrl = `https://openlypal.com/post/${post.id}`;
                       const caption = post.title ?? post.content ?? '';
                       const previewText = caption.length > 120 ? caption.slice(0, 120) + '…' : caption;
                       const message = previewText

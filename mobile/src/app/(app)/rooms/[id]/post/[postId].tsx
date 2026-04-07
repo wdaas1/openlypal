@@ -261,7 +261,7 @@ const SORT_TABS: { id: CommentSort; label: string; icon?: React.ReactNode }[] = 
 
 function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: string; postTitle?: string; postContent?: string; imageUrl?: string }) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = `https://openly.app/post/${postId}`;
+  const shareUrl = `https://openlypal.com/post/${postId}`;
   const shareText = postTitle ?? postContent?.slice(0, 80) ?? 'Check out this post';
 
   const handleCopyLink = async () => {
@@ -689,7 +689,7 @@ export default function RoomPostDetailScreen() {
               <Pressable testID="detail-share-button" onPress={async () => {
                 try {
                   await RNShare.share({
-                    message: `${post.title ?? post.content?.slice(0, 80) ?? 'Check out this post'}\n\nhttps://openly.app/post/${id}`,
+                    message: `${post.title ?? post.content?.slice(0, 80) ?? 'Check out this post'}\n\nhttps://openlypal.com/post/${id}`,
                     title: post.title ?? undefined,
                   });
                 } catch {}
