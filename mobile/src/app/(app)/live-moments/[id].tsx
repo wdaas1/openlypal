@@ -824,7 +824,7 @@ export default function LiveMomentScreen() {
         </Text>
       ) : null}
 
-      {streamUrl ? (
+      {streamUrl && !isCreator ? (
         <View
           style={{
             height: 260,
@@ -1124,18 +1124,31 @@ export default function LiveMomentScreen() {
   if (isCreator) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: facingFront ? '#0a0a12' : '#0a120a',
-          }}
-        />
+        {/* Full-screen stream when live, dark background when not live */}
+        {streamUrl && !isNotLive ? (
+          <WebView
+            source={{ uri: streamUrl }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            mediaPlaybackRequiresUserAction={false}
+            allowsInlineMediaPlayback={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            allowsFullscreenVideo={false}
+          />
+        ) : (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: facingFront ? '#0a0a12' : '#0a120a',
+            }}
+          />
+        )}
         <LinearGradient
-          colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.7)']}
+          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.75)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
         {overlayContent}
