@@ -720,7 +720,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
                 >
                   <Image
                     source={{ uri }}
-                    style={{ width, aspectRatio: 4 / 3 }}
+                    style={{ width: width - 24, aspectRatio: 4 / 3 }}
                     contentFit="cover"
                     testID={i === 0 ? `post-image-${post.id}` : undefined}
                   />
