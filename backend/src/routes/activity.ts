@@ -8,7 +8,7 @@ type Variables = {
 
 const activityRouter = new Hono<{ Variables: Variables }>();
 
-// GET / - Get activity (likes, reblogs, comments on the current user's posts)
+// GET / - Get activity (likes, reblogs, comments on the current user's posts, and new followers)
 activityRouter.get("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
@@ -21,26 +21,34 @@ activityRouter.get("/", async (c) => {
   const postIds = userPosts.map((p) => p.id);
   const postMap = Object.fromEntries(userPosts.map((p) => [p.id, p]));
 
-  if (postIds.length === 0) {
-    return c.json({ data: [] });
-  }
-
-  const [likes, reblogs, comments] = await Promise.all([
-    prisma.like.findMany({
-      where: { postId: { in: postIds }, userId: { not: user.id } },
-      include: { user: { select: { id: true, name: true, username: true, image: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-    }),
-    prisma.reblog.findMany({
-      where: { postId: { in: postIds }, userId: { not: user.id } },
-      include: { user: { select: { id: true, name: true, username: true, image: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-    }),
-    prisma.comment.findMany({
-      where: { postId: { in: postIds }, userId: { not: user.id } },
-      include: { user: { select: { id: true, name: true, username: true, image: true } } },
+  const [likes, reblogs, comments, follows] = await Promise.all([
+    postIds.length > 0
+      ? prisma.like.findMany({
+          where: { postId: { in: postIds }, userId: { not: user.id } },
+          include: { user: { select: { id: true, name: true, username: true, image: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        })
+      : [],
+    postIds.length > 0
+      ? prisma.reblog.findMany({
+          where: { postId: { in: postIds }, userId: { not: user.id } },
+          include: { user: { select: { id: true, name: true, username: true, image: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        })
+      : [],
+    postIds.length > 0
+      ? prisma.comment.findMany({
+          where: { postId: { in: postIds }, userId: { not: user.id } },
+          include: { user: { select: { id: true, name: true, username: true, image: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        })
+      : [],
+    prisma.follow.findMany({
+      where: { followingId: user.id },
+      include: { follower: { select: { id: true, name: true, username: true, image: true } } },
       orderBy: { createdAt: "desc" },
       take: 30,
     }),
@@ -73,6 +81,15 @@ activityRouter.get("/", async (c) => {
       user: c.user,
       post: postMap[c.postId] ?? null,
       createdAt: c.createdAt.toISOString(),
+    })),
+    ...follows.map((f) => ({
+      id: `follow-${f.id}`,
+      type: "follow",
+      userId: f.followerId,
+      postId: null,
+      user: f.follower,
+      post: null,
+      createdAt: f.createdAt.toISOString(),
     })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

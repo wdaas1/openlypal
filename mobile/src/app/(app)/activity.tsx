@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Repeat2, MessageCircle, Users } from 'lucide-react-native';
+import { Heart, Repeat2, MessageCircle, Users, UserPlus } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -37,6 +37,8 @@ function getActivityIcon(type: string) {
       return <Repeat2 size={16} color="#00CF35" />;
     case 'comment':
       return <MessageCircle size={16} color="#3F72AF" />;
+    case 'follow':
+      return <UserPlus size={16} color="#A855F7" />;
     default:
       return <Heart size={16} color="#4a6fa5" />;
   }
@@ -50,6 +52,8 @@ function getActivityText(type: string) {
       return 'reblogged your post';
     case 'comment':
       return 'commented on your post';
+    case 'follow':
+      return 'started following you';
     default:
       return 'interacted with your post';
   }
