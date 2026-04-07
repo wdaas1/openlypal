@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,8 +23,9 @@ import Animated, {
   withSequence,
   withTiming,
   FadeInDown,
+  FadeIn,
 } from 'react-native-reanimated';
-import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera } from 'lucide-react-native';
+import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -32,6 +34,9 @@ import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
 import { getAuthToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CONTENT_AREA_HEIGHT = 230;
 
 function getTimeRemaining(expiresAt: string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -203,26 +208,43 @@ function GoLivePulseButton({ onPress, isPending }: { onPress: () => void; isPend
 
 function FloatingReaction({ emoji, id }: { emoji: string; id: number }) {
   const translateY = useSharedValue(0);
+  const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
+  const scale = useSharedValue(0.5);
 
   useEffect(() => {
-    translateY.value = withTiming(-120, { duration: 2000 });
+    // Random horizontal drift
+    const drift = ((id * 37 + 13) % 60) - 30;
+    translateY.value = withTiming(-180, { duration: 2200 });
+    translateX.value = withTiming(drift, { duration: 2200 });
+    scale.value = withSequence(
+      withTiming(1.3, { duration: 300 }),
+      withTiming(1, { duration: 200 })
+    );
     opacity.value = withSequence(
-      withTiming(1, { duration: 200 }),
-      withTiming(0, { duration: 1800 })
+      withTiming(1, { duration: 300 }),
+      withTiming(1, { duration: 1400 }),
+      withTiming(0, { duration: 500 })
     );
   }, []);
 
+  // Spread across bottom third of screen
+  const baseRight = 20 + (id % 5) * ((SCREEN_WIDTH - 100) / 5);
+
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+      { scale: scale.value },
+    ],
     opacity: opacity.value,
     position: 'absolute',
     bottom: 0,
-    right: 16 + (id % 4) * 18,
+    right: baseRight,
   }));
 
   return (
-    <Animated.Text style={[style, { fontSize: 26 }]}>{emoji}</Animated.Text>
+    <Animated.Text style={[style, { fontSize: 28 }]}>{emoji}</Animated.Text>
   );
 }
 
@@ -255,9 +277,13 @@ function VideoMessage({ uri, isOwn }: { uri: string; isOwn: boolean }) {
 function MessageBubble({
   message,
   isOwn,
+  onLongPress,
+  isPinned,
 }: {
   message: LiveMomentMessage;
   isOwn: boolean;
+  onLongPress?: () => void;
+  isPinned?: boolean;
 }) {
   return (
     <Animated.View
@@ -287,7 +313,7 @@ function MessageBubble({
           </Text>
         </View>
       )}
-      <View style={{ maxWidth: '72%' }}>
+      <Pressable onLongPress={onLongPress} style={{ maxWidth: '72%' }}>
         {!isOwn && (
           <Text
             style={{
@@ -308,8 +334,8 @@ function MessageBubble({
             style={{
               borderRadius: 14,
               overflow: 'hidden',
-              borderWidth: 1,
-              borderColor: isOwn ? 'rgba(0,207,53,0.3)' : 'rgba(255,255,255,0.1)',
+              borderWidth: isPinned ? 2 : 1,
+              borderColor: isPinned ? 'rgba(0,207,53,0.6)' : (isOwn ? 'rgba(0,207,53,0.3)' : 'rgba(255,255,255,0.1)'),
             }}
           >
             <Image
@@ -323,12 +349,14 @@ function MessageBubble({
         ) : (
           <View
             style={{
-              backgroundColor: isOwn ? '#00CF35' : 'rgba(255,255,255,0.1)',
+              backgroundColor: isOwn ? '#00CF35' : 'rgba(255,255,255,0.13)',
               paddingHorizontal: 14,
               paddingVertical: 10,
               borderRadius: 18,
               borderBottomRightRadius: isOwn ? 4 : 18,
               borderBottomLeftRadius: isOwn ? 18 : 4,
+              borderWidth: isPinned ? 1 : 0,
+              borderColor: 'rgba(0,207,53,0.5)',
             }}
           >
             <Text
@@ -343,10 +371,219 @@ function MessageBubble({
             </Text>
           </View>
         )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function SystemMessageBubble({ content }: { content: string }) {
+  return (
+    <Animated.View
+      entering={FadeIn.duration(400)}
+      style={{ alignItems: 'center', marginVertical: 5, paddingHorizontal: 16 }}
+    >
+      <View
+        style={{
+          backgroundColor: 'rgba(255,255,255,0.07)',
+          paddingHorizontal: 12,
+          paddingVertical: 4,
+          borderRadius: 12,
+        }}
+      >
+        <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontWeight: '500' }}>
+          {content}
+        </Text>
       </View>
     </Animated.View>
   );
 }
+
+function PinnedMessageView({
+  message,
+  onUnpin,
+  isCreator,
+}: {
+  message: LiveMomentMessage;
+  onUnpin: () => void;
+  isCreator: boolean;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,207,53,0.15)',
+        backgroundColor: 'rgba(0,207,53,0.06)',
+      }}
+    >
+      <Pin size={12} color="rgba(0,207,53,0.8)" />
+      <Text
+        style={{
+          flex: 1,
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 12,
+          fontWeight: '600',
+        }}
+        numberOfLines={1}
+      >
+        {message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.content}
+      </Text>
+      {isCreator ? (
+        <Pressable onPress={onUnpin}>
+          <Text style={{ color: 'rgba(0,207,53,0.7)', fontSize: 11, fontWeight: '700' }}>✕</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function LiveContentArea({
+  media,
+  isLive,
+}: {
+  media: LiveMomentMessage | null;
+  isLive: boolean;
+}) {
+  const pulse = useSharedValue(0.6);
+  const videoUri = media?.type === 'video' && media.contentUrl ? media.contentUrl : '';
+  const player = useVideoPlayer(videoUri, (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1800 }),
+        withTiming(0.6, { duration: 1800 })
+      ),
+      -1,
+      false
+    );
+  }, [pulse]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+
+  if (media?.type === 'image' && media.contentUrl) {
+    return (
+      <View style={{ flex: 1 }}>
+        <Image
+          source={{ uri: media.contentUrl }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.85)']}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      </View>
+    );
+  }
+
+  if (media?.type === 'video' && media.contentUrl) {
+    return (
+      <View style={{ flex: 1 }}>
+        <VideoView
+          player={player}
+          style={{ flex: 1 }}
+          contentFit="cover"
+          allowsFullscreen={false}
+          allowsPictureInPicture={false}
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.85)']}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      </View>
+    );
+  }
+
+  // Placeholder
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <LinearGradient
+        colors={['#001530', '#000d1a', '#0a0510']}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      {/* Subtle animated circles */}
+      <Animated.View
+        style={[
+          pulseStyle,
+          {
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            borderWidth: 1,
+            borderColor: 'rgba(0,207,53,0.15)',
+            position: 'absolute',
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          pulseStyle,
+          {
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            borderWidth: 1,
+            borderColor: 'rgba(0,207,53,0.25)',
+            position: 'absolute',
+          },
+        ]}
+      />
+      <Text style={{ fontSize: 36, marginBottom: 10 }}>📡</Text>
+      <Text
+        style={{
+          color: isLive ? 'rgba(0,207,53,0.7)' : 'rgba(255,255,255,0.3)',
+          fontSize: 13,
+          fontWeight: '700',
+          letterSpacing: 1,
+        }}
+      >
+        {isLive ? 'BROADCASTING' : 'WAITING FOR HOST'}
+      </Text>
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.9)']}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60 }}
+      />
+    </View>
+  );
+}
+
+function ViewerCountDisplay({ count }: { count: number }) {
+  const scale = useSharedValue(1);
+  const prevCount = useRef(count);
+
+  useEffect(() => {
+    if (count !== prevCount.current) {
+      prevCount.current = count;
+      scale.value = withSequence(
+        withTiming(1.5, { duration: 200 }),
+        withTiming(1, { duration: 300 })
+      );
+    }
+  }, [count, scale]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={[animStyle, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+      <Eye size={14} color="rgba(255,255,255,0.5)" />
+      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '700' }}>
+        {count}
+      </Text>
+    </Animated.View>
+  );
+}
+
+type SystemMsg = { id: string; content: string; createdAt: number; isSystem: true };
 
 export default function LiveMomentScreen() {
   const { id: momentId } = useLocalSearchParams<{ id: string }>();
@@ -373,6 +610,8 @@ export default function LiveMomentScreen() {
   const [streamToken, setStreamToken] = useState<string | null>(null);
   const [streamWsUrl, setStreamWsUrl] = useState<string | null>(null);
   const [isStartingStream, setIsStartingStream] = useState(false);
+  const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
+  const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
 
   const { data: moment, isLoading } = useQuery({
     queryKey: ['live-moment', momentId],
@@ -387,6 +626,12 @@ export default function LiveMomentScreen() {
     refetchInterval: 3000,
     enabled: Boolean(momentId),
   });
+
+  // Latest media from any message for the content area
+  const latestMedia = useMemo(() => {
+    const media = (messages ?? []).filter((m) => m.type === 'image' || m.type === 'video');
+    return media.length > 0 ? media[media.length - 1] : null;
+  }, [messages]);
 
   const joinMutation = useMutation({
     mutationFn: () => liveMomentsApi.join(momentId),
@@ -423,7 +668,8 @@ export default function LiveMomentScreen() {
         try {
           const data = JSON.parse(e.data) as
             | { type: 'message'; data: LiveMomentMessage }
-            | { type: 'typing'; userId: string; userName: string };
+            | { type: 'typing'; userId: string; userName: string }
+            | { type: 'user_joined'; userId: string; userName: string };
 
           if (data.type === 'message') {
             queryClient.setQueryData(
@@ -446,6 +692,18 @@ export default function LiveMomentScreen() {
               typingTimers.current.delete(data.userId);
             }, 3000);
             typingTimers.current.set(data.userId, timer);
+          } else if (data.type === 'user_joined') {
+            setSystemMessages((prev) => [
+              ...prev,
+              {
+                id: `join-${data.userId}-${Date.now()}`,
+                content: `👋 ${data.userName} joined`,
+                createdAt: Date.now(),
+                isSystem: true,
+              },
+            ]);
+            // Refresh viewer count
+            queryClient.invalidateQueries({ queryKey: ['live-moment', momentId] });
           }
         } catch {
           // ignore malformed messages
@@ -480,12 +738,12 @@ export default function LiveMomentScreen() {
   }, [moment?.expiresAt]);
 
   useEffect(() => {
-    if ((messages ?? []).length > 0) {
+    if ((messages ?? []).length > 0 || systemMessages.length > 0) {
       setTimeout(() => {
         scrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages]);
+  }, [messages, systemMessages]);
 
   const sendMessageMutation = useMutation({
     mutationFn: (data: { content: string; type: string; contentUrl?: string }) =>
@@ -556,7 +814,7 @@ export default function LiveMomentScreen() {
         setFloatingReactions((prev: { emoji: string; id: number }[]) =>
           prev.filter((r) => r.id !== newId)
         );
-      }, 2200);
+      }, 2400);
       sendMessage({ content: emoji, type: 'reaction' });
     },
     [sendMessage]
@@ -698,433 +956,256 @@ export default function LiveMomentScreen() {
     ? `${backendBaseUrl}/stream/${momentId}?token=${encodeURIComponent(streamToken)}&url=${encodeURIComponent(streamWsUrl)}&role=${isCreator ? 'publisher' : 'viewer'}`
     : null;
 
-  const overlayContent = (
-    <SafeAreaView
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      edges={['top', 'bottom']}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          gap: 10,
-        }}
-      >
-        <Pressable testID="back-button" onPress={handleBack}>
-          <ArrowLeft size={18} color="rgba(255,255,255,0.8)" />
-        </Pressable>
-
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              color: '#ffffff',
-              fontSize: 16,
-              fontWeight: '800',
-              letterSpacing: 0.2,
-            }}
-            numberOfLines={1}
-          >
-            {moment.title}
-          </Text>
-          {!isCreator ? (
-            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-              {moment.creator?.name ?? 'Unknown'}'s moment
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Eye size={14} color="rgba(255,255,255,0.5)" />
-            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '700' }}>
-              {moment.viewerCount ?? 0}
-            </Text>
-          </View>
-
-          {isEnded ? (
-            <View
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 20,
-              }}
-            >
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '800' }}>
-                ENDED
-              </Text>
-            </View>
-          ) : isNotLive ? (
-            <OfflineBadge />
-          ) : (
-            <LiveBadge />
-          )}
-
-          {isCreator ? (
-            <Pressable
-              testID="flip-camera-button"
-              onPress={handleFlipCamera}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <FlipHorizontal size={18} color="rgba(255,255,255,0.9)" />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
-      {isCreator && isNotLive && !isEnded ? (
+  // Bottom bar shared between creator and viewer
+  const bottomBar = !isEnded ? (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <BlurView intensity={25} tint="dark">
         <View
           style={{
-            marginHorizontal: 16,
-            marginBottom: 8,
-            backgroundColor: 'rgba(0,207,53,0.08)',
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: 'rgba(0,207,53,0.2)',
-            padding: 16,
-            alignItems: 'center',
-            gap: 12,
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(255,255,255,0.07)',
+            paddingTop: 10,
+            paddingHorizontal: 16,
+            paddingBottom: 10,
           }}
         >
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center' }}>
-            This moment is not live yet. Tap to go live.
-          </Text>
-          <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive || isStartingStream} />
-        </View>
-      ) : null}
-
-      {!isCreator && !isEnded && !isNotLive ? (
-        <View style={{ alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: '600' }}>
-            📡 Watching live...
-          </Text>
-        </View>
-      ) : null}
-
-      {!isEnded && timeRemaining ? (
-        <Text
-          style={{
-            color: 'rgba(255,255,255,0.3)',
-            fontSize: 11,
-            fontWeight: '700',
-            textAlign: 'center',
-            marginBottom: 6,
-          }}
-        >
-          {timeRemaining}
-        </Text>
-      ) : null}
-
-      {streamUrl && !isCreator ? (
-        <View
-          style={{
-            height: 260,
-            backgroundColor: '#000',
-            overflow: 'hidden',
-            borderBottomWidth: 1,
-            borderBottomColor: 'rgba(255,255,255,0.06)',
-          }}
-        >
-          <WebView
-            testID="stream-webview"
-            source={{ uri: streamUrl }}
-            style={{ flex: 1 }}
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsFullscreenVideo={false}
-          />
-        </View>
-      ) : null}
-
-      {!isCreator && !isEnded && (isNotLive || (!isNotLive && !streamToken)) ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 32 }}>📡</Text>
-          {isNotLive ? (
+          {typingUsers.length > 0 ? (
             <Text
               style={{
-                color: 'rgba(255,255,255,0.35)',
-                fontSize: 15,
-                fontWeight: '600',
-                marginTop: 12,
-                textAlign: 'center',
-                paddingHorizontal: 40,
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: 12,
+                fontWeight: '500',
+                marginBottom: 6,
+                fontStyle: 'italic',
               }}
             >
-              Creator hasn't gone live yet
+              {typingUsers.map((u) => u.userName).join(', ')}{' '}
+              {typingUsers.length === 1 ? 'is' : 'are'} typing...
             </Text>
-          ) : (
-            <>
-              <Text
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+            {QUICK_REACTIONS.map((emoji) => (
+              <Pressable
+                testID={`reaction-${emoji}`}
+                key={emoji}
+                onPress={() => handleReaction(emoji)}
                 style={{
-                  color: 'rgba(255,255,255,0.6)',
-                  fontSize: 15,
-                  fontWeight: '600',
-                  marginTop: 12,
-                  textAlign: 'center',
-                  paddingHorizontal: 40,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.1)',
                 }}
               >
-                Stream is live!
-              </Text>
+                <Text style={{ fontSize: 19 }}>{emoji}</Text>
+              </Pressable>
+            ))}
+
+            {isCreator ? (
               <Pressable
-                onPress={handleJoinStream}
+                testID="end-moment-button"
+                onPress={handleEnd}
+                disabled={endMomentMutation.isPending}
                 style={{
-                  marginTop: 16,
+                  marginLeft: 'auto',
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: '#FF3B30',
-                  paddingHorizontal: 24,
-                  paddingVertical: 12,
-                  borderRadius: 24,
-                  shadowColor: '#FF3B30',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 5,
-                  elevation: 8,
+                  gap: 6,
+                  backgroundColor: 'rgba(255,59,48,0.15)',
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,59,48,0.3)',
                 }}
               >
-                <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>
-                  JOIN LIVE
+                <StopCircle size={14} color="#FF3B30" />
+                <Text style={{ color: '#FF3B30', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 }}>
+                  END
                 </Text>
               </Pressable>
-            </>
-          )}
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          testID="messages-scroll"
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {(messages ?? []).length === 0 ? (
-            <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>
-                No messages yet. Say something!
-              </Text>
-            </View>
-          ) : null}
-          {(messages ?? []).map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isOwn={msg.userId === session?.user?.id}
-            />
-          ))}
-        </ScrollView>
-      )}
+            ) : null}
+          </View>
 
-      <View
-        style={{ position: 'absolute', bottom: 100, right: 0, width: 120, height: 160 }}
-        pointerEvents="none"
-      >
-        {floatingReactions.map((r) => (
-          <FloatingReaction key={r.id} emoji={r.emoji} id={r.id} />
-        ))}
-      </View>
-
-      {isEnded ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0,13,26,0.85)',
-          }}
-        >
-          <Text style={{ fontSize: 48 }}>📡</Text>
-          <Text
-            style={{
-              color: '#ffffff',
-              fontSize: 22,
-              fontWeight: '900',
-              marginTop: 16,
-              letterSpacing: 0.3,
-            }}
-          >
-            This moment has ended
-          </Text>
-          <Pressable
-            testID="leave-ended-button"
-            onPress={handleBack}
-            style={{
-              marginTop: 24,
-              backgroundColor: 'rgba(255,255,255,0.1)',
-              paddingHorizontal: 28,
-              paddingVertical: 12,
-              borderRadius: 30,
-            }}
-          >
-            <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '700' }}>Go Back</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {!isEnded ? (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <BlurView intensity={20} tint="dark">
-            <View
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Pressable
+              testID="photo-picker-button"
+              onPress={handlePickMedia}
               style={{
-                borderTopWidth: 1,
-                borderTopColor: 'rgba(255,255,255,0.07)',
-                paddingTop: 10,
-                paddingHorizontal: 16,
-                paddingBottom: 10,
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: 'rgba(255,255,255,0.07)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.1)',
               }}
             >
-              {typingUsers.length > 0 ? (
-                <Text
-                  style={{
-                    color: 'rgba(255,255,255,0.4)',
-                    fontSize: 12,
-                    fontWeight: '500',
-                    marginBottom: 6,
-                    fontStyle: 'italic',
-                  }}
-                >
-                  {typingUsers.map((u) => u.userName).join(', ')}{' '}
-                  {typingUsers.length === 1 ? 'is' : 'are'} typing...
-                </Text>
-              ) : null}
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-                {QUICK_REACTIONS.map((emoji) => (
-                  <Pressable
-                    testID={`reaction-${emoji}`}
-                    key={emoji}
-                    onPress={() => handleReaction(emoji)}
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 19,
-                      backgroundColor: 'rgba(255,255,255,0.07)',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 18 }}>{emoji}</Text>
-                  </Pressable>
-                ))}
+              <Camera size={18} color="rgba(255,255,255,0.5)" />
+            </Pressable>
 
-                {isCreator ? (
-                  <Pressable
-                    testID="end-moment-button"
-                    onPress={handleEnd}
-                    disabled={endMomentMutation.isPending}
-                    style={{
-                      marginLeft: 'auto',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      backgroundColor: 'rgba(255,59,48,0.15)',
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: 'rgba(255,59,48,0.3)',
-                    }}
-                  >
-                    <StopCircle size={14} color="#FF3B30" />
-                    <Text style={{ color: '#FF3B30', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 }}>
-                      END
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Pressable
-                  testID="photo-picker-button"
-                  onPress={handlePickMedia}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor: 'rgba(255,255,255,0.07)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.1)',
-                  }}
-                >
-                  <Camera size={18} color="rgba(255,255,255,0.5)" />
-                </Pressable>
-
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: 'rgba(255,255,255,0.07)',
-                    borderRadius: 24,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <TextInput
-                    testID="message-input"
-                    value={messageText}
-                    onChangeText={handleTextChange}
-                    placeholder="Say something..."
-                    placeholderTextColor="rgba(255,255,255,0.25)"
-                    style={{ color: '#ffffff', fontSize: 15 }}
-                    onSubmitEditing={handleSend}
-                    returnKeyType="send"
-                    multiline={false}
-                  />
-                </View>
-
-                <Pressable
-                  testID="send-message-button"
-                  onPress={handleSend}
-                  disabled={!messageText.trim() || sendMessageMutation.isPending}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor: messageText.trim() ? '#00CF35' : 'rgba(255,255,255,0.08)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: messageText.trim() ? '#00CF35' : 'transparent',
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 5,
-                    elevation: messageText.trim() ? 6 : 0,
-                  }}
-                >
-                  <Send
-                    size={16}
-                    color={messageText.trim() ? '#001935' : 'rgba(255,255,255,0.3)'}
-                  />
-                </Pressable>
-              </View>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(255,255,255,0.07)',
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.1)',
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+              }}
+            >
+              <TextInput
+                testID="message-input"
+                value={messageText}
+                onChangeText={handleTextChange}
+                placeholder="Say something..."
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                style={{ color: '#ffffff', fontSize: 15 }}
+                onSubmitEditing={handleSend}
+                returnKeyType="send"
+                multiline={false}
+              />
             </View>
-          </BlurView>
-        </KeyboardAvoidingView>
-      ) : null}
-    </SafeAreaView>
+
+            <Pressable
+              testID="send-message-button"
+              onPress={handleSend}
+              disabled={!messageText.trim() || sendMessageMutation.isPending}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: messageText.trim() ? '#00CF35' : 'rgba(255,255,255,0.08)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: messageText.trim() ? '#00CF35' : 'transparent',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.2,
+                shadowRadius: 5,
+                elevation: messageText.trim() ? 6 : 0,
+              }}
+            >
+              <Send
+                size={16}
+                color={messageText.trim() ? '#001935' : 'rgba(255,255,255,0.3)'}
+              />
+            </Pressable>
+          </View>
+        </View>
+      </BlurView>
+    </KeyboardAvoidingView>
+  ) : null;
+
+  // Ended overlay
+  const endedOverlay = isEnded ? (
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,13,26,0.85)',
+      }}
+    >
+      <Text style={{ fontSize: 48 }}>📡</Text>
+      <Text
+        style={{
+          color: '#ffffff',
+          fontSize: 22,
+          fontWeight: '900',
+          marginTop: 16,
+          letterSpacing: 0.3,
+        }}
+      >
+        This moment has ended
+      </Text>
+      <Pressable
+        testID="leave-ended-button"
+        onPress={handleBack}
+        style={{
+          marginTop: 24,
+          backgroundColor: 'rgba(255,255,255,0.1)',
+          paddingHorizontal: 28,
+          paddingVertical: 12,
+          borderRadius: 30,
+        }}
+      >
+        <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '700' }}>Go Back</Text>
+      </Pressable>
+    </View>
+  ) : null;
+
+  // Floating reactions overlay
+  const floatingReactionsOverlay = (
+    <View
+      style={{ position: 'absolute', bottom: 100, left: 0, right: 0, height: 220 }}
+      pointerEvents="none"
+    >
+      {floatingReactions.map((r) => (
+        <FloatingReaction key={r.id} emoji={r.emoji} id={r.id} />
+      ))}
+    </View>
   );
 
+  // Chat messages area (shared)
+  const chatContent = (
+    <>
+      {pinnedMessage ? (
+        <PinnedMessageView
+          message={pinnedMessage}
+          onUnpin={() => setPinnedMessage(null)}
+          isCreator={isCreator}
+        />
+      ) : null}
+      <ScrollView
+        ref={scrollRef}
+        testID="messages-scroll"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Session started system message */}
+        <SystemMessageBubble content="🎙️ Live session started" />
+
+        {/* Messages and system messages interleaved */}
+        {(messages ?? []).length === 0 && systemMessages.length === 0 ? null : null}
+        {(messages ?? []).map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            isOwn={msg.userId === session?.user?.id}
+            isPinned={pinnedMessage?.id === msg.id}
+            onLongPress={
+              isCreator && msg.type !== 'reaction'
+                ? () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setPinnedMessage(pinnedMessage?.id === msg.id ? null : msg);
+                  }
+                : undefined
+            }
+          />
+        ))}
+        {/* System messages (joined events) */}
+        {systemMessages.map((sys) => (
+          <SystemMessageBubble key={sys.id} content={sys.content} />
+        ))}
+      </ScrollView>
+    </>
+  );
+
+  // ─── CREATOR LAYOUT ──────────────────────────────────────────────────────
   if (isCreator) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {/* Full-screen stream when live, dark background when not live */}
+        {/* Full-screen stream or dark bg */}
         {streamUrl && !isNotLive ? (
           <WebView
             source={{ uri: streamUrl }}
@@ -1148,21 +1229,246 @@ export default function LiveMomentScreen() {
           />
         )}
         <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.75)']}
+          colors={['rgba(0,0,0,0.65)', 'transparent', 'rgba(0,0,0,0.8)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
-        {overlayContent}
+
+        <SafeAreaView
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          edges={['top', 'bottom']}
+        >
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              gap: 10,
+            }}
+          >
+            <Pressable testID="back-button" onPress={handleBack}>
+              <ArrowLeft size={18} color="rgba(255,255,255,0.8)" />
+            </Pressable>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ color: '#ffffff', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 }}
+                numberOfLines={1}
+              >
+                {moment.title}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <ViewerCountDisplay count={moment.viewerCount ?? 0} />
+              {isEnded ? (
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '800' }}>ENDED</Text>
+                </View>
+              ) : isNotLive ? (
+                <OfflineBadge />
+              ) : (
+                <LiveBadge />
+              )}
+              <Pressable
+                testID="flip-camera-button"
+                onPress={handleFlipCamera}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FlipHorizontal size={18} color="rgba(255,255,255,0.9)" />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Go live banner */}
+          {isNotLive && !isEnded ? (
+            <View
+              style={{
+                marginHorizontal: 16,
+                marginBottom: 8,
+                backgroundColor: 'rgba(0,207,53,0.08)',
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: 'rgba(0,207,53,0.2)',
+                padding: 16,
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center' }}>
+                Tap to start broadcasting to your viewers
+              </Text>
+              <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive || isStartingStream} />
+            </View>
+          ) : null}
+
+          {!isEnded && timeRemaining ? (
+            <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>
+              {timeRemaining}
+            </Text>
+          ) : null}
+
+          {/* Chat */}
+          <View style={{ flex: 1 }}>
+            {chatContent}
+          </View>
+
+          {bottomBar}
+        </SafeAreaView>
+
+        {floatingReactionsOverlay}
+        {endedOverlay}
       </View>
     );
   }
 
+  // ─── VIEWER LAYOUT ───────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#000d1a' }}>
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {/* Live content area - top background */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: CONTENT_AREA_HEIGHT + 60 }}>
+        <LiveContentArea media={latestMedia} isLive={!isNotLive} />
+      </View>
+
+      {/* Stream WebView over content area if active */}
+      {streamUrl ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: CONTENT_AREA_HEIGHT + 60,
+            overflow: 'hidden',
+          }}
+        >
+          <WebView
+            testID="stream-webview"
+            source={{ uri: streamUrl }}
+            style={{ flex: 1 }}
+            mediaPlaybackRequiresUserAction={false}
+            allowsInlineMediaPlayback={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            allowsFullscreenVideo={false}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80 }}
+          />
+        </View>
+      ) : null}
+
+      {/* Dark gradient from content to chat */}
       <LinearGradient
-        colors={['#000d1a', '#001025', '#000d1a']}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        colors={['transparent', 'rgba(0,0,0,0.95)']}
+        style={{
+          position: 'absolute',
+          top: CONTENT_AREA_HEIGHT,
+          left: 0,
+          right: 0,
+          height: 80,
+        }}
       />
-      {overlayContent}
+
+      {/* Full chat + header overlay */}
+      <SafeAreaView
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        edges={['top', 'bottom']}
+      >
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            gap: 10,
+          }}
+        >
+          <Pressable testID="back-button" onPress={handleBack}>
+            <ArrowLeft size={18} color="rgba(255,255,255,0.9)" />
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{ color: '#ffffff', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 }}
+              numberOfLines={1}
+            >
+              {moment.title}
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+              {moment.creator?.name ?? 'Unknown'}'s moment
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ViewerCountDisplay count={moment.viewerCount ?? 0} />
+            {isEnded ? (
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '800' }}>ENDED</Text>
+              </View>
+            ) : isNotLive ? (
+              <OfflineBadge />
+            ) : (
+              <LiveBadge />
+            )}
+          </View>
+        </View>
+
+        {/* Time remaining */}
+        {!isEnded && timeRemaining ? (
+          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '700', textAlign: 'center', marginBottom: 4 }}>
+            {timeRemaining}
+          </Text>
+        ) : null}
+
+        {/* Spacer for content area */}
+        <View style={{ height: CONTENT_AREA_HEIGHT - 80 }} />
+
+        {/* Stream join button (if live but no stream token) */}
+        {!isEnded && !isNotLive && !streamToken ? (
+          <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+            <Pressable
+              onPress={handleJoinStream}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: 'rgba(255,59,48,0.85)',
+                paddingHorizontal: 20,
+                paddingVertical: 9,
+                borderRadius: 24,
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 1 }}>
+                JOIN LIVE VIDEO
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Chat area - semi-transparent over dark bg */}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,5,15,0.7)',
+            borderTopWidth: 1,
+            borderTopColor: 'rgba(255,255,255,0.05)',
+          }}
+        >
+          {chatContent}
+        </View>
+
+        {bottomBar}
+      </SafeAreaView>
+
+      {floatingReactionsOverlay}
+      {endedOverlay}
     </View>
   );
 }

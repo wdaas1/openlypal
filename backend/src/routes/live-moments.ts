@@ -509,11 +509,18 @@ liveMomentsRouter.post("/:id/join", async (c) => {
 
   const viewerIds = parseJsonArray(moment.viewerIds);
 
-  if (!viewerIds.includes(user.id)) {
+  const wasAlreadyJoined = viewerIds.includes(user.id);
+  if (!wasAlreadyJoined) {
     viewerIds.push(user.id);
     await prisma.liveMoment.update({
       where: { id },
       data: { viewerIds: JSON.stringify(viewerIds) },
+    });
+    // Broadcast user_joined to all other WS clients
+    wsManager.broadcast(id, user.id, {
+      type: 'user_joined',
+      userId: user.id,
+      userName: user.name,
     });
   }
 
