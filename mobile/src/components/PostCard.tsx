@@ -404,7 +404,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
     } else {
       // Single tap — open viewer after delay (cancelled if double-tap follows)
       const timer = setTimeout(() => {
-        setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! });
+        setMediaViewer({ visible: true, type: 'image', uri: (post.imageUrls?.[0] ?? post.imageUrl)! });
       }, DOUBLE_TAP_DELAY + 50);
       imageLastTapRef.current = now;
       return () => clearTimeout(timer);
@@ -636,65 +636,105 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
         </View>
       ) : null}
 
-      {/* Image - full width */}
-      {post.imageUrl ? (
-        !showContent ? (
-          <View style={{ position: 'relative' }}>
-            <Image
-              source={{ uri: post.imageUrl }}
-              style={{ width: '100%', aspectRatio: imageAspectRatio }}
-              contentFit="contain"
-              blurRadius={5}
-              onLoad={(e) => {
-                const { width: w, height: h } = e.source;
-                if (w && h) setImageAspectRatio(w / h);
-              }}
-            />
-            <View style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}>
-              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-                <ShieldAlert size={24} color="#FF4E6A" />
-              </View>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
-              <Text style={{ fontSize: 11, color: '#a0b4c8', textAlign: 'center', paddingHorizontal: 24 }}>
-                This post may contain explicit material.
-              </Text>
-              <Pressable
-                testID={`reveal-image-button-${post.id}`}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setRevealed(true);
+      {/* Image - full width (supports multiple) */}
+      {(() => {
+        const images = (post.imageUrls && post.imageUrls.length > 0)
+          ? post.imageUrls
+          : post.imageUrl ? [post.imageUrl] : [];
+        if (images.length === 0) return null;
+        if (!showContent) {
+          return (
+            <View style={{ position: 'relative' }}>
+              <Image
+                source={{ uri: images[0] }}
+                style={{ width: '100%', aspectRatio: imageAspectRatio }}
+                contentFit="contain"
+                blurRadius={5}
+                onLoad={(e) => {
+                  const { width: w, height: h } = e.source;
+                  if (w && h) setImageAspectRatio(w / h);
                 }}
-                style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Tap to reveal</Text>
-              </Pressable>
+              />
+              <View style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShieldAlert size={24} color="#FF4E6A" />
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
+                <Text style={{ fontSize: 11, color: '#a0b4c8', textAlign: 'center', paddingHorizontal: 24 }}>
+                  This post may contain explicit material.
+                </Text>
+                <Pressable
+                  testID={`reveal-image-button-${post.id}`}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setRevealed(true);
+                  }}
+                  style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Tap to reveal</Text>
+                </Pressable>
+              </View>
+            </View>
+          );
+        }
+        if (images.length === 1) {
+          return (
+            <Pressable
+              testID={`open-image-viewer-${post.id}`}
+              onPress={handleImageTap}
+            >
+              <Image
+                source={{ uri: images[0] }}
+                style={{ width: '100%', aspectRatio: imageAspectRatio }}
+                contentFit="contain"
+                onLoad={(e) => {
+                  const { width: w, height: h } = e.source;
+                  if (w && h) setImageAspectRatio(w / h);
+                }}
+                testID={`post-image-${post.id}`}
+              />
+            </Pressable>
+          );
+        }
+        // Multiple images — horizontal scroll
+        return (
+          <View>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
+            >
+              {images.map((uri, i) => (
+                <Pressable
+                  key={uri}
+                  testID={i === 0 ? `open-image-viewer-${post.id}` : undefined}
+                  onPress={() => setMediaViewer({ visible: true, type: 'image', uri })}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={{ width, aspectRatio: 4 / 3 }}
+                    contentFit="cover"
+                    testID={i === 0 ? `post-image-${post.id}` : undefined}
+                  />
+                </Pressable>
+              ))}
+            </ScrollView>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, paddingVertical: 6 }}>
+              {images.map((_, i) => (
+                <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#4a6fa5' }} />
+              ))}
             </View>
           </View>
-        ) : (
-          <Pressable
-            testID={`open-image-viewer-${post.id}`}
-            onPress={handleImageTap}
-          >
-            <Image
-              source={{ uri: post.imageUrl }}
-              style={{ width: '100%', aspectRatio: imageAspectRatio }}
-              contentFit="contain"
-              onLoad={(e) => {
-                const { width: w, height: h } = e.source;
-                if (w && h) setImageAspectRatio(w / h);
-              }}
-              testID={`post-image-${post.id}`}
-            />
-          </Pressable>
-        )
-      ) : null}
+        );
+      })()}
 
       {/* Video - full width inline */}
       {post.type === 'video' && post.videoUrl ? (
@@ -1349,7 +1389,7 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
                       testID="share-open-button"
                       onPress={() => {
                         const author = post.user.username ? `@${post.user.username}` : post.user.name;
-                        const mediaUrl = post.imageUrl ?? post.videoUrl ?? null;
+                        const mediaUrl = post.imageUrls?.[0] ?? post.imageUrl ?? post.videoUrl ?? null;
                         const message = Platform.OS === 'android' && mediaUrl
                           ? `${shareCaption}\n\n${mediaUrl}`
                           : shareCaption;

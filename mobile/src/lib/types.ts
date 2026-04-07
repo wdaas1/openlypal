@@ -36,6 +36,7 @@ export interface Post {
   title: string | null;
   content: string | null;
   imageUrl: string | null;
+  imageUrls: string[];
   videoUrl: string | null;
   linkUrl: string | null;
   tags: string[];
