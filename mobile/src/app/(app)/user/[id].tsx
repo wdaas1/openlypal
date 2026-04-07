@@ -164,21 +164,21 @@ export default function UserProfileScreen() {
           {/* Stats */}
           <View className="flex-row mt-4 gap-6">
             <View>
-              <Text className="text-white font-bold text-base">{user._count?.posts ?? 0}</Text>
+              <Text className="text-white font-bold text-base">{user.postCount ?? user._count?.posts ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Posts</Text>
             </View>
             <Pressable
               testID="followers-button"
               onPress={() => router.push({ pathname: '/(app)/user/followers' as any, params: { id, type: 'followers' } })}
             >
-              <Text className="text-white font-bold text-base">{user._count?.followers ?? 0}</Text>
+              <Text className="text-white font-bold text-base">{user.followerCount ?? user._count?.followers ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Followers</Text>
             </Pressable>
             <Pressable
               testID="following-button"
               onPress={() => router.push({ pathname: '/(app)/user/followers' as any, params: { id, type: 'following' } })}
             >
-              <Text className="text-white font-bold text-base">{user._count?.following ?? 0}</Text>
+              <Text className="text-white font-bold text-base">{user.followingCount ?? user._count?.following ?? 0}</Text>
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Following</Text>
             </Pressable>
           </View>

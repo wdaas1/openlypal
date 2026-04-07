@@ -81,10 +81,31 @@ function buildSensitivityFilter(contentSensitivity: string | null | undefined): 
   return { contentScore: { lt: 1.0 } };
 }
 
-// GET / - Smart ranked feed
+// GET / - Smart ranked feed (or user posts if userId param provided)
 postsRouter.get("/", async (c) => {
   const user = c.get("user");
   const tag = c.req.query("tag");
+  const filterUserId = c.req.query("userId");
+
+  // If userId is specified, return that user's posts directly
+  if (filterUserId) {
+    const limit = Math.min(Number(c.req.query("limit")) || 50, 100);
+    const posts = await prisma.post.findMany({
+      where: { userId: filterUserId, hidden: false },
+      include: {
+        user: { select: { id: true, name: true, username: true, image: true } },
+        _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
+        ...(user ? {
+          likes: { where: { userId: user.id }, select: { id: true } },
+          bookmarks: { where: { userId: user.id }, select: { id: true } },
+        } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user?.id)) });
+  }
+
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
   const cursor = c.req.query("cursor");
 
