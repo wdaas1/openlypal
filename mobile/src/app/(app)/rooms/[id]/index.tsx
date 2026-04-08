@@ -569,8 +569,8 @@ export default function RoomDetailScreen() {
                         <VideoPost uri={item.videoUrl} />
                       ) : null}
 
-                      {/* Replay chip — placeholder for future feature */}
-                      <View style={{
+                      {/* Replay chip — commented out: implement before publishing if you want the feature to be there */}
+                      {/* <View style={{
                         marginTop: 12,
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -587,7 +587,7 @@ export default function RoomDetailScreen() {
                         <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '600' }}>
                           Replay coming soon
                         </Text>
-                      </View>
+                      </View> */}
                     </View>
                   </View>
                 );

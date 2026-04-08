@@ -263,7 +263,8 @@ export default function MessengerScreen() {
             </Text>
           </View>
         </View>
-        <Pressable
+        {/* Compose button — commented out: implement before publishing if you want the feature to be there */}
+        {/* <Pressable
           testID="compose-button"
           onPress={() => {}}
           style={{
@@ -278,7 +279,7 @@ export default function MessengerScreen() {
           }}
         >
           <Edit2 size={16} color="#4a6fa5" />
-        </Pressable>
+        </Pressable> */}
       </View>
 
       {isLoading ? (
