@@ -101,11 +101,18 @@ function RootLayoutNav() {
     return () => subscription.remove();
   }, []);
 
+  // Load onboarding status keyed by user ID so each account has its own state
   useEffect(() => {
-    AsyncStorage.getItem('onboarding_done').then((val) => {
+    const userId = session?.user?.id;
+    if (isLoading) return;
+    if (!userId) {
+      setOnboardingDone(null);
+      return;
+    }
+    AsyncStorage.getItem(`onboarding_done_${userId}`).then((val) => {
       setOnboardingDone(val === 'true');
     });
-  }, []);
+  }, [session?.user?.id, isLoading]);
 
   // Register for push notifications and set up listeners once session is ready
   useEffect(() => {
@@ -136,6 +143,7 @@ function RootLayoutNav() {
         router.replace('/(app)' as any);
       }
     } else {
+      setOnboardingDone(null); // reset so it re-checks for the next login
       router.replace('/sign-in' as any);
     }
 

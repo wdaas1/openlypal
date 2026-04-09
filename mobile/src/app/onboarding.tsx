@@ -74,13 +74,20 @@ export default function OnboardingScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { data: session } = useSession();
 
+  // Display name and username from Supabase metadata (set at signup)
+  const displayName = (session?.user?.user_metadata?.name as string | undefined)
+    ?? session?.user?.email?.split('@')[0]
+    ?? 'You';
+  const username = (session?.user?.user_metadata?.username as string | undefined) ?? null;
+
+  // Avatar initials
+  const initials = displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!session?.user?.id) return;
 
-      // Apply the username chosen on the sign-up screen now that the user has
-      // a verified session (the PATCH would have been rejected with 401 before
-      // email verification completed).
+      // Apply the username chosen at sign-up (backend upsert handles creation)
       const pendingUsername = await AsyncStorage.getItem('pending_username');
       if (pendingUsername) {
         await api.patch('/api/users/me', { username: pendingUsername });
@@ -92,7 +99,9 @@ export default function OnboardingScreen() {
       }
     },
     onSuccess: async () => {
-      await AsyncStorage.setItem('onboarding_done', 'true');
+      if (session?.user?.id) {
+        await AsyncStorage.setItem(`onboarding_done_${session.user.id}`, 'true');
+      }
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       router.replace('/(app)' as any);
     },
@@ -126,6 +135,39 @@ export default function OnboardingScreen() {
     return (
       <View testID="onboarding-interests-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
         <View style={{ flex: 1, paddingTop: insets.top + 24, paddingHorizontal: 20 }}>
+
+          {/* Personalized profile card */}
+          <View style={{
+            backgroundColor: 'rgba(10,45,80,0.8)',
+            borderRadius: 20,
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            marginBottom: 24,
+            borderWidth: 1,
+            borderColor: 'rgba(0,207,53,0.25)',
+          }}>
+            <View style={{
+              width: 56, height: 56, borderRadius: 28,
+              backgroundColor: '#00CF35',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Text style={{ color: '#001935', fontWeight: '800', fontSize: 20 }}>{initials}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 17 }} numberOfLines={1}>
+                {displayName}
+              </Text>
+              {username ? (
+                <Text style={{ color: '#00CF35', fontSize: 13, marginTop: 2 }}>@{username}</Text>
+              ) : null}
+              <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 2 }}>
+                Your profile is ready ✓
+              </Text>
+            </View>
+          </View>
+
           {/* Header */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '800', marginBottom: 6 }}>
@@ -284,7 +326,6 @@ export default function OnboardingScreen() {
           >
             {/* Icon circle */}
             <View style={{ marginBottom: 44, alignItems: 'center', justifyContent: 'center' }}>
-              {/* Outer glow */}
               <View
                 style={{
                   position: 'absolute',

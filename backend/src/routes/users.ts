@@ -313,10 +313,8 @@ usersRouter.patch(
 
     const { pushToken } = c.req.valid("json");
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { pushToken },
-    });
+    await ensureUserRow(user);
+    await prisma.user.update({ where: { id: user.id }, data: { pushToken } });
 
     return c.json({ data: { pushToken } });
   }
@@ -332,10 +330,8 @@ usersRouter.patch(
 
     const { publicKey } = c.req.valid("json");
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { publicKey },
-    });
+    await ensureUserRow(user);
+    await prisma.user.update({ where: { id: user.id }, data: { publicKey } });
 
     return c.json({ data: { publicKey } });
   }
