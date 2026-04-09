@@ -21,7 +21,8 @@
       }
     },
     "android": {
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.vibecode.openlyfsp5b4"
     },
     "plugins": [
       "expo-router"
