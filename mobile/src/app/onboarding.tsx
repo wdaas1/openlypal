@@ -76,7 +76,18 @@ export default function OnboardingScreen() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (selectedIds.length > 0 && session?.user?.id) {
+      if (!session?.user?.id) return;
+
+      // Apply the username chosen on the sign-up screen now that the user has
+      // a verified session (the PATCH would have been rejected with 401 before
+      // email verification completed).
+      const pendingUsername = await AsyncStorage.getItem('pending_username');
+      if (pendingUsername) {
+        await api.patch('/api/users/me', { username: pendingUsername });
+        await AsyncStorage.removeItem('pending_username');
+      }
+
+      if (selectedIds.length > 0) {
         await api.patch('/api/users/me', { categories: selectedIds.join(',') });
       }
     },

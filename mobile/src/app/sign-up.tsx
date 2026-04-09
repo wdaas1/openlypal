@@ -3,9 +3,9 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingVi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authClient } from '@/lib/auth/auth-client';
 import { useInvalidateSession } from '@/lib/auth/use-session';
-import { api } from '@/lib/api/api';
 import * as Haptics from 'expo-haptics';
 import { Logo } from '@/components/Logo';
 import { Mail } from 'lucide-react-native';
@@ -61,19 +61,16 @@ export default function SignUpScreen() {
       if (result.error) {
         throw new Error(result.error.message ?? 'Failed to create account');
       }
-      // Set the auto-generated (or edited) username right after account creation
-      const trimmedUsername = username.trim();
-      if (trimmedUsername) {
-        try {
-          await api.patch('/api/users/me', { username: trimmedUsername });
-        } catch {
-          // Non-fatal — user can change it later in edit profile
-        }
-      }
       return result;
     },
     onSuccess: async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Persist the intended username so onboarding can save it once the
+      // user has a fully-verified session (the PATCH fails before verification).
+      const trimmedUsername = username.trim();
+      if (trimmedUsername) {
+        await AsyncStorage.setItem('pending_username', trimmedUsername);
+      }
       setVerificationSent(true);
       await invalidateSession();
     },
