@@ -192,6 +192,51 @@ app.route("/api/live-moments", liveMomentsRouter);
 app.route("/api/relationships", relationshipsRouter);
 app.route("/api/profile-modules", profileModulesRouter);
 app.route("/api/rooms", roomsRouter);
+
+// Auth redirect page — handles Supabase email verification redirects to openly:// deep link
+app.get("/", (c) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Openly — Opening app…</title>
+  <style>
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #001935; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #fff; }
+    p { color: #4a6fa5; font-size: 15px; margin-top: 12px; }
+    a { color: #00CF35; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <p id="msg">Redirecting to Openly…</p>
+  <script>
+    (function () {
+      var hash = window.location.hash;      // #access_token=...&refresh_token=...
+      var search = window.location.search;  // ?code=...
+
+      var hasTokens = hash.includes('access_token') || hash.includes('refresh_token');
+      var hasCode   = search.includes('code=');
+
+      if (hasTokens || hasCode) {
+        // Build the deep link: openly:// + hash or query string
+        var deepLink = 'openly://' + (hasCode ? search : hash);
+        window.location.href = deepLink;
+
+        // Fallback message after 2 s if the OS didn't open the app
+        setTimeout(function () {
+          document.getElementById('msg').innerHTML =
+            'Tap <a href="' + deepLink + '">here</a> if the app didn\u2019t open automatically.';
+        }, 2000);
+      } else {
+        document.getElementById('msg').textContent = 'Welcome to Openly.';
+      }
+    })();
+  </script>
+</body>
+</html>`;
+  return c.html(html);
+});
+
 app.route("/", streamingRouter);
 
 // Allowed MIME types for uploads
