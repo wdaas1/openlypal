@@ -192,6 +192,7 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
   if (body.username) {
     const existing = await prisma.user.findUnique({
       where: { username: body.username },
+      select: { id: true },
     });
     if (existing && existing.id !== user.id) {
       return c.json(
@@ -201,47 +202,60 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
     }
   }
 
-  const updated = await prisma.user.update({
+  const updateData = {
+    ...(body.username !== undefined ? { username: body.username } : {}),
+    ...(body.bio !== undefined ? { bio: body.bio } : {}),
+    ...(body.name !== undefined ? { name: body.name } : {}),
+    ...(body.image !== undefined ? { image: body.image } : {}),
+    ...(body.headerImage !== undefined ? { headerImage: body.headerImage } : {}),
+    ...(body.categories !== undefined ? { categories: body.categories } : {}),
+    ...(body.showExplicit !== undefined ? { showExplicit: body.showExplicit } : {}),
+    ...(body.links !== undefined ? { links: body.links } : {}),
+    ...(body.contentSensitivity !== undefined ? { contentSensitivity: body.contentSensitivity } : {}),
+    ...(body.pinnedPostIds !== undefined ? { pinnedPostIds: body.pinnedPostIds } : {}),
+    ...(body.pronouns !== undefined ? { pronouns: body.pronouns } : {}),
+    ...(body.website !== undefined ? { website: body.website } : {}),
+    ...(body.location !== undefined ? { location: body.location } : {}),
+    ...(body.dateOfBirth !== undefined ? { dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null } : {}),
+    ...(body.gender !== undefined ? { gender: body.gender } : {}),
+    ...(body.relationshipStatus !== undefined ? { relationshipStatus: body.relationshipStatus } : {}),
+  };
+
+  const profileSelect = {
+    id: true,
+    name: true,
+    email: true,
+    username: true,
+    bio: true,
+    image: true,
+    headerImage: true,
+    createdAt: true,
+    categories: true,
+    showExplicit: true,
+    links: true,
+    contentSensitivity: true,
+    pinnedPostIds: true,
+    pronouns: true,
+    website: true,
+    location: true,
+    dateOfBirth: true,
+    gender: true,
+    relationshipStatus: true,
+  } as const;
+
+  // Upsert: create user on first write if they haven't been created via GET /me yet
+  const updated = await prisma.user.upsert({
     where: { id: user.id },
-    data: {
-      ...(body.username !== undefined ? { username: body.username } : {}),
-      ...(body.bio !== undefined ? { bio: body.bio } : {}),
-      ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.image !== undefined ? { image: body.image } : {}),
-      ...(body.headerImage !== undefined ? { headerImage: body.headerImage } : {}),
-      ...(body.categories !== undefined ? { categories: body.categories } : {}),
-      ...(body.showExplicit !== undefined ? { showExplicit: body.showExplicit } : {}),
-      ...(body.links !== undefined ? { links: body.links } : {}),
-      ...(body.contentSensitivity !== undefined ? { contentSensitivity: body.contentSensitivity } : {}),
-      ...(body.pinnedPostIds !== undefined ? { pinnedPostIds: body.pinnedPostIds } : {}),
-      ...(body.pronouns !== undefined ? { pronouns: body.pronouns } : {}),
-      ...(body.website !== undefined ? { website: body.website } : {}),
-      ...(body.location !== undefined ? { location: body.location } : {}),
-      ...(body.dateOfBirth !== undefined ? { dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null } : {}),
-      ...(body.gender !== undefined ? { gender: body.gender } : {}),
-      ...(body.relationshipStatus !== undefined ? { relationshipStatus: body.relationshipStatus } : {}),
+    create: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image ?? null,
+      username: user.username ?? null,
+      ...updateData,
     },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      username: true,
-      bio: true,
-      image: true,
-      headerImage: true,
-      createdAt: true,
-      categories: true,
-      showExplicit: true,
-      links: true,
-      contentSensitivity: true,
-      pinnedPostIds: true,
-      pronouns: true,
-      website: true,
-      location: true,
-      dateOfBirth: true,
-      gender: true,
-      relationshipStatus: true,
-    },
+    update: updateData,
+    select: profileSelect,
   });
 
   return c.json({ data: updated });
