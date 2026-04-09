@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
+import { supabase } from "../supabase";
+import type { SupabasePost } from "../supabase";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -9,6 +11,47 @@ type Variables = {
 };
 
 const postsRouter = new Hono<{ Variables: Variables }>();
+
+// Helper: map a Supabase post to API shape
+function mapSupabasePost(
+  post: SupabasePost,
+  userInfo: { id: string; name: string; username: string | null; image: string | null }
+) {
+  return {
+    id: post.id,
+    type: post.image_url ? "photo" : "text",
+    title: null,
+    content: post.content,
+    imageUrl: post.image_url,
+    imageUrls: [] as string[],
+    videoUrl: null,
+    linkUrl: null,
+    tags: [] as string[],
+    isExplicit: false,
+    contentScore: 0,
+    category: null,
+    userId: post.user_id,
+    user: userInfo,
+    likeCount: 0,
+    commentCount: 0,
+    reblogCount: 0,
+    bookmarkCount: 0,
+    isLiked: false,
+    isBookmarked: false,
+    createdAt: post.created_at,
+    updatedAt: post.created_at,
+  };
+}
+
+// Helper: batch-fetch user info from Prisma for a list of user IDs
+async function fetchUserMap(userIds: string[]): Promise<Map<string, { id: string; name: string; username: string | null; image: string | null }>> {
+  if (userIds.length === 0) return new Map();
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true, username: true, image: true },
+  });
+  return new Map(users.map((u) => [u.id, u]));
+}
 
 // Helper: map a raw post record to API shape
 function mapPost(
@@ -81,235 +124,85 @@ function buildSensitivityFilter(contentSensitivity: string | null | undefined): 
   return { contentScore: { lt: 1.0 } };
 }
 
-// GET / - Smart ranked feed (or user posts if userId param provided)
+// GET / - Fetch posts from Supabase (latest first), or filtered by userId
 postsRouter.get("/", async (c) => {
-  const user = c.get("user");
-  const tag = c.req.query("tag");
   const filterUserId = c.req.query("userId");
+  const limit = Math.min(Number(c.req.query("limit")) || 50, 100);
 
-  // If userId is specified, return that user's posts directly
+  let query = supabase
+    .from("posts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
   if (filterUserId) {
-    const limit = Math.min(Number(c.req.query("limit")) || 50, 100);
-    const posts = await prisma.post.findMany({
-      where: { userId: filterUserId, hidden: false },
-      include: {
-        user: { select: { id: true, name: true, username: true, image: true } },
-        _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
-        ...(user ? {
-          likes: { where: { userId: user.id }, select: { id: true } },
-          bookmarks: { where: { userId: user.id }, select: { id: true } },
-        } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
-    return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user?.id)) });
+    query = query.eq("user_id", filterUserId);
   }
 
-  const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
-  const cursor = c.req.query("cursor");
+  const { data: posts, error } = await query;
 
-  const tagFilter = tag ? { tags: { contains: tag } } : {};
-  const cursorFilter = cursor ? { id: { lt: cursor } } : {};
-  const baseHiddenFilter = { hidden: false };
-
-  if (!user) {
-    // Unauthenticated: chronological, hide explicit, exclude room posts
-    const posts = await prisma.post.findMany({
-      where: {
-        ...baseHiddenFilter,
-        ...tagFilter,
-        ...cursorFilter,
-        isExplicit: false,
-        contentScore: { lt: 1.0 },
-        roomId: null,
-      },
-      include: {
-        user: { select: { id: true, name: true, username: true, image: true } },
-        _count: { select: { likes: true, comments: true, reblogs: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
-    return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0])) });
+  if (error) {
+    return c.json({ error: { message: error.message } }, 500);
   }
 
-  // Fetch user preferences
-  const userPrefs = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { categories: true, contentSensitivity: true },
+  const userIds = [...new Set((posts ?? []).map((p: SupabasePost) => p.user_id))];
+  const userMap = await fetchUserMap(userIds);
+
+  const mapped = (posts ?? []).map((p: SupabasePost) => {
+    const userInfo = userMap.get(p.user_id) ?? {
+      id: p.user_id,
+      name: "User",
+      username: null,
+      image: null,
+    };
+    return mapSupabasePost(p, userInfo);
   });
 
-  const sensitivityFilter = buildSensitivityFilter(userPrefs?.contentSensitivity);
-
-  const baseWhere = {
-    ...baseHiddenFilter,
-    ...tagFilter,
-    ...sensitivityFilter,
-    OR: [
-      { roomId: null },
-      { room: { members: { some: { userId: user.id } } } },
-    ],
-  };
-
-  const postInclude = {
-    user: { select: { id: true, name: true, username: true, image: true } },
-    _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
-    likes: { where: { userId: user.id }, select: { id: true } },
-    bookmarks: { where: { userId: user.id }, select: { id: true } },
-  };
-
-  // 1. Followed-user posts (50%)
-  const follows = await prisma.follow.findMany({
-    where: { followerId: user.id },
-    select: { followingId: true },
-  });
-  const followingIds = follows.map((f) => f.followingId);
-
-  const followCount = Math.ceil(limit * 0.5);
-  const interestCount = Math.ceil(limit * 0.3);
-  const trendingCount = Math.ceil(limit * 0.2);
-
-  const followedPosts =
-    followingIds.length > 0
-      ? await prisma.post.findMany({
-          where: {
-            ...baseWhere,
-            ...(cursorFilter),
-            userId: { in: [...followingIds, user.id] },
-          },
-          include: postInclude,
-          orderBy: { createdAt: "desc" },
-          take: followCount,
-        })
-      : [];
-
-  // 2. Interest-based posts
-  const userCategories = userPrefs?.categories
-    ? userPrefs.categories.split(",").map((c) => c.trim()).filter(Boolean)
-    : [];
-
-  const seenIds = new Set(followedPosts.map((p) => p.id));
-
-  const interestPosts =
-    userCategories.length > 0
-      ? await prisma.post.findMany({
-          where: {
-            ...baseWhere,
-            ...(cursorFilter),
-            category: { in: userCategories },
-            id: { notIn: Array.from(seenIds) },
-          },
-          include: postInclude,
-          orderBy: { createdAt: "desc" },
-          take: interestCount,
-        })
-      : [];
-
-  interestPosts.forEach((p) => seenIds.add(p.id));
-
-  // 3. Trending posts (most likes+comments+reblogs in last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const trendingPosts = await prisma.post.findMany({
-    where: {
-      ...baseWhere,
-      createdAt: { gte: sevenDaysAgo },
-      id: { notIn: Array.from(seenIds) },
-    },
-    include: postInclude,
-    orderBy: [
-      { likes: { _count: "desc" } },
-      { comments: { _count: "desc" } },
-      { reblogs: { _count: "desc" } },
-    ],
-    take: trendingCount,
-  });
-
-  // Merge and deduplicate
-  const merged = [
-    ...followedPosts,
-    ...interestPosts,
-    ...trendingPosts,
-  ].slice(0, limit);
-
-  return c.json({ data: merged.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user.id)) });
+  return c.json({ data: mapped });
 });
 
-// GET /feed/unfiltered - Raw chronological feed, no algorithm, no explicit filter
+// GET /feed/unfiltered - Supabase posts, chronological
 postsRouter.get("/feed/unfiltered", async (c) => {
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
-  const cursor = c.req.query("cursor");
 
-  const posts = await prisma.post.findMany({
-    where: {
-      hidden: false,
-      // Only filter illegal content (contentScore >= 1.0)
-      contentScore: { lt: 1.0 },
-      roomId: null,
-      ...(cursor ? { id: { lt: cursor } } : {}),
-    },
-    include: {
-      user: { select: { id: true, name: true, username: true, image: true } },
-      _count: { select: { likes: true, comments: true, reblogs: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
+  const { data: posts, error } = await supabase
+    .from("posts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) return c.json({ error: { message: error.message } }, 500);
+
+  const userIds = [...new Set((posts ?? []).map((p: SupabasePost) => p.user_id))];
+  const userMap = await fetchUserMap(userIds);
+
+  return c.json({
+    data: (posts ?? []).map((p: SupabasePost) =>
+      mapSupabasePost(p, userMap.get(p.user_id) ?? { id: p.user_id, name: "User", username: null, image: null })
+    ),
   });
-
-  return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0])) });
 });
 
-// GET /feed/following - Get posts from users the current user follows
+// GET /feed/following - Supabase posts (same feed, following logic not applicable without Supabase auth)
 postsRouter.get("/feed/following", async (c) => {
-  const user = c.get("user");
-  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
-
-  const page = Math.max(Number(c.req.query("page")) || 1, 1);
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
-  const skip = (page - 1) * limit;
 
-  const follows = await prisma.follow.findMany({
-    where: { followerId: user.id },
-    select: { followingId: true },
+  const { data: posts, error } = await supabase
+    .from("posts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) return c.json({ error: { message: error.message } }, 500);
+
+  const userIds = [...new Set((posts ?? []).map((p: SupabasePost) => p.user_id))];
+  const userMap = await fetchUserMap(userIds);
+
+  return c.json({
+    data: (posts ?? []).map((p: SupabasePost) =>
+      mapSupabasePost(p, userMap.get(p.user_id) ?? { id: p.user_id, name: "User", username: null, image: null })
+    ),
   });
-
-  if (follows.length === 0) {
-    return c.json({ data: [] });
-  }
-
-  const followingIds = follows.map((f) => f.followingId);
-
-  const userPrefs = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { showExplicit: true, contentSensitivity: true },
-  });
-
-  const sensitivityFilter = buildSensitivityFilter(userPrefs?.contentSensitivity);
-
-  const posts = await prisma.post.findMany({
-    where: {
-      userId: { in: followingIds },
-      hidden: false,
-      ...sensitivityFilter,
-      OR: [
-        { roomId: null },
-        { room: { members: { some: { userId: user.id } } } },
-      ],
-    },
-    include: {
-      user: { select: { id: true, name: true, username: true, image: true } },
-      _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
-      likes: { where: { userId: user.id }, select: { id: true } },
-      bookmarks: { where: { userId: user.id }, select: { id: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    skip,
-    take: limit,
-  });
-
-  return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user.id)) });
 });
 
 // GET /:id - Get single post
@@ -346,7 +239,7 @@ postsRouter.get("/:id", async (c) => {
   return c.json({ data: mapPost(post as Parameters<typeof mapPost>[0], user?.id) });
 });
 
-// POST / - Create post
+// POST / - Create post in Supabase
 const createPostSchema = z.object({
   type: z.enum(["text", "photo", "quote", "link", "video"]).default("text"),
   title: z.string().optional(),
@@ -366,58 +259,26 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
-  const profile = await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } });
-  if (profile?.status === "banned") {
-    return c.json({ error: { message: "Your account has been suspended.", code: "BANNED" } }, 403);
-  }
-
   const body = c.req.valid("json");
 
-  const post = await prisma.post.create({
-    data: {
-      type: body.type,
-      title: body.title,
-      content: body.content,
-      imageUrl: body.imageUrl,
-      imageUrls: body.imageUrls ? JSON.stringify(body.imageUrls) : undefined,
-      videoUrl: body.videoUrl,
-      linkUrl: body.linkUrl,
-      tags: body.tags?.join(", "),
-      isExplicit: body.isExplicit ?? false,
-      category: body.category,
-      contentScore: body.contentScore ?? 0,
-      userId: user.id,
-      roomId: body.roomId,
-    },
-    include: {
-      user: { select: { id: true, name: true, username: true, image: true } },
-    },
-  });
+  // Use first imageUrl for Supabase image_url field
+  const imageUrl = body.imageUrl ?? body.imageUrls?.[0] ?? null;
 
-  return c.json({
-    data: {
-      id: post.id,
-      type: post.type,
-      title: post.title,
-      content: post.content,
-      imageUrl: post.imageUrl,
-      imageUrls: post.imageUrls ? JSON.parse(post.imageUrls) : [],
-      videoUrl: post.videoUrl ?? null,
-      linkUrl: post.linkUrl,
-      tags: post.tags ? post.tags.split(",").map((t) => t.trim()) : [],
-      isExplicit: post.isExplicit,
-      contentScore: post.contentScore,
-      category: post.category,
-      userId: post.userId,
-      user: post.user,
-      likeCount: 0,
-      commentCount: 0,
-      reblogCount: 0,
-      isLiked: false,
-      createdAt: post.createdAt.toISOString(),
-      updatedAt: post.updatedAt.toISOString(),
-    },
-  });
+  const { data: post, error } = await supabase
+    .from("posts")
+    .insert({
+      content: body.content ?? null,
+      image_url: imageUrl,
+      user_id: user.id,
+    })
+    .select()
+    .single();
+
+  if (error) return c.json({ error: { message: error.message } }, 500);
+
+  const userInfo = { id: user.id, name: user.name, username: null, image: user.image ?? null };
+
+  return c.json({ data: mapSupabasePost(post as SupabasePost, userInfo) });
 });
 
 // DELETE /:id - Delete own post
