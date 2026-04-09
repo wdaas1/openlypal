@@ -33,6 +33,12 @@ usersRouter.get("/me", async (c) => {
       pinnedPostIds: true,
       role: true,
       status: true,
+      pronouns: true,
+      website: true,
+      location: true,
+      dateOfBirth: true,
+      gender: true,
+      relationshipStatus: true,
       _count: { select: { followers: true, following: true, posts: true } },
     },
   });
@@ -44,6 +50,7 @@ usersRouter.get("/me", async (c) => {
   return c.json({
     data: {
       ...profile,
+      dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString() : null,
       followerCount: profile._count.followers,
       followingCount: profile._count.following,
       postCount: profile._count.posts,
@@ -140,6 +147,12 @@ const updateProfileSchema = z.object({
   links: z.string().optional(),
   contentSensitivity: z.enum(["safe", "mature", "unfiltered"]).optional(),
   pinnedPostIds: z.string().optional(),
+  pronouns: z.string().max(50).optional(),
+  website: z.string().max(200).optional(),
+  location: z.string().max(100).optional(),
+  dateOfBirth: z.string().optional(), // ISO date string
+  gender: z.string().max(50).optional(),
+  relationshipStatus: z.string().max(50).optional(),
 });
 
 usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
@@ -174,6 +187,12 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
       ...(body.links !== undefined ? { links: body.links } : {}),
       ...(body.contentSensitivity !== undefined ? { contentSensitivity: body.contentSensitivity } : {}),
       ...(body.pinnedPostIds !== undefined ? { pinnedPostIds: body.pinnedPostIds } : {}),
+      ...(body.pronouns !== undefined ? { pronouns: body.pronouns } : {}),
+      ...(body.website !== undefined ? { website: body.website } : {}),
+      ...(body.location !== undefined ? { location: body.location } : {}),
+      ...(body.dateOfBirth !== undefined ? { dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null } : {}),
+      ...(body.gender !== undefined ? { gender: body.gender } : {}),
+      ...(body.relationshipStatus !== undefined ? { relationshipStatus: body.relationshipStatus } : {}),
     },
     select: {
       id: true,
@@ -189,6 +208,12 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
       links: true,
       contentSensitivity: true,
       pinnedPostIds: true,
+      pronouns: true,
+      website: true,
+      location: true,
+      dateOfBirth: true,
+      gender: true,
+      relationshipStatus: true,
     },
   });
 

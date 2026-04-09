@@ -31,6 +31,12 @@ model User {
   pinnedPostIds      String?   // comma-separated post IDs (max 3)
   role               String    @default("user")   // "user" or "admin"
   status             String    @default("active") // "active" or "banned"
+  pronouns           String?
+  website            String?
+  location           String?
+  dateOfBirth        DateTime?
+  gender             String?   // e.g. "man", "woman", "non-binary", "genderqueer", "genderfluid", "agender", "bigender", "two-spirit", "prefer-not-to-say", or custom string
+  relationshipStatus String?   // e.g. "single", "in-a-relationship", "engaged", "married", "domestic-partnership", "open-relationship", "polyamorous", "complicated", "separated", "divorced", "widowed", "prefer-not-to-say"
 
   posts            Post[]
   likes            Like[]

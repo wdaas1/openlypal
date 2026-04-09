@@ -27,6 +27,9 @@ export interface User {
   pronouns?: string | null;
   location?: string | null;
   website?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  relationshipStatus?: string | null;
   pinnedPost?: Post | null;
 }
 
