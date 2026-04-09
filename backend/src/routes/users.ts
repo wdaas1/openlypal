@@ -10,6 +10,56 @@ type Variables = {
 
 const usersRouter = new Hono<{ Variables: Variables }>();
 
+/**
+ * Ensure the authenticated Supabase user has a Prisma row with their exact ID.
+ * Handles the case where the same email exists under a legacy Better Auth ID
+ * by renaming the old row's email and creating a fresh row for the Supabase user.
+ */
+async function ensureUserRow(user: {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  username?: string | null;
+}) {
+  try {
+    await prisma.user.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image ?? null,
+        username: user.username ?? null,
+      },
+      update: {},
+    });
+  } catch (e: any) {
+    // Email taken by a legacy row with a different ID — free it up then retry
+    if (e?.code === "P2002") {
+      const legacy = await prisma.user.findUnique({ where: { email: user.email } });
+      if (legacy && legacy.id !== user.id) {
+        await prisma.user.update({
+          where: { id: legacy.id },
+          data: { email: `migrated_${legacy.id}@legacy.internal` },
+        });
+      }
+      // Now create (or find-if-already-exists) the Supabase user row
+      await prisma.user.upsert({
+        where: { id: user.id },
+        create: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image ?? null,
+          username: user.username ?? null,
+        },
+        update: {},
+      });
+    }
+  }
+}
+
 // GET /check-email?email=xxx — public, no auth required
 usersRouter.get('/check-email', async (c) => {
   const email = c.req.query('email')?.toLowerCase().trim();
@@ -18,10 +68,12 @@ usersRouter.get('/check-email', async (c) => {
   return c.json({ data: { exists: !!user } });
 });
 
-// GET /me - Get current user profile
+// GET /me - Get current user profile (auto-creates row on first login)
 usersRouter.get("/me", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  await ensureUserRow(user);
 
   const profileSelect = {
     id: true,
@@ -48,30 +100,13 @@ usersRouter.get("/me", async (c) => {
     _count: { select: { followers: true, following: true, posts: true } },
   } as const;
 
-  // Upsert: create user profile on first login if it doesn't exist yet
-  let profile;
-  try {
-    profile = await prisma.user.upsert({
-      where: { id: user.id },
-      create: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image ?? null,
-        username: user.username ?? null,
-      },
-      update: {},
-      select: profileSelect,
-    });
-  } catch {
-    // Fallback: unique constraint on email (e.g. legacy row with different id)
-    profile = await prisma.user.findFirst({
-      where: { email: user.email },
-      select: profileSelect,
-    });
-    if (!profile) {
-      return c.json({ error: { message: "Failed to load user profile" } }, 500);
-    }
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: profileSelect,
+  });
+
+  if (!profile) {
+    return c.json({ error: { message: "Failed to create user profile" } }, 500);
   }
 
   return c.json({
@@ -256,6 +291,13 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
     },
     update: updateData,
     select: profileSelect,
+  }).catch(async (e: any) => {
+    if (e?.code === "P2002") {
+      // Email conflict — run migration then retry
+      await ensureUserRow(user);
+      return prisma.user.update({ where: { id: user.id }, data: updateData, select: profileSelect });
+    }
+    throw e;
   });
 
   return c.json({ data: updated });
@@ -482,17 +524,11 @@ usersRouter.post("/:id/follow", async (c) => {
     return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
   }
 
-  // Ensure current user row exists (lazy creation in case sync hasn't run yet)
-  await prisma.user.upsert({
-    where: { id: user.id },
-    create: { id: user.id, name: user.name, email: user.email, image: user.image ?? null },
-    update: {},
-  });
+  // Ensure follower has a Prisma row (handles legacy email conflicts)
+  await ensureUserRow(user);
 
   const existing = await prisma.follow.findUnique({
-    where: {
-      followerId_followingId: { followerId: user.id, followingId },
-    },
+    where: { followerId_followingId: { followerId: user.id, followingId } },
   });
 
   if (existing) {
@@ -500,9 +536,7 @@ usersRouter.post("/:id/follow", async (c) => {
     return c.json({ data: { following: false } });
   }
 
-  await prisma.follow.create({
-    data: { followerId: user.id, followingId },
-  });
+  await prisma.follow.create({ data: { followerId: user.id, followingId } });
   return c.json({ data: { following: true } });
 });
 
