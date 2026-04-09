@@ -24,7 +24,7 @@ export default function SignInScreen() {
     mutationFn: async () => {
       const result = await authClient.sendVerificationEmail({
         email: email.trim(),
-        callbackURL: 'vibecode://',
+        callbackURL: 'openly://verify',
       });
       if (result.error) throw new Error(result.error.message ?? 'Failed to send verification email');
     },

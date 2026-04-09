@@ -91,6 +91,7 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
   },
   trustedOrigins: [
+    "openly://*",
     "openly://*/*",
     "exp://*/*",
     "http://localhost:*",

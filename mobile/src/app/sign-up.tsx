@@ -56,7 +56,7 @@ export default function SignUpScreen() {
         name: name.trim(),
         email: email.trim(),
         password,
-        callbackURL: 'openly://',
+        callbackURL: 'openly://verify',
       });
       if (result.error) {
         throw new Error(result.error.message ?? 'Failed to create account');
