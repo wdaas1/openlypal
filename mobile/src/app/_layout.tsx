@@ -44,7 +44,7 @@ function RootLayoutNav() {
 
   const invalidateSession = useInvalidateSession();
 
-  // Handle email verification deep links (vibecode://?token=...)
+  // Handle email verification deep links (openly://?token=...)
   useEffect(() => {
     const handleUrl = (url: string) => {
       const parsed = Linking.parse(url);
@@ -57,14 +57,14 @@ function RootLayoutNav() {
 
     // Check if app was opened cold from a deep link
     Linking.getInitialURL().then((url) => {
-      if (url && url.startsWith('vibecode://')) {
+      if (url && url.startsWith('openly://')) {
         handleUrl(url);
       }
     });
 
     // Listen for deep links when app is already open
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      if (url.startsWith('vibecode://')) {
+      if (url.startsWith('openly://')) {
         handleUrl(url);
       }
     });

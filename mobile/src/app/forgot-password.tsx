@@ -21,7 +21,7 @@ export default function ForgotPasswordScreen() {
     mutationFn: async () => {
       const result = await authClient.requestPasswordReset({
         email: email.trim(),
-        redirectTo: 'vibecode://reset-password',
+        redirectTo: 'openly://reset-password',
       });
       if (result.error) throw new Error(result.error.message ?? 'Failed to send reset email');
     },

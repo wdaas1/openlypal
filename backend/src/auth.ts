@@ -91,7 +91,7 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
   },
   trustedOrigins: [
-    "vibecode://*/*",
+    "openly://*/*",
     "exp://*/*",
     "http://localhost:*",
     "http://127.0.0.1:*",

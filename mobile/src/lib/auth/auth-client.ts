@@ -54,7 +54,7 @@ const bearerTokenPlugin = () => ({
           // Let server's expo() plugin trust native requests
           options.headers = {
             ...options.headers,
-            "expo-origin": "vibecode://",
+            "expo-origin": "openly://",
           };
         }
         // Attach stored Bearer token to every request
