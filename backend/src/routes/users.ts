@@ -10,6 +10,14 @@ type Variables = {
 
 const usersRouter = new Hono<{ Variables: Variables }>();
 
+// GET /check-email?email=xxx — public, no auth required
+usersRouter.get('/check-email', async (c) => {
+  const email = c.req.query('email')?.toLowerCase().trim();
+  if (!email) return c.json({ data: { exists: false } });
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  return c.json({ data: { exists: !!user } });
+});
+
 // GET /me - Get current user profile
 usersRouter.get("/me", async (c) => {
   const user = c.get("user");

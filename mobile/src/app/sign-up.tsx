@@ -52,6 +52,16 @@ export default function SignUpScreen() {
 
   const signUp = useMutation({
     mutationFn: async () => {
+      // Check if email is already registered before attempting sign-up
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+      const checkRes = await fetch(`${baseUrl}/api/users/check-email?email=${encodeURIComponent(email.trim())}`);
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData?.data?.exists) {
+          throw new Error('An account with this email already exists. Please sign in instead.');
+        }
+      }
+
       const result = await authClient.signUp.email({
         name: name.trim(),
         email: email.trim(),
