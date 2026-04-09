@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 
 type Variables = {
-  user: { id: string; name: string; email: string; image?: string | null } | null;
+  user: { id: string; name: string; email: string; image?: string | null; username?: string | null } | null;
   session: { id: string } | null;
 };
 
@@ -23,36 +23,55 @@ usersRouter.get("/me", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
-  const profile = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      username: true,
-      bio: true,
-      image: true,
-      headerImage: true,
-      createdAt: true,
-      categories: true,
-      showExplicit: true,
-      links: true,
-      contentSensitivity: true,
-      pinnedPostIds: true,
-      role: true,
-      status: true,
-      pronouns: true,
-      website: true,
-      location: true,
-      dateOfBirth: true,
-      gender: true,
-      relationshipStatus: true,
-      _count: { select: { followers: true, following: true, posts: true } },
-    },
-  });
+  const profileSelect = {
+    id: true,
+    name: true,
+    email: true,
+    username: true,
+    bio: true,
+    image: true,
+    headerImage: true,
+    createdAt: true,
+    categories: true,
+    showExplicit: true,
+    links: true,
+    contentSensitivity: true,
+    pinnedPostIds: true,
+    role: true,
+    status: true,
+    pronouns: true,
+    website: true,
+    location: true,
+    dateOfBirth: true,
+    gender: true,
+    relationshipStatus: true,
+    _count: { select: { followers: true, following: true, posts: true } },
+  } as const;
 
-  if (!profile) {
-    return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
+  // Upsert: create user profile on first login if it doesn't exist yet
+  let profile;
+  try {
+    profile = await prisma.user.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image ?? null,
+        username: user.username ?? null,
+      },
+      update: {},
+      select: profileSelect,
+    });
+  } catch {
+    // Fallback: unique constraint on email (e.g. legacy row with different id)
+    profile = await prisma.user.findFirst({
+      where: { email: user.email },
+      select: profileSelect,
+    });
+    if (!profile) {
+      return c.json({ error: { message: "Failed to load user profile" } }, 500);
+    }
   }
 
   return c.json({

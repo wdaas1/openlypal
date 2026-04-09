@@ -52,7 +52,7 @@ export default function SignUpScreen() {
         email: email.trim(),
         password,
         options: {
-          data: { name: name.trim() },
+          data: { name: name.trim(), username: username.trim() || undefined },
           emailRedirectTo: 'https://openlypal.com',
         },
       });

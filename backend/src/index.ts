@@ -22,7 +22,7 @@ import { createBunWebSocket } from "hono/bun";
 import { wsManager } from "./ws-manager";
 
 type Variables = {
-  user: { id: string; name: string; email: string; image?: string | null } | null;
+  user: { id: string; name: string; email: string; image?: string | null; username?: string | null } | null;
   session: { id: string } | null;
 };
 
@@ -107,6 +107,7 @@ app.use("*", async (c, next) => {
           name: (user.user_metadata?.name as string | undefined) ?? user.email ?? "User",
           email: user.email ?? "",
           image: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+          username: (user.user_metadata?.username as string | undefined) ?? null,
         });
       } else {
         c.set("user", null);

@@ -4,7 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '@/lib/auth/use-session';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/lib/notifications';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api/api';
 
 export const unstable_settings = {
   initialRouteName: '(app)',
@@ -40,6 +41,32 @@ function RootLayoutNav() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const syncedUserId = useRef<string | null>(null);
+
+  // Sync user profile on login: ensure backend has the user row, apply pending username
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || syncedUserId.current === userId) return;
+    syncedUserId.current = userId;
+
+    const syncProfile = async () => {
+      try {
+        // This call auto-creates the user in the backend DB if they don't exist yet
+        const profile = await api.get<{ username?: string | null } | null>('/api/users/me');
+
+        // Apply pending username if the profile has no username yet
+        const pendingUsername = await AsyncStorage.getItem('pending_username');
+        if (pendingUsername && !profile?.username) {
+          await api.patch('/api/users/me', { username: pendingUsername });
+          await AsyncStorage.removeItem('pending_username');
+        }
+      } catch {
+        // Non-critical — profile will load normally on the profile screen
+      }
+    };
+
+    syncProfile();
+  }, [session?.user?.id]);
 
   // Handle deep links for email verification (openly://?code=... or openly://?access_token=...&refresh_token=...)
   useEffect(() => {
