@@ -208,21 +208,29 @@ app.get("/", (c) => {
   </style>
 </head>
 <body>
+  <script>
+    (function() {
+      var hash = window.location.hash;
+      var search = window.location.search;
+      if (
+        hash.includes('access_token') ||
+        hash.includes('refresh_token') ||
+        hash.includes('code')
+      ) {
+        var params = hash || search;
+        window.location.replace('openly://' + params);
+      }
+    })();
+  </script>
   <p id="msg">Redirecting to Openly…</p>
   <script>
     (function () {
-      var hash = window.location.hash;      // #access_token=...&refresh_token=...
-      var search = window.location.search;  // ?code=...
-
+      var hash = window.location.hash;
+      var search = window.location.search;
       var hasTokens = hash.includes('access_token') || hash.includes('refresh_token');
-      var hasCode   = search.includes('code=');
-
+      var hasCode = search.includes('code=');
       if (hasTokens || hasCode) {
-        // Build the deep link: openly:// + hash or query string
-        var deepLink = 'openly://' + (hasCode ? search : hash);
-        window.location.href = deepLink;
-
-        // Fallback message after 2 s if the OS didn't open the app
+        var deepLink = 'openly://' + (hasTokens ? hash : search);
         setTimeout(function () {
           document.getElementById('msg').innerHTML =
             'Tap <a href="' + deepLink + '">here</a> if the app didn\u2019t open automatically.';
