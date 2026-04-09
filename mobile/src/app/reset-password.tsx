@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { authClient } from '@/lib/auth/auth-client';
+import { supabase } from '@/lib/supabase';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react-native';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { token } = useLocalSearchParams<{ token: string }>();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,12 +15,8 @@ export default function ResetPasswordScreen() {
   const resetPassword = useMutation({
     mutationFn: async () => {
       if (password !== confirmPassword) throw new Error('Passwords do not match');
-      if (!token) throw new Error('Invalid or missing reset link');
-      const result = await authClient.resetPassword({
-        newPassword: password,
-        token,
-      });
-      if (result.error) throw new Error(result.error.message ?? 'Failed to reset password');
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw new Error(error.message ?? 'Failed to reset password');
     },
   });
 
@@ -36,7 +31,6 @@ export default function ResetPasswordScreen() {
           Choose a strong password for your account.
         </Text>
 
-        {/* New password */}
         <View style={{ position: 'relative', marginBottom: 12 }}>
           <TextInput
             testID="password-input"
@@ -58,7 +52,6 @@ export default function ResetPasswordScreen() {
           </Pressable>
         </View>
 
-        {/* Confirm password */}
         <View style={{ position: 'relative', marginBottom: 4 }}>
           <TextInput
             testID="confirm-password-input"

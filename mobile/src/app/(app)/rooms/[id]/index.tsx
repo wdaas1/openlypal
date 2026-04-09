@@ -7,7 +7,7 @@ import { api } from '@/lib/api/api';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { ArrowLeft, UserPlus, Pencil, Check, X, LogOut, Trash2, Lock, FileText, Camera, Play } from 'lucide-react-native';
 import { useSession } from '@/lib/auth/use-session';
-import { getAuthToken } from '@/lib/auth/auth-client';
+import { getAccessToken } from '@/lib/auth/auth-client';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -204,7 +204,7 @@ export default function RoomDetailScreen() {
     setIsUploading(true);
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       const formData = new FormData();
       formData.append('file', {
         uri: composeMedia.uri,

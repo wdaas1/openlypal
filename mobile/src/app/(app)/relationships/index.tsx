@@ -355,7 +355,7 @@ export default function RelationshipsScreen() {
   const isLoading = loadingAll || loadingNudges;
   const stats = allStats ?? [];
   const drifting = nudges ?? [];
-  const userName = session?.user?.name ?? 'You';
+  const userName = (session?.user?.user_metadata?.['name'] as string | undefined) ?? session?.user?.email ?? 'You';
 
   return (
     <SafeAreaView

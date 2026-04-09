@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { authClient } from '@/lib/auth/auth-client';
+import { supabase } from '@/lib/supabase';
 import { Mail, ArrowLeft } from 'lucide-react-native';
 
 export default function ForgotPasswordScreen() {
@@ -12,18 +12,17 @@ export default function ForgotPasswordScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/rooms');
+      router.replace('/sign-in' as any);
     }
   };
   const [email, setEmail] = useState('');
 
   const requestReset = useMutation({
     mutationFn: async () => {
-      const result = await authClient.requestPasswordReset({
-        email: email.trim(),
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: 'openly://reset-password',
       });
-      if (result.error) throw new Error(result.error.message ?? 'Failed to send reset email');
+      if (error) throw new Error(error.message ?? 'Failed to send reset email');
     },
   });
 
@@ -32,7 +31,6 @@ export default function ForgotPasswordScreen() {
   return (
     <SafeAreaView testID="forgot-password-screen" className="flex-1" style={{ backgroundColor: '#001935' }}>
       <View className="flex-1 px-8 pt-8 pb-8">
-        {/* Back button */}
         <Pressable
           testID="back-button"
           onPress={handleBack}

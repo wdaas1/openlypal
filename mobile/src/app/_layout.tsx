@@ -13,8 +13,7 @@ import {
   setupNotificationListeners,
 } from '@/lib/notifications';
 import * as Linking from 'expo-linking';
-import { setAuthToken } from '@/lib/auth/auth-client';
-import { useInvalidateSession } from '@/lib/auth/use-session';
+import { supabase } from '@/lib/supabase';
 
 export const unstable_settings = {
   initialRouteName: '(app)',
@@ -42,31 +41,34 @@ function RootLayoutNav() {
   const navigationState = useRootNavigationState();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
-  const invalidateSession = useInvalidateSession();
-
-  // Handle email verification deep links (openly://?token=...)
+  // Handle deep links for email verification (openly://?code=... or openly://?access_token=...&refresh_token=...)
   useEffect(() => {
-    const handleUrl = (url: string) => {
+    const handleUrl = async (url: string) => {
+      if (!url.startsWith('openly://')) return;
       const parsed = Linking.parse(url);
-      const token = parsed.queryParams?.token;
-      if (token && typeof token === 'string') {
-        setAuthToken(token);
+      const params = parsed.queryParams ?? {};
+
+      // PKCE flow: exchange code for session
+      const code = params['code'];
+      if (code && typeof code === 'string') {
+        await supabase.auth.exchangeCodeForSession(code);
+        return;
       }
-      invalidateSession();
+
+      // Implicit flow: set session directly
+      const accessToken = params['access_token'];
+      const refreshToken = params['refresh_token'];
+      if (accessToken && refreshToken && typeof accessToken === 'string' && typeof refreshToken === 'string') {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      }
     };
 
-    // Check if app was opened cold from a deep link
     Linking.getInitialURL().then((url) => {
-      if (url && url.startsWith('openly://')) {
-        handleUrl(url);
-      }
+      if (url) handleUrl(url);
     });
 
-    // Listen for deep links when app is already open
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      if (url.startsWith('openly://')) {
-        handleUrl(url);
-      }
+      handleUrl(url);
     });
 
     return () => subscription.remove();

@@ -4,8 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authClient } from '@/lib/auth/auth-client';
-import { useInvalidateSession } from '@/lib/auth/use-session';
+import { supabase } from '@/lib/supabase';
 import * as Haptics from 'expo-haptics';
 import { Logo } from '@/components/Logo';
 import { Mail } from 'lucide-react-native';
@@ -24,17 +23,15 @@ export default function SignUpScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/rooms');
+      router.replace('/sign-in' as any);
     }
   };
-  const invalidateSession = useInvalidateSession();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [usernameEdited, setUsernameEdited] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
-  // Stable random suffix so it doesn't jump around while typing
   const suffixRef = useRef(Math.floor(1000 + Math.random() * 9000));
 
   const handleNameChange = (text: string) => {
@@ -46,55 +43,42 @@ export default function SignUpScreen() {
 
   const handleUsernameChange = (text: string) => {
     setUsernameEdited(true);
-    // Only allow lowercase letters, numbers, underscores
     setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
   };
 
   const signUp = useMutation({
     mutationFn: async () => {
-      // Check if email is already registered before attempting sign-up
-      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
-      const checkRes = await fetch(`${baseUrl}/api/users/check-email?email=${encodeURIComponent(email.trim())}`);
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        if (checkData?.data?.exists) {
-          throw new Error('An account with this email already exists. Please sign in instead.');
-        }
-      }
-
-      const result = await authClient.signUp.email({
-        name: name.trim(),
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        callbackURL: 'openly://verify',
+        options: {
+          data: { name: name.trim() },
+          emailRedirectTo: 'https://openlypal.com',
+        },
       });
-      if (result.error) {
-        const msg = result.error.message ?? '';
+      if (error) {
+        const msg = error.message ?? '';
         if (
           msg.toLowerCase().includes('already') ||
           msg.toLowerCase().includes('exist') ||
-          result.error.status === 422 ||
-          result.error.status === 409
+          msg.toLowerCase().includes('registered')
         ) {
           throw new Error('An account with this email already exists. Please sign in instead.');
         }
         throw new Error(msg || 'Failed to create account');
       }
-      if (!result.data) {
-        throw new Error('An account with this email may already exist. Please sign in instead.');
+      if (!data.user) {
+        throw new Error('Failed to create account');
       }
-      return result;
+      return data;
     },
     onSuccess: async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Persist the intended username so onboarding can save it once the
-      // user has a fully-verified session (the PATCH fails before verification).
       const trimmedUsername = username.trim();
       if (trimmedUsername) {
         await AsyncStorage.setItem('pending_username', trimmedUsername);
       }
       setVerificationSent(true);
-      await invalidateSession();
     },
   });
 
@@ -111,7 +95,6 @@ export default function SignUpScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View className="flex-1 px-8 pt-16 pb-8">
-            {/* Logo */}
             <View className="items-center mb-12">
               <Logo size={80} showBackground={false} />
               <Text className="text-white text-xl font-semibold mt-2">
@@ -119,9 +102,7 @@ export default function SignUpScreen() {
               </Text>
             </View>
 
-            {/* Inputs */}
             <View className="gap-3 mb-6">
-              {/* Display name */}
               <TextInput
                 testID="name-input"
                 value={name}
@@ -134,7 +115,6 @@ export default function SignUpScreen() {
                 style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
               />
 
-              {/* Username — auto-filled, editable */}
               <View>
                 <View style={{ position: 'relative' }}>
                   <Text style={{
@@ -191,7 +171,6 @@ export default function SignUpScreen() {
               />
             </View>
 
-            {/* Email verification notice */}
             {verificationSent ? (
               <View
                 testID="verification-notice"
@@ -214,34 +193,31 @@ export default function SignUpScreen() {
               </View>
             ) : null}
 
-            {/* Error */}
             {signUp.isError ? (
               <Text className="text-red-400 text-sm text-center mb-4">
                 {signUp.error.message}
               </Text>
             ) : null}
 
-            {/* Create Account Button */}
             <Pressable
               testID="create-account-button"
               onPress={() => signUp.mutate()}
-              disabled={!isValid || signUp.isPending}
+              disabled={!isValid || signUp.isPending || verificationSent}
               className="rounded-xl py-4 items-center mb-4"
-              style={{ backgroundColor: isValid ? '#00CF35' : '#0a2d50' }}
+              style={{ backgroundColor: isValid && !verificationSent ? '#00CF35' : '#0a2d50' }}
             >
               {signUp.isPending ? (
                 <ActivityIndicator testID="loading-indicator" color="#001935" />
               ) : (
                 <Text
                   className="text-base font-bold"
-                  style={{ color: isValid ? '#001935' : '#4a6fa5' }}
+                  style={{ color: isValid && !verificationSent ? '#001935' : '#4a6fa5' }}
                 >
                   Create account
                 </Text>
               )}
             </Pressable>
 
-            {/* Sign In Link */}
             <Pressable
               testID="signin-link"
               onPress={handleBack}

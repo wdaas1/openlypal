@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import "./env";
-import { auth } from "./auth";
+import { supabase } from "./supabase";
 import { postsRouter } from "./routes/posts";
 import { usersRouter } from "./routes/users";
 import { exploreRouter } from "./routes/explore";
@@ -94,12 +94,27 @@ app.use(
 // Logging
 app.use("*", logger());
 
-// Auth middleware - populate user/session for all routes
+// Auth middleware - validate Supabase JWT and populate user context
 app.use("*", async (c, next) => {
   try {
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    c.set("user", session?.user ?? null);
-    c.set("session", session?.session ?? null);
+    const authHeader = c.req.header("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (token) {
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (!error && user) {
+        c.set("user", {
+          id: user.id,
+          name: (user.user_metadata?.name as string | undefined) ?? user.email ?? "User",
+          email: user.email ?? "",
+          image: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        });
+      } else {
+        c.set("user", null);
+      }
+    } else {
+      c.set("user", null);
+    }
+    c.set("session", null);
   } catch {
     c.set("user", null);
     c.set("session", null);
@@ -107,20 +122,12 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-// Rate limiting: auth routes — strict (sign-in brute-force protection)
-app.use("/api/auth/*", rateLimit(60_000, 10));
-
 // Rate limiting: write operations — moderate
 app.use("/api/posts", rateLimit(60_000, 30));
 app.use("/api/upload", rateLimit(60_000, 20));
 
 // Health check endpoint
 app.get("/health", (c) => c.json({ status: "ok" }));
-
-// Auth routes - Better Auth handles these
-app.all("/api/auth/*", (c) => {
-  return auth.handler(c.req.raw);
-});
 
 // App routes
 app.route("/api/posts", postsRouter);
@@ -139,15 +146,13 @@ app.get(
     const momentId = c.req.param("id");
     const token = c.req.query("token") ?? "";
 
-    // Authenticate via bearer token
+    // Authenticate via bearer token using Supabase
     let userId = "";
     let userName = "";
     try {
-      const session = await auth.api.getSession({
-        headers: new Headers({ Authorization: `Bearer ${token}` }),
-      });
-      userId = session?.user?.id ?? "";
-      userName = session?.user?.name ?? "";
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id ?? "";
+      userName = (user?.user_metadata?.name as string | undefined) ?? user?.email ?? "";
     } catch {
       // unauthenticated — we still allow connection but won't broadcast typing
     }

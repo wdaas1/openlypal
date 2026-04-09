@@ -27,7 +27,7 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
-import { authClient } from '@/lib/auth/auth-client';
+import { supabase } from '@/lib/supabase';
 import { useSession, useInvalidateSession } from '@/lib/auth/use-session';
 import type { User } from '@/lib/types';
 
@@ -67,7 +67,7 @@ export default function SettingsScreen() {
 
   const signOut = useMutation({
     mutationFn: async () => {
-      await authClient.signOut();
+      await supabase.auth.signOut();
     },
     onSuccess: () => {
       invalidateSession();
