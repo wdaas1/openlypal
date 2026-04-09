@@ -482,6 +482,13 @@ usersRouter.post("/:id/follow", async (c) => {
     return c.json({ error: { message: "User not found", code: "NOT_FOUND" } }, 404);
   }
 
+  // Ensure current user row exists (lazy creation in case sync hasn't run yet)
+  await prisma.user.upsert({
+    where: { id: user.id },
+    create: { id: user.id, name: user.name, email: user.email, image: user.image ?? null },
+    update: {},
+  });
+
   const existing = await prisma.follow.findUnique({
     where: {
       followerId_followingId: { followerId: user.id, followingId },
