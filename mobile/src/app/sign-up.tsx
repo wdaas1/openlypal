@@ -59,7 +59,19 @@ export default function SignUpScreen() {
         callbackURL: 'openly://verify',
       });
       if (result.error) {
-        throw new Error(result.error.message ?? 'Failed to create account');
+        const msg = result.error.message ?? '';
+        if (
+          msg.toLowerCase().includes('already') ||
+          msg.toLowerCase().includes('exist') ||
+          result.error.status === 422 ||
+          result.error.status === 409
+        ) {
+          throw new Error('An account with this email already exists. Please sign in instead.');
+        }
+        throw new Error(msg || 'Failed to create account');
+      }
+      if (!result.data) {
+        throw new Error('An account with this email may already exist. Please sign in instead.');
       }
       return result;
     },
