@@ -426,7 +426,7 @@ usersRouter.get("/:id/posts", async (c) => {
   const id = c.req.param("id");
 
   const posts = await prisma.post.findMany({
-    where: { userId: id, hidden: false },
+    where: { userId: id, hidden: false, roomId: null },
     include: {
       user: { select: { id: true, name: true, username: true, image: true } },
       _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },

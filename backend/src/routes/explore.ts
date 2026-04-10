@@ -26,6 +26,7 @@ exploreRouter.get("/trending", async (c) => {
   const whereClause: Record<string, unknown> = {
     createdAt: { gte: since },
     hidden: false,
+    roomId: null,
     contentScore: { lt: 1.0 },
   };
 
@@ -142,7 +143,7 @@ exploreRouter.get("/trending", async (c) => {
 // GET /tags - Get popular tags
 exploreRouter.get("/tags", async (c) => {
   const posts = await prisma.post.findMany({
-    where: { tags: { not: null } },
+    where: { tags: { not: null }, roomId: null },
     select: { tags: true },
   });
 

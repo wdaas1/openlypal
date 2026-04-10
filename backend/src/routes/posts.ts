@@ -124,6 +124,7 @@ postsRouter.get("/", async (c) => {
   const posts = await prisma.post.findMany({
     where: {
       hidden: false,
+      roomId: null,
       ...(filterUserId ? { userId: filterUserId } : {}),
       ...(tag ? { tags: { contains: tag } } : {}),
     },
@@ -141,7 +142,7 @@ postsRouter.get("/feed/unfiltered", async (c) => {
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
 
   const posts = await prisma.post.findMany({
-    where: { hidden: false },
+    where: { hidden: false, roomId: null },
     include: postInclude(user?.id),
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -166,7 +167,7 @@ postsRouter.get("/feed/following", async (c) => {
   if (followingIds.length === 0) return c.json({ data: [] });
 
   const posts = await prisma.post.findMany({
-    where: { userId: { in: followingIds }, hidden: false },
+    where: { userId: { in: followingIds }, hidden: false, roomId: null },
     include: postInclude(user.id),
     orderBy: { createdAt: "desc" },
     take: limit,

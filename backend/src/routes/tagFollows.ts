@@ -98,6 +98,7 @@ tagFollowsRouter.get("/feed/tags", async (c) => {
   const posts = await prisma.post.findMany({
     where: {
       OR: tagConditions,
+      roomId: null,
       ...(showExplicit ? {} : { isExplicit: false }),
     },
     include: {
