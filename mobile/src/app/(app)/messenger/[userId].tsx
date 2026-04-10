@@ -83,6 +83,22 @@ export default function ChatScreen() {
     }
   }, [messages?.length]);
 
+  // Track previous message count for incoming message detection
+  const prevMessageCountRef = useRef<number>(0);
+
+  // Haptic feedback when new messages arrive from other user
+  useEffect(() => {
+    if (!messages || !currentUserId) return;
+    const count = messages.length;
+    if (count > prevMessageCountRef.current && prevMessageCountRef.current > 0) {
+      const latestMessage = messages[messages.length - 1];
+      if (latestMessage && latestMessage.senderId !== currentUserId) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    }
+    prevMessageCountRef.current = count;
+  }, [messages, currentUserId]);
+
   const { mutate: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (content: string) => {
       const result = await api.post(`/api/conversations/${userId}`, { content });

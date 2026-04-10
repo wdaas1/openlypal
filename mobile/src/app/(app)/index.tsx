@@ -196,6 +196,7 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
     queryFn: () => api.get<Post[]>('/api/posts'),
+    refetchInterval: 30000,
   });
 
   const feedItems = buildFeedItems(posts ?? []);
@@ -245,6 +246,7 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'following'],
     queryFn: () => api.get<Post[]>('/api/posts/feed/following'),
+    refetchInterval: 30000,
   });
 
   const feedItems = buildFeedItems(posts ?? []);
@@ -294,6 +296,7 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'unfiltered'],
     queryFn: () => api.get<Post[]>('/api/posts/feed/unfiltered'),
+    refetchInterval: 30000,
   });
 
   const feedItems = buildFeedItems(posts ?? []);
