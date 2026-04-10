@@ -2,12 +2,21 @@ import { supabase } from '../supabase';
 
 const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
 
+const getToken = async (forceRefresh = false): Promise<string | undefined> => {
+  if (forceRefresh) {
+    const { data } = await supabase.auth.refreshSession();
+    return data.session?.access_token;
+  }
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token;
+};
+
 const request = async <T>(
   url: string,
-  options: { method?: string; body?: string } = {}
+  options: { method?: string; body?: string } = {},
+  retry = true
 ): Promise<T> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  const token = await getToken();
   const response = await fetch(`${baseUrl}${url}`, {
     ...options,
     headers: {
@@ -15,6 +24,14 @@ const request = async <T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
+
+  // On 401, try refreshing the token once and retry the request
+  if (response.status === 401 && retry && token) {
+    const freshToken = await getToken(true);
+    if (freshToken && freshToken !== token) {
+      return request(url, options, false);
+    }
+  }
 
   if (response.status === 204) return null as T;
 
