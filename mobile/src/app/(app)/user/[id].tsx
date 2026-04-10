@@ -37,15 +37,14 @@ export default function UserProfileScreen() {
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      if (user?.isFollowing) {
-        await api.delete(`/api/users/${id}/follow`);
-      } else {
-        await api.post(`/api/users/${id}/follow`);
-      }
+      await api.post(`/api/users/${id}/follow`);
     },
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       queryClient.invalidateQueries({ queryKey: ['user', id] });
+    },
+    onError: (error) => {
+      console.error('Follow/unfollow failed:', error);
     },
   });
 

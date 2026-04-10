@@ -160,6 +160,9 @@ export default function ExploreScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       queryClient.invalidateQueries({ queryKey: ['explore', 'users'] });
     },
+    onError: (error) => {
+      console.error('Follow/unfollow failed:', error);
+    },
   });
 
   const displayPosts = searchQuery.length > 2 ? searchResults : trendingPosts;
@@ -470,6 +473,7 @@ export default function ExploreScreen() {
                       ) : null}
                       <Pressable
                         testID={`follow-user-${user.id}`}
+                        disabled={followMutation.isPending}
                         onPress={(e) => {
                           e.stopPropagation();
                           followMutation.mutate(user.id);
@@ -539,6 +543,7 @@ export default function ExploreScreen() {
                 </View>
                 <Pressable
                   testID={`follow-search-user-${user.id}`}
+                  disabled={followMutation.isPending}
                   onPress={(e) => {
                     e.stopPropagation();
                     followMutation.mutate(user.id);
