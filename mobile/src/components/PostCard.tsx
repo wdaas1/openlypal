@@ -70,7 +70,7 @@ function formatCount(n: number): string {
   return n.toString();
 }
 
-export function PostCard({ post, isVisible = true, from, roomId, momentId }: PostCardProps) {
+const PostCard = React.memo(function PostCard({ post, isVisible = true, from, roomId, momentId }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
@@ -1379,4 +1379,6 @@ export function PostCard({ post, isVisible = true, from, roomId, momentId }: Pos
     </Pressable>
     </Swipeable>
   );
-}
+});
+
+export { PostCard };

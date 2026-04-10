@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, RefreshControl, Pressable, useWindowDimensions, ViewToken } from 'react-native';
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -205,9 +205,9 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
     refetchInterval: 30000,
   });
 
-  const feedItems = buildFeedItems(posts ?? []);
+  const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 0 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
@@ -225,7 +225,8 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
         if (item.type === 'reblog') return <ReblogCard item={item.data} isVisible={visibleKeys.has(item.key)} />;
         return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
-      estimatedItemSize={320}
+      estimatedItemSize={450}
+      removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
@@ -256,9 +257,9 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
     refetchInterval: 30000,
   });
 
-  const feedItems = buildFeedItems(posts ?? []);
+  const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 0 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
@@ -276,7 +277,8 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
         if (item.type === 'reblog') return <ReblogCard item={item.data} isVisible={visibleKeys.has(item.key)} />;
         return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
-      estimatedItemSize={320}
+      estimatedItemSize={450}
+      removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
@@ -307,9 +309,9 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
     refetchInterval: 30000,
   });
 
-  const feedItems = buildFeedItems(posts ?? []);
+  const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 0 }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
@@ -326,7 +328,8 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
         return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
-      estimatedItemSize={320}
+      estimatedItemSize={450}
+      removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}

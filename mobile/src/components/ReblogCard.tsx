@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Repeat2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -9,7 +10,7 @@ interface ReblogCardProps {
   isVisible?: boolean;
 }
 
-export function ReblogCard({ item, isVisible }: ReblogCardProps) {
+const ReblogCard = React.memo(function ReblogCard({ item, isVisible }: ReblogCardProps) {
   const router = useRouter();
   const username = item.rebloggedBy.username ?? item.rebloggedBy.name;
 
@@ -33,4 +34,6 @@ export function ReblogCard({ item, isVisible }: ReblogCardProps) {
       <PostCard post={item.post} isVisible={isVisible} />
     </View>
   );
-}
+});
+
+export { ReblogCard };
