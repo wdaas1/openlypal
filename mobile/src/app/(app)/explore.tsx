@@ -347,7 +347,7 @@ export default function ExploreScreen() {
               <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: '#00CF35', marginRight: 8 }} />
               <TrendingUp size={16} color="#00CF35" style={{ marginRight: 6 }} />
               <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, flex: 1 }}>Trending Hashtags</Text>
-              <Pressable testID="hashtags-see-all">
+              <Pressable testID="hashtags-see-all" onPress={() => router.push('/(app)/all-hashtags' as any)}>
                 <Text style={{ color: '#00CF35', fontSize: 12 }}>See all</Text>
               </Pressable>
             </View>
@@ -425,7 +425,7 @@ export default function ExploreScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: '#00CF35', marginRight: 8 }} />
               <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, flex: 1 }}>Recommended Blogs</Text>
-              <Pressable testID="recommended-see-all">
+              <Pressable testID="recommended-see-all" onPress={() => router.push('/(app)/all-recommended' as any)}>
                 <Text style={{ color: '#00CF35', fontSize: 12 }}>See all</Text>
               </Pressable>
             </View>

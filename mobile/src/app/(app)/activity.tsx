@@ -39,12 +39,22 @@ function getActivityIcon(type: string) {
       return <MessageCircle size={16} color="#3F72AF" />;
     case 'follow':
       return <UserPlus size={16} color="#A855F7" />;
+    // outgoing types — muted, no fill
+    case 'like_given':
+      return <Heart size={16} color="#7a3344" />;
+    case 'reblog_given':
+      return <Repeat2 size={16} color="#1a6630" />;
+    case 'comment_given':
+      return <MessageCircle size={16} color="#2a4a6f" />;
+    case 'follow_given':
+      return <UserPlus size={16} color="#6b3fa0" />;
     default:
       return <Heart size={16} color="#4a6fa5" />;
   }
 }
 
-function getActivityText(type: string) {
+function getActivityText(type: string, item: ActivityItem): string {
+  const target = item.user.username ?? item.user.name;
   switch (type) {
     case 'like':
       return 'liked your post';
@@ -54,9 +64,116 @@ function getActivityText(type: string) {
       return 'commented on your post';
     case 'follow':
       return 'started following you';
+    // outgoing types
+    case 'like_given':
+      return `You liked ${target}'s post`;
+    case 'reblog_given':
+      return `You reblogged ${target}'s post`;
+    case 'comment_given':
+      return `You commented on ${target}'s post`;
+    case 'follow_given':
+      return `You followed ${target}`;
     default:
       return 'interacted with your post';
   }
+}
+
+const OUTGOING_TYPES = new Set(['like_given', 'reblog_given', 'comment_given', 'follow_given']);
+
+function ActivityRow({ item, isOutgoing }: { item: ActivityItem; isOutgoing: boolean }) {
+  const router = useRouter();
+
+  const handlePress = () => {
+    if (isOutgoing) {
+      if (item.type === 'follow_given') {
+        router.push(`/(app)/user/${item.user.id}` as any);
+      } else if (item.postId) {
+        router.push(`/(app)/post/${item.postId}` as any);
+      }
+    } else {
+      if (item.type === 'follow') {
+        router.push(`/(app)/user/${item.userId}` as any);
+      } else if (item.postId) {
+        router.push(`/(app)/post/${item.postId}` as any);
+      }
+    }
+  };
+
+  const handleAvatarPress = () => {
+    if (isOutgoing) {
+      router.push(`/(app)/user/${item.user.id}` as any);
+    } else {
+      router.push(`/(app)/user/${item.userId}` as any);
+    }
+  };
+
+  const showChevron = isOutgoing
+    ? item.type === 'follow_given' || !!item.postId
+    : item.postId != null || item.type === 'follow';
+
+  const text = getActivityText(item.type, item);
+
+  return (
+    <Pressable
+      testID={`activity-item-${item.id}`}
+      onPress={handlePress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomColor: '#1a3a5c',
+        borderBottomWidth: 0.5,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Pressable onPress={handleAvatarPress}>
+        <UserAvatar uri={item.user.image} name={item.user.name} size={40} />
+      </Pressable>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {getActivityIcon(item.type)}
+          {isOutgoing ? (
+            <Text style={{ color: '#ffffff', fontSize: 14, flex: 1 }}>
+              {text}
+            </Text>
+          ) : (
+            <Text style={{ color: '#ffffff', fontSize: 14, flex: 1 }}>
+              <Text style={{ fontWeight: 'bold' }}>{item.user.username ?? item.user.name}</Text>
+              {' '}{text}
+            </Text>
+          )}
+        </View>
+        {!isOutgoing && (item.post?.title || item.post?.content) ? (
+          <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 4 }} numberOfLines={1}>
+            {item.post?.title ?? item.post?.content}
+          </Text>
+        ) : null}
+        <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 4 }}>
+          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+        </Text>
+      </View>
+      {showChevron ? (
+        <Text style={{ color: '#4a6fa5', fontSize: 18, marginLeft: 8 }}>{'›'}</Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <View
+      style={{
+        paddingHorizontal: 16,
+        paddingTop: 20,
+        paddingBottom: 8,
+      }}
+    >
+      <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
+        {title}
+      </Text>
+    </View>
+  );
 }
 
 export default function ActivityScreen() {
@@ -70,13 +187,16 @@ export default function ActivityScreen() {
     }, [queryClient])
   );
 
-  const { data: activities, isLoading, isRefetching } = useQuery({
+  const { data, isLoading, isRefetching } = useQuery({
     queryKey: ['activity'],
     queryFn: async () => {
-      const result = await api.get<ActivityItem[]>('/api/activity');
-      return result ?? [];
+      const result = await api.get<{ notifications: ActivityItem[]; outgoing: ActivityItem[] }>('/api/activity');
+      return result ?? { notifications: [], outgoing: [] };
     },
   });
+
+  const notifications = data?.notifications ?? [];
+  const outgoing = data?.outgoing ?? [];
 
   return (
     <SafeAreaView testID="activity-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
@@ -143,63 +263,30 @@ export default function ActivityScreen() {
             <Text style={{ color: '#00CF35', fontSize: 18 }}>{'›'}</Text>
           </Pressable>
 
-          {(activities ?? []).length === 0 ? (
-            <View className="items-center justify-center pt-32">
-              <Text className="text-lg font-semibold" style={{ color: '#4a6fa5' }}>
-                No activity yet
-              </Text>
-              <Text className="text-sm mt-2" style={{ color: '#4a6fa5' }}>
-                Interactions on your posts will show up here
-              </Text>
+          {/* Notifications section */}
+          <SectionHeader title="Notifications" />
+          {notifications.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
+              <Text style={{ color: '#4a6fa5', fontSize: 14 }}>No notifications yet</Text>
             </View>
           ) : (
-            (activities ?? []).map((item) => (
-              <Pressable
-                key={item.id}
-                testID={`activity-item-${item.id}`}
-                onPress={() => {
-                  if (item.type === 'follow') {
-                    router.push(`/(app)/user/${item.userId}` as any);
-                  } else if (item.postId) {
-                    router.push(`/(app)/post/${item.postId}` as any);
-                  }
-                }}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderBottomColor: '#1a3a5c',
-                  borderBottomWidth: 0.5,
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <Pressable onPress={() => router.push(`/(app)/user/${item.userId}` as any)}>
-                  <UserAvatar uri={item.user.image} name={item.user.name} size={40} />
-                </Pressable>
-                <View className="flex-1 ml-3">
-                  <View className="flex-row items-center gap-2">
-                    {getActivityIcon(item.type)}
-                    <Text className="text-white text-sm flex-1">
-                      <Text className="font-bold">{item.user.username ?? item.user.name}</Text>
-                      {' '}{getActivityText(item.type)}
-                    </Text>
-                  </View>
-                  {item.post?.title || item.post?.content ? (
-                    <Text className="text-xs mt-1" style={{ color: '#4a6fa5' }} numberOfLines={1}>
-                      {item.post.title ?? item.post.content}
-                    </Text>
-                  ) : null}
-                  <Text className="text-xs mt-1" style={{ color: '#4a6fa5' }}>
-                    {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                  </Text>
-                </View>
-                {(item.postId || item.type === 'follow') ? (
-                  <Text style={{ color: '#4a6fa5', fontSize: 18, marginLeft: 8 }}>{'›'}</Text>
-                ) : null}
-              </Pressable>
+            notifications.map((item) => (
+              <ActivityRow key={item.id} item={item} isOutgoing={false} />
             ))
           )}
+
+          {/* Your Activity section */}
+          <SectionHeader title="Your Activity" />
+          {outgoing.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
+              <Text style={{ color: '#4a6fa5', fontSize: 14 }}>Nothing here yet</Text>
+            </View>
+          ) : (
+            outgoing.map((item) => (
+              <ActivityRow key={item.id} item={item} isOutgoing={true} />
+            ))
+          )}
+
           <View className="h-8" />
         </ScrollView>
       )}
