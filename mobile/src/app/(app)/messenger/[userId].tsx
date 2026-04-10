@@ -70,7 +70,7 @@ export default function ChatScreen() {
     if (!userId) return;
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['messages', userId] });
-    }, 5000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [userId, queryClient]);
 

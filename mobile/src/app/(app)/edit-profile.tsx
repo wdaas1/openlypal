@@ -92,10 +92,10 @@ export default function EditProfileScreen() {
       setPronouns(profile.pronouns ?? '');
       if (profile.dateOfBirth) {
         const d = new Date(profile.dateOfBirth);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        setDateOfBirth(`${yyyy}-${mm}-${dd}`);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        setDateOfBirth(`${dd}/${mm}/${yyyy}`);
       }
       setGender(profile.gender ?? '');
       setRelationshipStatus(profile.relationshipStatus ?? '');
@@ -142,7 +142,15 @@ export default function EditProfileScreen() {
         website: website.trim() || undefined,
         location: location.trim() || undefined,
         pronouns: pronouns.trim() || undefined,
-        dateOfBirth: dateOfBirth.trim() || undefined,
+        dateOfBirth: (() => {
+          const dob = dateOfBirth.trim();
+          if (!dob) return undefined;
+          const parts = dob.split('/');
+          if (parts.length === 3) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+          return dob;
+        })(),
         gender: gender || undefined,
         relationshipStatus: relationshipStatus || undefined,
       });
@@ -360,14 +368,14 @@ export default function EditProfileScreen() {
                   testID="dob-input"
                   value={dateOfBirth}
                   onChangeText={setDateOfBirth}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="DD/MM/YYYY"
                   placeholderTextColor="#2a4a6a"
                   keyboardType="numeric"
                   maxLength={10}
                   className="text-white text-base py-3 px-4 rounded-xl"
                   style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
                 />
-                <Text className="text-xs mt-1" style={{ color: '#2a4a6a' }}>Format: YYYY-MM-DD (e.g. 1990-06-15)</Text>
+                <Text className="text-xs mt-1" style={{ color: '#2a4a6a' }}>Format: DD/MM/YYYY (e.g. 15/06/1990)</Text>
               </View>
 
               {/* Gender */}

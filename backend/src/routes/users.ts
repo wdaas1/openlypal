@@ -161,6 +161,7 @@ usersRouter.get("/me/likes", async (c) => {
 
 // GET /search - Search users
 usersRouter.get("/search", async (c) => {
+  const currentUser = c.get("user");
   const q = c.req.query("q");
   if (!q || q.trim().length === 0) {
     return c.json({ data: [] });
@@ -180,6 +181,12 @@ usersRouter.get("/search", async (c) => {
       image: true,
       bio: true,
       _count: { select: { followers: true, posts: true } },
+      ...(currentUser ? {
+        followers: {
+          where: { followerId: currentUser.id },
+          select: { id: true },
+        },
+      } : {}),
     },
     take: 20,
   });
@@ -192,6 +199,9 @@ usersRouter.get("/search", async (c) => {
     bio: u.bio,
     followerCount: u._count.followers,
     postCount: u._count.posts,
+    isFollowing: currentUser
+      ? Array.isArray((u as Record<string, unknown>).followers) && ((u as Record<string, unknown>).followers as unknown[]).length > 0
+      : false,
   }));
 
   return c.json({ data });

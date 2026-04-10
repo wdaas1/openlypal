@@ -32,7 +32,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
-import { getAuthToken } from '@/lib/auth/auth-client';
+import { getAccessToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -653,7 +653,7 @@ export default function LiveMomentScreen() {
     let ws: WebSocket | null = null;
 
     const connect = async () => {
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       if (!token) return;
 
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
@@ -835,7 +835,7 @@ export default function LiveMomentScreen() {
     setIsStartingStream(true);
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       const res = await fetch(`${backendUrl}/api/livekit/token`, {
         method: 'POST',
         headers: {
@@ -860,7 +860,7 @@ export default function LiveMomentScreen() {
   const handleJoinStream = useCallback(async () => {
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       const res = await fetch(`${backendUrl}/api/livekit/token`, {
         method: 'POST',
         headers: {
@@ -895,7 +895,7 @@ export default function LiveMomentScreen() {
 
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAuthToken();
+      const token = await getAccessToken();
 
       const formData = new FormData();
       formData.append('file', {
