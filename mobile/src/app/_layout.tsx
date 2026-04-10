@@ -134,16 +134,19 @@ function RootLayoutNav() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (isLoading || !navigationState?.key || onboardingDone === null) return;
+    if (isLoading || !navigationState?.key) return;
 
     if (session?.user) {
+      // Wait until onboarding status has been checked before routing a logged-in user
+      if (onboardingDone === null) return;
       if (!onboardingDone) {
         router.replace('/onboarding' as any);
       } else {
         router.replace('/(app)' as any);
       }
     } else {
-      setOnboardingDone(null); // reset so it re-checks for the next login
+      // No session — go to sign-in immediately regardless of onboardingDone state
+      setOnboardingDone(null);
       router.replace('/sign-in' as any);
     }
 
