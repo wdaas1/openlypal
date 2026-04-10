@@ -546,4 +546,81 @@ usersRouter.post("/:id/follow", async (c) => {
   return c.json({ data: { following: true } });
 });
 
+// GET /:id/reblogs - Get reblogs made by this user (public posts only)
+usersRouter.get("/:id/reblogs", async (c) => {
+  const currentUser = c.get("user");
+  const id = c.req.param("id");
+  const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
+
+  const reblogs = await prisma.reblog.findMany({
+    where: { userId: id },
+    include: {
+      user: { select: { id: true, name: true, username: true, image: true } },
+      post: {
+        include: {
+          user: { select: { id: true, name: true, username: true, image: true } },
+          _count: { select: { likes: true, comments: true, reblogs: true, bookmarks: true } },
+          ...(currentUser
+            ? {
+                likes: { where: { userId: currentUser.id }, select: { id: true } },
+                bookmarks: { where: { userId: currentUser.id }, select: { id: true } },
+              }
+            : {}),
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+
+  // Exclude reblogs where the original post has a roomId or is hidden
+  const filtered = reblogs.filter(
+    (r) => r.post && r.post.roomId === null && !r.post.hidden
+  );
+
+  const data = filtered.map((r) => {
+    const post = r.post;
+    const likesArr = currentUser
+      ? ((post as Record<string, unknown>).likes as { id: string }[] | undefined) ?? []
+      : [];
+    const bookmarksArr = currentUser
+      ? ((post as Record<string, unknown>).bookmarks as { id: string }[] | undefined) ?? []
+      : [];
+
+    return {
+      _type: "reblog" as const,
+      id: r.id,
+      createdAt: r.createdAt.toISOString(),
+      comment: r.comment,
+      rebloggedBy: r.user,
+      post: {
+        id: post.id,
+        type: post.type,
+        title: post.title,
+        content: post.content,
+        imageUrl: post.imageUrl,
+        imageUrls: post.imageUrls ? (JSON.parse(post.imageUrls as string) as string[]) : [],
+        videoUrl: post.videoUrl ?? null,
+        linkUrl: post.linkUrl,
+        tags: post.tags ? post.tags.split(",").map((t: string) => t.trim()) : [],
+        isExplicit: post.isExplicit,
+        contentScore: post.contentScore,
+        category: post.category,
+        userId: post.userId,
+        user: post.user,
+        likeCount: post._count.likes,
+        commentCount: post._count.comments,
+        reblogCount: post._count.reblogs,
+        bookmarkCount: (post._count as Record<string, number>).bookmarks ?? 0,
+        isLiked: currentUser ? likesArr.length > 0 : false,
+        isBookmarked: currentUser ? bookmarksArr.length > 0 : false,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+      },
+    };
+  });
+
+  return c.json({ data });
+});
+
 export { usersRouter };

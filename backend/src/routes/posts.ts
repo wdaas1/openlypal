@@ -80,6 +80,49 @@ function postInclude(userId?: string | null) {
   };
 }
 
+// Include builder for reblog feed items
+function reblogFeedInclude(userId?: string | null) {
+  return {
+    user: { select: { id: true, name: true, username: true, image: true } }, // the reblogger
+    post: {
+      include: postInclude(userId), // original post with full data
+    },
+  };
+}
+
+// Shape of a mapped reblog feed item
+type ReblogFeedItem = {
+  _type: "reblog";
+  id: string;
+  createdAt: string;
+  comment: string | null;
+  rebloggedBy: { id: string; name: string; username: string | null; image: string | null };
+  post: ReturnType<typeof mapPost>;
+};
+
+type PostFeedItem = ReturnType<typeof mapPost> & { _type: "post" };
+
+// Map a raw reblog (with user + post includes) to a ReblogFeedItem
+function mapReblogFeedItem(
+  reblog: {
+    id: string;
+    createdAt: Date;
+    comment: string | null;
+    user: { id: string; name: string; username: string | null; image: string | null };
+    post: Parameters<typeof mapPost>[0];
+  },
+  currentUserId?: string | null
+): ReblogFeedItem {
+  return {
+    _type: "reblog",
+    id: reblog.id,
+    createdAt: reblog.createdAt.toISOString(),
+    comment: reblog.comment,
+    rebloggedBy: reblog.user,
+    post: mapPost(reblog.post, currentUserId),
+  };
+}
+
 // Build content sensitivity filter for a user's contentSensitivity preference
 function buildSensitivityFilter(contentSensitivity: string | null | undefined): Record<string, unknown> {
   const sensitivity = contentSensitivity ?? "safe";
@@ -133,6 +176,44 @@ postsRouter.get("/", async (c) => {
     take: limit,
   });
 
+  // For the general feed (no userId filter and no tag filter), also include recent reblogs
+  if (!filterUserId && !tag) {
+    const reblogs = await prisma.reblog.findMany({
+      include: reblogFeedInclude(user?.id),
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    // Exclude reblogs where the original post has a roomId or is hidden
+    const filteredReblogs = reblogs.filter(
+      (r) => r.post && r.post.roomId === null && !r.post.hidden
+    );
+
+    const postItems: PostFeedItem[] = posts.map((p) => ({
+      ...mapPost(p as Parameters<typeof mapPost>[0], user?.id),
+      _type: "post" as const,
+    }));
+
+    const reblogItems: ReblogFeedItem[] = filteredReblogs.map((r) =>
+      mapReblogFeedItem(
+        r as {
+          id: string;
+          createdAt: Date;
+          comment: string | null;
+          user: { id: string; name: string; username: string | null; image: string | null };
+          post: Parameters<typeof mapPost>[0];
+        },
+        user?.id
+      )
+    );
+
+    const merged = [...postItems, ...reblogItems].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ).slice(0, limit);
+
+    return c.json({ data: merged });
+  }
+
   return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user?.id)) });
 });
 
@@ -151,7 +232,7 @@ postsRouter.get("/feed/unfiltered", async (c) => {
   return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user?.id)) });
 });
 
-// GET /feed/following - Posts from followed users
+// GET /feed/following - Posts and reblogs from followed users
 postsRouter.get("/feed/following", async (c) => {
   const user = c.get("user");
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
@@ -166,14 +247,52 @@ postsRouter.get("/feed/following", async (c) => {
 
   if (followingIds.length === 0) return c.json({ data: [] });
 
-  const posts = await prisma.post.findMany({
-    where: { userId: { in: followingIds }, hidden: false, roomId: null },
-    include: postInclude(user.id),
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+  // Fetch posts and reblogs in parallel
+  const [posts, reblogs] = await Promise.all([
+    prisma.post.findMany({
+      where: { userId: { in: followingIds }, hidden: false, roomId: null },
+      include: postInclude(user.id),
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    }),
+    prisma.reblog.findMany({
+      where: { userId: { in: followingIds } },
+      include: reblogFeedInclude(user.id),
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    }),
+  ]);
 
-  return c.json({ data: posts.map((p) => mapPost(p as Parameters<typeof mapPost>[0], user.id)) });
+  // Exclude reblogs where the original post has a roomId or is hidden
+  const filteredReblogs = reblogs.filter(
+    (r) => r.post && r.post.roomId === null && !r.post.hidden
+  );
+
+  // Map to unified feed items
+  const postItems: PostFeedItem[] = posts.map((p) => ({
+    ...mapPost(p as Parameters<typeof mapPost>[0], user.id),
+    _type: "post" as const,
+  }));
+
+  const reblogItems: ReblogFeedItem[] = filteredReblogs.map((r) =>
+    mapReblogFeedItem(
+      r as {
+        id: string;
+        createdAt: Date;
+        comment: string | null;
+        user: { id: string; name: string; username: string | null; image: string | null };
+        post: Parameters<typeof mapPost>[0];
+      },
+      user.id
+    )
+  );
+
+  // Merge and sort by createdAt descending, take limit
+  const merged = [...postItems, ...reblogItems].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  ).slice(0, limit);
+
+  return c.json({ data: merged });
 });
 
 // GET /:id - Get single post

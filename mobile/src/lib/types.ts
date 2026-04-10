@@ -34,6 +34,7 @@ export interface User {
 }
 
 export interface Post {
+  _type?: 'post';
   id: string;
   type: string;
   title: string | null;
@@ -68,6 +69,20 @@ export interface Post {
     options: { text: string; votes: number }[];
     endsAt: string;
   } | null;
+}
+
+export interface ReblogFeedItem {
+  _type: 'reblog';
+  id: string;
+  createdAt: string;
+  comment: string | null;
+  rebloggedBy: {
+    id: string;
+    name: string;
+    username: string | null;
+    image: string | null;
+  };
+  post: Post;
 }
 
 export interface Comment {

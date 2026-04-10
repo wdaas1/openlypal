@@ -18,8 +18,9 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Search, Bell, ShieldAlert } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
-import type { Post } from '@/lib/types';
+import type { Post, ReblogFeedItem } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
+import { ReblogCard } from '@/components/ReblogCard';
 import { AdCard } from '@/components/AdCard';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
@@ -73,18 +74,23 @@ type Tab = 'following' | 'foryou' | 'unfiltered';
 
 type FeedItem =
   | { type: 'post'; data: Post; key: string }
+  | { type: 'reblog'; data: ReblogFeedItem; key: string }
   | { type: 'ad'; adIndex: number; key: string };
 
-function buildFeedItems(posts: Post[]): FeedItem[] {
-  const items: FeedItem[] = [];
+function buildFeedItems(items: (Post | ReblogFeedItem)[]): FeedItem[] {
+  const result: FeedItem[] = [];
   let adIndex = 0;
-  posts.forEach((post, i) => {
-    items.push({ type: 'post', data: post, key: post.id });
+  items.forEach((item, i) => {
+    if ('_type' in item && item._type === 'reblog') {
+      result.push({ type: 'reblog', data: item as ReblogFeedItem, key: `reblog-${item.id}` });
+    } else {
+      result.push({ type: 'post', data: item as Post, key: (item as Post).id });
+    }
     if ((i + 1) % 5 === 0) {
-      items.push({ type: 'ad', adIndex: adIndex++, key: `ad-${adIndex}` });
+      result.push({ type: 'ad', adIndex: adIndex++, key: `ad-${adIndex}` });
     }
   });
-  return items;
+  return result;
 }
 
 function EmptyState({ message, sub, action, onAction }: {
@@ -195,7 +201,7 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
-    queryFn: () => api.get<Post[]>('/api/posts'),
+    queryFn: () => api.get<(Post | ReblogFeedItem)[]>('/api/posts'),
     refetchInterval: 30000,
   });
 
@@ -216,6 +222,7 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+        if (item.type === 'reblog') return <ReblogCard item={item.data} isVisible={visibleKeys.has(item.key)} />;
         return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
       estimatedItemSize={320}
@@ -245,7 +252,7 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
   const queryClient = useQueryClient();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'following'],
-    queryFn: () => api.get<Post[]>('/api/posts/feed/following'),
+    queryFn: () => api.get<(Post | ReblogFeedItem)[]>('/api/posts/feed/following'),
     refetchInterval: 30000,
   });
 
@@ -266,6 +273,7 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+        if (item.type === 'reblog') return <ReblogCard item={item.data} isVisible={visibleKeys.has(item.key)} />;
         return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
       }}
       estimatedItemSize={320}
