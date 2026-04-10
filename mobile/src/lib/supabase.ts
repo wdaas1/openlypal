@@ -4,12 +4,61 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
+// React Native does not have the Navigator Locks API, so the Supabase auth-js
+// library falls back to a broken path that causes "Lock was stolen by another
+// request" errors on concurrent auth operations.  We replace it with a simple
+// promise-based mutex queue that is safe for the single-JS-thread environment.
+const lockQueues = new Map<string, Array<() => void>>();
+const lockHeld = new Set<string>();
+
+function acquireLock(name: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (!lockHeld.has(name)) {
+      lockHeld.add(name);
+      resolve();
+    } else {
+      if (!lockQueues.has(name)) {
+        lockQueues.set(name, []);
+      }
+      lockQueues.get(name)!.push(resolve);
+    }
+  });
+}
+
+function releaseLock(name: string): void {
+  const queue = lockQueues.get(name);
+  if (queue && queue.length > 0) {
+    const next = queue.shift()!;
+    next();
+  } else {
+    lockHeld.delete(name);
+    if (queue && queue.length === 0) {
+      lockQueues.delete(name);
+    }
+  }
+}
+
+async function reactNativeLock<T>(
+  name: string,
+  _acquireTimeout: number,
+  fn: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  await acquireLock(name);
+  const controller = new AbortController();
+  try {
+    return await fn(controller.signal);
+  } finally {
+    releaseLock(name);
+  }
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    lock: reactNativeLock,
   },
 });
 
