@@ -807,6 +807,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
             </Pressable>
           </View>
         ) : (
+          <Pressable onPress={(e) => e.stopPropagation()}>
           <GestureDetector gesture={videoGesture}>
             <View
               testID={`video-tap-fullscreen-${post.id}`}
@@ -904,6 +905,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
               ) : null}
             </View>
           </GestureDetector>
+          </Pressable>
         )
       ) : null}
 
