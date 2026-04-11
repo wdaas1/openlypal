@@ -77,7 +77,7 @@ function formatCount(n: number): string {
 const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey, from, roomId, momentId }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { width } = useWindowDimensions();
+  const { width, height: screenHeight } = useWindowDimensions();
   const heartScale = useSharedValue(1);
   const doubleTapHeartScale = useSharedValue(0);
   const [localIsLiked, setLocalIsLiked] = useState(post.isLiked);
@@ -88,6 +88,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     return firstImage ? (imageAspectRatioCache.get(firstImage) ?? 4 / 3) : 4 / 3;
   });
   const [muted, setMuted] = useState(true);
+  const [videoEnded, setVideoEnded] = useState(false);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
@@ -118,7 +119,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const player = useVideoPlayer(
     post.type === 'video' && post.videoUrl ? post.videoUrl : null,
-    (p) => { p.loop = true; p.muted = true; }
+    (p) => { p.loop = false; p.muted = true; }
   );
   const { data: session } = useSession();
 
@@ -129,8 +130,11 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     if (!videoKey || Platform.OS === 'web') return;
     return videoVisibility.register(videoKey, (visible) => {
       InteractionManager.runAfterInteractions(() => {
-        if (visible) playerRef.current?.play();
-        else playerRef.current?.pause();
+        if (visible) {
+          setVideoEnded(false);
+          playerRef.current?.seekBy(-playerRef.current.currentTime);
+          playerRef.current?.play();
+        } else playerRef.current?.pause();
       });
     });
   }, [videoKey]);
@@ -138,6 +142,14 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   useEffect(() => {
     if (player) player.muted = muted;
   }, [muted, player]);
+
+  useEffect(() => {
+    if (!player) return;
+    const sub = player.addListener('playToEnd', () => {
+      setVideoEnded(true);
+    });
+    return () => sub.remove();
+  }, [player]);
 
   const scheduleBarHide = () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -453,7 +465,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
 
   const tags = Array.isArray(post.tags) ? post.tags : [];
 
-  const videoHeight = Math.round(width * 9 / 16);
+  const videoHeight = post.type === 'video' ? screenHeight : Math.round(width * 9 / 16);
 
   // Repost/reblog combined count and active state
   const repostTotal = (post.reblogCount ?? 0) + (post.repostCount ?? 0);
@@ -865,6 +877,31 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
               >
                 <Maximize size={15} color="#ffffff" />
               </Pressable>
+
+              {/* Play Again overlay */}
+              {videoEnded ? (
+                <Pressable
+                  testID={`play-again-button-${post.id}`}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setVideoEnded(false);
+                    player?.seekBy(-(player.currentTime));
+                    player?.play();
+                  }}
+                  style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' }}>
+                      <Repeat2 size={26} color="#ffffff" />
+                    </View>
+                    <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>Play Again</Text>
+                  </View>
+                </Pressable>
+              ) : null}
             </View>
           </GestureDetector>
         )
