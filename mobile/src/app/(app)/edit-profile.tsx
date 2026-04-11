@@ -20,7 +20,7 @@ import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
 import type { User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
-import { pickImage } from '@/lib/file-picker';
+import { showMediaPicker } from '@/lib/file-picker';
 import { uploadFile } from '@/lib/upload';
 
 const GENDER_OPTIONS = [
@@ -104,7 +104,9 @@ export default function EditProfileScreen() {
 
   const updateAvatarMutation = useMutation({
     mutationFn: async () => {
-      const file = await pickImage();
+      const file = await new Promise<{ uri: string; filename: string; mimeType: string } | null>((resolve) => {
+        showMediaPicker({ mediaType: 'image', onResult: resolve });
+      });
       if (!file) return null;
       const result = await uploadFile(file.uri, file.filename, file.mimeType);
       return api.patch('/api/users/me', { image: result.url });
@@ -119,7 +121,9 @@ export default function EditProfileScreen() {
 
   const updateHeaderMutation = useMutation({
     mutationFn: async () => {
-      const file = await pickImage();
+      const file = await new Promise<{ uri: string; filename: string; mimeType: string } | null>((resolve) => {
+        showMediaPicker({ mediaType: 'image', onResult: resolve });
+      });
       if (!file) return null;
       const result = await uploadFile(file.uri, file.filename, file.mimeType);
       return api.patch('/api/users/me', { headerImage: result.url });

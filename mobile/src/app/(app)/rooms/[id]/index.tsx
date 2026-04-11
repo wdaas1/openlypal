@@ -9,7 +9,7 @@ import { ArrowLeft, UserPlus, Pencil, Check, X, LogOut, Trash2, Lock, FileText, 
 import { useSession } from '@/lib/auth/use-session';
 import { getAccessToken } from '@/lib/auth/auth-client';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
+import { showMediaPicker } from '@/lib/file-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 type ActiveLiveMoment = {
@@ -174,20 +174,19 @@ export default function RoomDetailScreen() {
     },
   });
 
-  const handlePickMedia = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'] as any,
-      allowsEditing: false,
-      quality: 0.8,
-      videoMaxDuration: 60,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setComposeMedia({
-      uri: asset.uri,
-      isVideo: asset.type === 'video',
-      mimeType: asset.mimeType ?? (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+  const handlePickMedia = useCallback(() => {
+    showMediaPicker({
+      mediaType: 'both',
+      onResult: (picked) => {
+        if (!picked) return;
+        const isVideo = picked.mimeType.startsWith('video/');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setComposeMedia({
+          uri: picked.uri,
+          isVideo,
+          mimeType: picked.mimeType,
+        });
+      },
     });
   }, []);
 

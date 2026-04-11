@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import { Platform } from "react-native";
+import { ActionSheetIOS, Alert, Platform } from "react-native";
 
 export type PickedFile = { uri: string; filename: string; mimeType: string };
 
@@ -92,4 +92,62 @@ export async function recordVideo(): Promise<PickedFile | null> {
     filename: a.fileName ?? `video-${Date.now()}.mp4`,
     mimeType: a.mimeType ?? "video/mp4",
   };
+}
+
+export type MediaPickerOptions = {
+  mediaType: "image" | "video" | "both";
+  onResult: (result: PickedFile | null) => void;
+};
+
+export async function showMediaPicker({ mediaType, onResult }: MediaPickerOptions): Promise<void> {
+  const pickFromLibrary = async (): Promise<PickedFile | null> => {
+    if (mediaType === "image") return pickImage();
+    if (mediaType === "video") return pickVideo();
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return null;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images", "videos"],
+      quality: 0.85,
+      videoMaxDuration: 120,
+    });
+    if (result.canceled || !result.assets?.[0]) return null;
+    const asset = result.assets[0];
+    return {
+      uri: asset.uri,
+      filename: asset.fileName ?? `media-${Date.now()}`,
+      mimeType: asset.mimeType ?? "image/jpeg",
+    };
+  };
+
+  const captureWithCamera = async (): Promise<PickedFile | null> => {
+    if (mediaType === "video") return recordVideo();
+    return takePhoto();
+  };
+
+  const pickerFn = await new Promise<(() => Promise<PickedFile | null>) | null>((resolve) => {
+    const options = ["Camera", "Photo Library", "Cancel"];
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 2 },
+        (index) => {
+          if (index === 0) resolve(captureWithCamera);
+          else if (index === 1) resolve(pickFromLibrary);
+          else resolve(null);
+        }
+      );
+    } else {
+      Alert.alert("Select Media", undefined, [
+        { text: "Camera", onPress: () => resolve(captureWithCamera) },
+        { text: "Photo Library", onPress: () => resolve(pickFromLibrary) },
+        { text: "Cancel", style: "cancel", onPress: () => resolve(null) },
+      ]);
+    }
+  });
+
+  if (!pickerFn) {
+    onResult(null);
+    return;
+  }
+  const result = await pickerFn();
+  onResult(result);
 }

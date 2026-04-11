@@ -28,12 +28,12 @@ import Animated, {
 import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
 import { getAccessToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
+import { showMediaPicker } from '@/lib/file-picker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CONTENT_AREA_HEIGHT = 230;
@@ -879,57 +879,55 @@ export default function LiveMomentScreen() {
     }
   }, [momentId]);
 
-  const handlePickMedia = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'] as any,
-      allowsEditing: false,
-      quality: 0.8,
-      videoMaxDuration: 60,
-    });
-    if (result.canceled || result.assets.length === 0) return;
+  const handlePickMedia = useCallback(() => {
+    showMediaPicker({
+      mediaType: 'both',
+      onResult: async (picked) => {
+        if (!picked) return;
 
-    const asset = result.assets[0];
-    const isVideo = asset.type === 'video';
+        const isVideo = picked.mimeType.startsWith('video/');
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    try {
-      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAccessToken();
+        try {
+          const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+          const token = await getAccessToken();
 
-      const formData = new FormData();
-      formData.append('file', {
-        uri: asset.uri,
-        type: isVideo ? (asset.mimeType ?? 'video/mp4') : (asset.mimeType ?? 'image/jpeg'),
-        name: isVideo ? 'video.mp4' : 'photo.jpg',
-      } as any);
+          const formData = new FormData();
+          formData.append('file', {
+            uri: picked.uri,
+            type: picked.mimeType,
+            name: isVideo ? 'video.mp4' : 'photo.jpg',
+          } as any);
 
-      const uploadRes = await fetch(`${backendUrl}/api/upload`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
+          const uploadRes = await fetch(`${backendUrl}/api/upload`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: formData,
+          });
 
-      if (!uploadRes.ok) {
-        if (!isVideo) {
-          sendMessage({ content: 'Photo', type: 'image', contentUrl: asset.uri });
+          if (!uploadRes.ok) {
+            if (!isVideo) {
+              sendMessage({ content: 'Photo', type: 'image', contentUrl: picked.uri });
+            }
+            return;
+          }
+
+          const uploadJson = await uploadRes.json() as { data: { url: string } };
+          const remoteUrl = uploadJson.data.url;
+
+          sendMessage({
+            content: isVideo ? 'Video' : 'Photo',
+            type: isVideo ? 'video' : 'image',
+            contentUrl: remoteUrl,
+          });
+        } catch {
+          if (!isVideo) {
+            sendMessage({ content: 'Photo', type: 'image', contentUrl: picked.uri });
+          }
         }
-        return;
-      }
-
-      const uploadJson = await uploadRes.json() as { data: { url: string } };
-      const remoteUrl = uploadJson.data.url;
-
-      sendMessage({
-        content: isVideo ? 'Video' : 'Photo',
-        type: isVideo ? 'video' : 'image',
-        contentUrl: remoteUrl,
-      });
-    } catch {
-      if (asset.type !== 'video') {
-        sendMessage({ content: 'Photo', type: 'image', contentUrl: asset.uri });
-      }
-    }
+      },
+    });
   }, [sendMessage]);
 
   const isCreator = moment?.creatorId === session?.user?.id;
