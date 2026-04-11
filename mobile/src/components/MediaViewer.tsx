@@ -1,9 +1,10 @@
 import React, { useEffect, useCallback } from 'react';
-import { Modal, View, Pressable, Dimensions, StyleSheet, Platform } from 'react-native';
-import { Image } from 'expo-image';
+import { Modal, View, Pressable, Dimensions, StyleSheet, Platform, Text, Pressable as RNPressable, ScrollView } from 'react-native';
+import { Image, Image as ExpoImage } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { X, Play, ExternalLink, Hash } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -28,6 +29,17 @@ interface MediaViewerProps {
   onClose: () => void;
   type: 'image' | 'video';
   uri: string;
+  post?: {
+    id: string;
+    title: string | null;
+    content: string | null;
+    tags: string[];
+    category: string | null;
+    user: { name: string; username: string | null; image: string | null };
+    likeCount: number;
+    commentCount: number;
+    createdAt: string;
+  };
 }
 
 // ─── Zoomable image ───────────────────────────────────────────────────────────
@@ -183,26 +195,20 @@ function VideoViewerInner({ uri, dragY, bgOpacity, onDismiss }: VideoViewerProps
       }
     });
 
-  // Tap on black background closes
-  const tap = Gesture.Tap()
-    .numberOfTaps(1)
-    .onEnd(() => runOnJS(onDismiss)());
-
-  const composed = Gesture.Simultaneous(pan, tap);
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: dragY.value }],
     flex: 1,
   }));
 
   return (
-    <GestureDetector gesture={composed}>
-      <Animated.View style={animatedStyle}>
+    <GestureDetector gesture={pan}>
+      <Animated.View style={[animatedStyle, { flex: 1 }]}>
         <VideoView
           player={player}
           style={{ width: SW, height: SH }}
-          contentFit="contain"
-          nativeControls
+          contentFit="cover"
+          nativeControls={false}
+          allowsFullscreen={false}
         />
       </Animated.View>
     </GestureDetector>
@@ -211,8 +217,9 @@ function VideoViewerInner({ uri, dragY, bgOpacity, onDismiss }: VideoViewerProps
 
 // ─── MediaViewer ──────────────────────────────────────────────────────────────
 
-export function MediaViewer({ visible, onClose, type, uri }: MediaViewerProps) {
+export function MediaViewer({ visible, onClose, type, uri, post }: MediaViewerProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   // Shared values owned here so exit animation can drive them from outside the media components
   const bgOpacity = useSharedValue<number>(0);
@@ -259,6 +266,11 @@ export function MediaViewer({ visible, onClose, type, uri }: MediaViewerProps) {
     zIndex: 20,
   }));
 
+  const videoInfoStyle = useAnimatedStyle(() => ({
+    opacity: uiOpacity.value,
+    transform: [{ translateY: interpolate(uiOpacity.value, [0, 1], [30, 0]) }],
+  }));
+
   return (
     <Modal
       visible={visible}
@@ -268,9 +280,11 @@ export function MediaViewer({ visible, onClose, type, uri }: MediaViewerProps) {
       statusBarTranslucent
     >
       <View style={{ flex: 1 }}>
-        {/* Fading black background — tap here also closes */}
+        {/* Fading black background */}
         <Animated.View style={backgroundStyle}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={triggerDismiss} />
+          {type === 'image' && (
+            <Pressable style={StyleSheet.absoluteFill} onPress={triggerDismiss} />
+          )}
         </Animated.View>
 
         {/* Media */}
@@ -309,6 +323,124 @@ export function MediaViewer({ visible, onClose, type, uri }: MediaViewerProps) {
             <X size={20} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
+
+        {/* Video info panel — only for videos */}
+        {type === 'video' && post ? (
+          <Animated.View
+            style={[
+              videoInfoStyle,
+              {
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                paddingBottom: insets.bottom + 16,
+                paddingHorizontal: 16,
+                paddingTop: 20,
+              },
+            ]}
+            pointerEvents="box-none"
+          >
+            {/* Dark overlay behind text */}
+            <View
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                backgroundColor: 'rgba(0,0,0,0.0)',
+              }}
+              pointerEvents="none"
+            />
+
+            {/* Author row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              {post.user.image ? (
+                <ExpoImage
+                  source={{ uri: post.user.image }}
+                  style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)' }}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{post.user.name?.[0] ?? '?'}</Text>
+                </View>
+              )}
+              <View>
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>{post.user.name}</Text>
+                {post.user.username ? (
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>@{post.user.username}</Text>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Title */}
+            {post.title ? (
+              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700', marginBottom: 4, lineHeight: 22 }} numberOfLines={2}>
+                {post.title}
+              </Text>
+            ) : null}
+
+            {/* Content / caption */}
+            {post.content ? (
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 18, marginBottom: 8 }} numberOfLines={3}>
+                {post.content}
+              </Text>
+            ) : null}
+
+            {/* Tags */}
+            {post.tags && post.tags.length > 0 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {post.tags.slice(0, 4).map((tag: string) => (
+                  <View
+                    key={tag}
+                    style={{
+                      backgroundColor: 'rgba(0,207,53,0.15)',
+                      borderRadius: 10,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderWidth: 0.5,
+                      borderColor: 'rgba(0,207,53,0.4)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 3,
+                    }}
+                  >
+                    <Hash size={10} color="#00CF35" />
+                    <Text style={{ color: '#00CF35', fontSize: 11, fontWeight: '600' }}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {/* Similar posts link */}
+            <Pressable
+              onPress={() => {
+                triggerDismiss();
+                const tag = post.tags?.[0] ?? post.category;
+                if (tag) {
+                  setTimeout(() => {
+                    try {
+                      router.push({ pathname: '/(app)/search' as any, params: { q: tag } });
+                    } catch (_) {}
+                  }, 350);
+                }
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                alignSelf: 'flex-start',
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                borderRadius: 20,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderWidth: 0.5,
+                borderColor: 'rgba(255,255,255,0.25)',
+              }}
+            >
+              <ExternalLink size={13} color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Similar posts</Text>
+            </Pressable>
+          </Animated.View>
+        ) : null}
       </View>
     </Modal>
   );

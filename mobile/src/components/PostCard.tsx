@@ -89,7 +89,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   });
   const [muted, setMuted] = useState(true);
   const [videoEnded, setVideoEnded] = useState(false);
-  const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
+  const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string; post?: typeof post } | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -254,7 +254,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     .runOnJS(true)
     .onEnd(() => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
+      setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl!, post });
     });
 
   const videoGesture = Gesture.Exclusive(videoScrubGesture, tapToFullscreenGesture);
@@ -867,7 +867,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 testID={`fullscreen-button-${post.id}`}
                 onPress={(e) => {
                   e.stopPropagation();
-                  setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl! });
+                  setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl!, post });
                 }}
                 style={{
                   position: 'absolute', bottom: 10, right: 12,
@@ -1062,6 +1062,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           visible={mediaViewer.visible}
           type={mediaViewer.type}
           uri={mediaViewer.uri}
+          post={mediaViewer.post}
           onClose={() => setMediaViewer(null)}
         />
       ) : null}
