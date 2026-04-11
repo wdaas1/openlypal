@@ -26,6 +26,7 @@ import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
 import { localStore } from '@/lib/local-store';
 import { onHomeTabPress } from '@/lib/home-tab-press';
+import { videoVisibility } from '@/lib/videoVisibility';
 
 function BellWithBadge({ onPress }: { onPress: () => void }) {
   const { data: activities } = useQuery({
@@ -206,10 +207,9 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
   });
 
   const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
+    videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
 
   if (isLoading) return <SkeletonLoader />;
@@ -222,14 +222,14 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        if (item.type === 'reblog') return <ReblogCard item={item.data} isVisible={visibleKeys.has(item.key)} />;
-        return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
+        if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
+        return <PostCard post={item.data} videoKey={item.key} />;
       }}
       estimatedItemSize={450}
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
-      scrollEventThrottle={32}
+      scrollEventThrottle={16}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
@@ -258,10 +258,9 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
   });
 
   const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
+    videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
 
   if (isLoading) return <SkeletonLoader />;
@@ -274,14 +273,14 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        if (item.type === 'reblog') return <ReblogCard item={item.data} isVisible={visibleKeys.has(item.key)} />;
-        return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
+        if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
+        return <PostCard post={item.data} videoKey={item.key} />;
       }}
       estimatedItemSize={450}
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
-      scrollEventThrottle={32}
+      scrollEventThrottle={16}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
@@ -310,10 +309,9 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
   });
 
   const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    setVisibleKeys(new Set(viewableItems.map((v) => v.key as string)));
+    videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
 
   if (isLoading) return <SkeletonLoader />;
@@ -326,13 +324,13 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
       keyExtractor={(item) => item.key}
       renderItem={({ item }) => {
         if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        return <PostCard post={item.data} isVisible={visibleKeys.has(item.key)} />;
+        return <PostCard post={item.data} videoKey={item.key} />;
       }}
       estimatedItemSize={450}
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
-      scrollEventThrottle={32}
+      scrollEventThrottle={16}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, InteractionManager } from 'react-native';
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -43,10 +43,12 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
 import { LinkPreview } from './LinkPreview';
 import { useSession } from '@/lib/auth/use-session';
+import { videoVisibility } from '@/lib/videoVisibility';
 
 interface PostCardProps {
   post: Post;
   isVisible?: boolean;
+  videoKey?: string;
   from?: string;
   roomId?: string;
   momentId?: string;
@@ -70,7 +72,7 @@ function formatCount(n: number): string {
   return n.toString();
 }
 
-const PostCard = React.memo(function PostCard({ post, isVisible = true, from, roomId, momentId }: PostCardProps) {
+const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey, from, roomId, momentId }: PostCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
@@ -113,14 +115,26 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
   );
   const { data: session } = useSession();
 
+  const [localVisible, setLocalVisible] = useState(false);
+
+  useEffect(() => {
+    if (!videoKey) return;
+    return videoVisibility.register(videoKey, setLocalVisible);
+  }, [videoKey]);
+
+  const effectiveVisible = videoKey ? localVisible : isVisible;
+
   useEffect(() => {
     if (!player || Platform.OS === 'web') return;
-    if (isVisible) {
-      player.play();
-    } else {
-      player.pause();
-    }
-  }, [isVisible, player]);
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (effectiveVisible) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    });
+    return () => task.cancel();
+  }, [effectiveVisible, player]);
 
   useEffect(() => {
     if (player) player.muted = muted;

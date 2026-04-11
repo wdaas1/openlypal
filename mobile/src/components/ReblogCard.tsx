@@ -8,9 +8,10 @@ import type { ReblogFeedItem } from '@/lib/types';
 interface ReblogCardProps {
   item: ReblogFeedItem;
   isVisible?: boolean;
+  videoKey?: string;
 }
 
-const ReblogCard = React.memo(function ReblogCard({ item, isVisible }: ReblogCardProps) {
+const ReblogCard = React.memo(function ReblogCard({ item, isVisible, videoKey }: ReblogCardProps) {
   const router = useRouter();
   const username = item.rebloggedBy.username ?? item.rebloggedBy.name;
 
@@ -31,7 +32,7 @@ const ReblogCard = React.memo(function ReblogCard({ item, isVisible }: ReblogCar
           @{username} reposted
         </Text>
       </Pressable>
-      <PostCard post={item.post} isVisible={isVisible} />
+      <PostCard post={item.post} isVisible={isVisible} videoKey={videoKey} />
     </View>
   );
 });
