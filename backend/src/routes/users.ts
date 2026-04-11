@@ -233,17 +233,27 @@ usersRouter.patch("/me", zValidator("json", updateProfileSchema), async (c) => {
 
   const body = c.req.valid("json");
 
-  // Check username uniqueness if being updated
+  // Username can only be set once (at sign-up); ignore any attempt to change it
   if (body.username) {
-    const existing = await prisma.user.findUnique({
-      where: { username: body.username },
-      select: { id: true },
+    const currentUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { username: true },
     });
-    if (existing && existing.id !== user.id) {
-      return c.json(
-        { error: { message: "Username already taken", code: "CONFLICT" } },
-        409
-      );
+    if (currentUser?.username) {
+      // Already has a username — silently ignore the update
+      delete (body as Record<string, unknown>).username;
+    } else {
+      // First time setting — check uniqueness
+      const existing = await prisma.user.findUnique({
+        where: { username: body.username },
+        select: { id: true },
+      });
+      if (existing && existing.id !== user.id) {
+        return c.json(
+          { error: { message: "Username already taken", code: "CONFLICT" } },
+          409
+        );
+      }
     }
   }
 
