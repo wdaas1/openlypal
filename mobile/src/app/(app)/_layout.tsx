@@ -748,6 +748,7 @@ export default function AppLayout() {
             <Stack.Screen name="live-moments/index" />
             <Stack.Screen name="live-moments/create" />
             <Stack.Screen name="live-moments/[id]" />
+            <Stack.Screen name="live-moments/recap/[id]" />
             <Stack.Screen name="rooms/index" />
             <Stack.Screen name="rooms/[id]/index" />
             <Stack.Screen name="rooms/[id]/post/[postId]" />

@@ -204,6 +204,32 @@ liveMomentsRouter.post(
   }
 );
 
+// ─── GET /api/live-moments/archive ────────────────────────────────────────
+// Returns all ENDED moments where current user was creator or was invited
+liveMomentsRouter.get("/archive", async (c) => {
+  const user = requireAuth(c);
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  const moments = await prisma.liveMoment.findMany({
+    where: { status: "ended" },
+    include: momentInclude,
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const userMoments = moments.filter((m) => {
+    if (m.creatorId === user.id) return true;
+    const invitedIds = parseJsonArray(m.invitedUserIds);
+    return invitedIds.includes(user.id);
+  });
+
+  const formatted = await Promise.all(userMoments.map(formatMoment));
+
+  return c.json({ data: formatted });
+});
+
 // ─── GET /api/live-moments/:id ─────────────────────────────────────────────
 // Get a specific moment (creator or invited user)
 liveMomentsRouter.get("/:id", async (c) => {
@@ -605,5 +631,43 @@ liveMomentsRouter.post(
     return c.json({ data: formatted });
   }
 );
+
+// ─── POST /api/live-moments/:id/restart ───────────────────────────────────
+// Create a new live moment based on an ended one (creator only)
+liveMomentsRouter.post("/:id/restart", async (c) => {
+  const user = requireAuth(c);
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  const { id } = c.req.param();
+
+  const original = await prisma.liveMoment.findUnique({
+    where: { id },
+  });
+
+  if (!original) return c.json({ error: { message: "Not found" } }, 404);
+  if (original.creatorId !== user.id) return c.json({ error: { message: "Only the creator can restart" } }, 403);
+
+  const expiresAt = new Date(Date.now() + original.expiresAfter * 60 * 1000);
+
+  const newMoment = await prisma.liveMoment.create({
+    data: {
+      title: original.title,
+      creatorId: user.id,
+      roomId: original.roomId ?? null,
+      status: "active",
+      isLive: false,
+      expiresAt,
+      expiresAfter: original.expiresAfter,
+      invitedUserIds: original.invitedUserIds,
+      viewerIds: "[]",
+    },
+    include: momentInclude,
+  });
+
+  const formatted = await formatMoment(newMoment);
+  return c.json({ data: formatted }, 201);
+});
 
 export { liveMomentsRouter };

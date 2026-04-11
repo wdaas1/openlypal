@@ -9,8 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useQuery } from '@tanstack/react-query';import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
@@ -19,7 +18,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { Radio, Eye, Clock, Plus, Zap } from 'lucide-react-native';
+import { Radio, Eye, Clock, Plus, Zap, Archive, MessageCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
@@ -320,6 +319,99 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
   );
 }
 
+function ArchiveCard({ moment }: { moment: LiveMoment }) {
+  const router = useRouter();
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/(app)/live-moments/recap/${moment.id}` as any);
+  };
+
+  return (
+    <Pressable
+      testID={`archive-card-${moment.id}`}
+      onPress={handlePress}
+      style={{ marginHorizontal: 16, marginBottom: 10 }}
+    >
+      <View
+        style={{
+          borderRadius: 16,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.07)',
+        }}
+      >
+        <BlurView intensity={10} tint="dark" style={{ padding: 14 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.55)',
+                  fontSize: 15,
+                  fontWeight: '700',
+                  letterSpacing: 0.2,
+                  marginBottom: 4,
+                }}
+                numberOfLines={1}
+              >
+                {moment.title}
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginBottom: 6 }}>
+                by {moment.creator?.name ?? 'Unknown'}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Clock size={11} color="rgba(255,255,255,0.25)" />
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+                    {new Date(moment.expiresAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <MessageCircle size={11} color="rgba(255,255,255,0.25)" />
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+                    {moment.messageCount ?? 0} msgs
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.08)',
+              }}
+            >
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.4)',
+                  fontSize: 12,
+                  fontWeight: '700',
+                  letterSpacing: 0.3,
+                }}
+              >
+                View Recap
+              </Text>
+            </View>
+          </View>
+        </BlurView>
+      </View>
+    </Pressable>
+  );
+}
+
 function EmptyState() {
   const router = useRouter();
   const zapScale = useSharedValue(1);
@@ -415,6 +507,12 @@ export default function LiveMomentsScreen() {
     queryKey: ['live-moments'],
     queryFn: () => liveMomentsApi.getAll(),
     refetchInterval: 5000,
+  });
+
+  const { data: archivedMoments } = useQuery({
+    queryKey: ['live-moments-archive'],
+    queryFn: () => liveMomentsApi.getArchive(),
+    refetchInterval: 30000,
   });
 
   const myMoments = (moments ?? []).filter(
@@ -540,6 +638,36 @@ export default function LiveMomentsScreen() {
                 </Text>
                 {invitedMoments.map((m) => (
                   <MomentCard key={m.id} moment={m} isOwn={false} />
+                ))}
+              </>
+            )}
+
+            {(archivedMoments ?? []).length > 0 && (
+              <>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 7,
+                    marginHorizontal: 20,
+                    marginBottom: 12,
+                    marginTop: (myMoments.length > 0 || invitedMoments.length > 0) ? 24 : 4,
+                  }}
+                >
+                  <Archive size={13} color="rgba(255,255,255,0.3)" />
+                  <Text
+                    style={{
+                      color: 'rgba(255,255,255,0.3)',
+                      fontSize: 11,
+                      fontWeight: '800',
+                      letterSpacing: 2,
+                    }}
+                  >
+                    ARCHIVE
+                  </Text>
+                </View>
+                {(archivedMoments ?? []).map((m) => (
+                  <ArchiveCard key={m.id} moment={m} />
                 ))}
               </>
             )}

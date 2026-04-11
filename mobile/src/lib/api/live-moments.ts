@@ -15,4 +15,6 @@ export const liveMomentsApi = {
   leave: (id: string) => api.post<{ viewerCount: number }>(`/api/live-moments/${id}/leave`, {}),
   invite: (id: string, userIds: string[]) =>
     api.post<LiveMoment>(`/api/live-moments/${id}/invite`, { userIds }),
+  getArchive: () => api.get<LiveMoment[]>('/api/live-moments/archive'),
+  restart: (id: string) => api.post<LiveMoment>(`/api/live-moments/${id}/restart`, {}),
 };
