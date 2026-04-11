@@ -71,10 +71,42 @@ export default function EditProfileScreen() {
   const [location, setLocation] = useState('');
   const [pronouns, setPronouns] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [dobError, setDobError] = useState('');
   const [gender, setGender] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState('');
   const [usernameError, setUsernameError] = useState('');
   const [activePicker, setActivePicker] = useState<PickerType>(null);
+
+  const handleDateOfBirthChange = (text: string) => {
+    setDobError('');
+    // Strip everything that isn't a digit or slash so we work with raw digits
+    const digits = text.replace(/[^\d]/g, '');
+    const prev = dateOfBirth;
+
+    // Detect backspace: new text is shorter than previous
+    const isDeleting = text.length < prev.length;
+
+    let formatted = '';
+    if (digits.length <= 2) {
+      formatted = digits;
+      // Auto-append slash once we have 2 day digits and the user is not deleting
+      if (digits.length === 2 && !isDeleting) {
+        formatted = digits + '/';
+      }
+    } else if (digits.length <= 4) {
+      formatted = digits.slice(0, 2) + '/' + digits.slice(2);
+      // Auto-append slash once we have 4 digits (DD/MM) and the user is not deleting
+      if (digits.length === 4 && !isDeleting) {
+        formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/';
+      }
+    } else {
+      // DD/MM/YYYY — cap at 8 digits total
+      const capped = digits.slice(0, 8);
+      formatted = capped.slice(0, 2) + '/' + capped.slice(2, 4) + '/' + capped.slice(4);
+    }
+
+    setDateOfBirth(formatted);
+  };
 
   const { data: profile } = useQuery({
     queryKey: ['profile', session?.user?.id],
@@ -139,6 +171,23 @@ export default function EditProfileScreen() {
   const saveProfile = useMutation({
     mutationFn: async () => {
       setUsernameError('');
+      setDobError('');
+      const dob = dateOfBirth.trim();
+      if (dob) {
+        const dobRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+        if (!dobRegex.test(dob)) {
+          throw new Error('DOB_FORMAT');
+        }
+        const [dd, mm, yyyy] = dob.split('/').map(Number);
+        const date = new Date(yyyy, mm - 1, dd);
+        if (
+          date.getFullYear() !== yyyy ||
+          date.getMonth() !== mm - 1 ||
+          date.getDate() !== dd
+        ) {
+          throw new Error('DOB_INVALID');
+        }
+      }
       return api.patch('/api/users/me', {
         name: name.trim(),
         username: username.trim() || undefined,
@@ -165,7 +214,11 @@ export default function EditProfileScreen() {
       router.back();
     },
     onError: (err: Error) => {
-      if (err.message?.includes('already taken') || err.message?.includes('CONFLICT')) {
+      if (err.message === 'DOB_FORMAT') {
+        setDobError('Please enter a valid date in DD/MM/YYYY format.');
+      } else if (err.message === 'DOB_INVALID') {
+        setDobError('The date you entered does not exist.');
+      } else if (err.message?.includes('already taken') || err.message?.includes('CONFLICT')) {
         setUsernameError('Username already taken. Choose another.');
       }
     },
@@ -371,15 +424,19 @@ export default function EditProfileScreen() {
                 <TextInput
                   testID="dob-input"
                   value={dateOfBirth}
-                  onChangeText={setDateOfBirth}
+                  onChangeText={handleDateOfBirthChange}
                   placeholder="DD/MM/YYYY"
                   placeholderTextColor="#2a4a6a"
                   keyboardType="numeric"
                   maxLength={10}
                   className="text-white text-base py-3 px-4 rounded-xl"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                  style={{ backgroundColor: '#0a2d50', borderColor: dobError ? '#FF4E6A' : '#1a3a5c', borderWidth: 1 }}
                 />
-                <Text className="text-xs mt-1" style={{ color: '#2a4a6a' }}>Format: DD/MM/YYYY (e.g. 15/06/1990)</Text>
+                {dobError ? (
+                  <Text className="text-xs mt-1" style={{ color: '#FF4E6A' }}>{dobError}</Text>
+                ) : (
+                  <Text className="text-xs mt-1" style={{ color: '#2a4a6a' }}>Format: DD/MM/YYYY (e.g. 15/06/1990)</Text>
+                )}
               </View>
 
               {/* Gender */}
