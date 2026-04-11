@@ -45,6 +45,8 @@ import { LinkPreview } from './LinkPreview';
 import { useSession } from '@/lib/auth/use-session';
 import { videoVisibility } from '@/lib/videoVisibility';
 
+const imageAspectRatioCache = new Map<string, number>();
+
 interface PostCardProps {
   post: Post;
   isVisible?: boolean;
@@ -81,7 +83,10 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   const [localIsLiked, setLocalIsLiked] = useState(post.isLiked);
   const [localLikeCount, setLocalLikeCount] = useState(post.likeCount);
   const [revealed, setRevealed] = useState(false);
-  const [imageAspectRatio, setImageAspectRatio] = useState<number>(4 / 3);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(() => {
+    const firstImage = (post.imageUrls?.[0] ?? post.imageUrl);
+    return firstImage ? (imageAspectRatioCache.get(firstImage) ?? 4 / 3) : 4 / 3;
+  });
   const [muted, setMuted] = useState(true);
   const [mediaViewer, setMediaViewer] = useState<{ visible: boolean; type: 'image' | 'video'; uri: string } | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -115,26 +120,18 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   );
   const { data: session } = useSession();
 
-  const [localVisible, setLocalVisible] = useState(false);
+  const playerRef = useRef(player);
+  playerRef.current = player;
 
   useEffect(() => {
-    if (!videoKey) return;
-    return videoVisibility.register(videoKey, setLocalVisible);
-  }, [videoKey]);
-
-  const effectiveVisible = videoKey ? localVisible : isVisible;
-
-  useEffect(() => {
-    if (!player || Platform.OS === 'web') return;
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (effectiveVisible) {
-        player.play();
-      } else {
-        player.pause();
-      }
+    if (!videoKey || Platform.OS === 'web') return;
+    return videoVisibility.register(videoKey, (visible) => {
+      InteractionManager.runAfterInteractions(() => {
+        if (visible) playerRef.current?.play();
+        else playerRef.current?.pause();
+      });
     });
-    return () => task.cancel();
-  }, [effectiveVisible, player]);
+  }, [videoKey]);
 
   useEffect(() => {
     if (player) player.muted = muted;
@@ -670,10 +667,16 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 source={{ uri: images[0] }}
                 style={{ width: '100%', aspectRatio: imageAspectRatio }}
                 contentFit="contain"
+                transition={0}
                 blurRadius={5}
                 onLoad={(e) => {
                   const { width: w, height: h } = e.source;
-                  if (w && h) setImageAspectRatio(w / h);
+                  if (w && h) {
+                    const ratio = w / h;
+                    const imgUrl = images[0];
+                    if (imgUrl) imageAspectRatioCache.set(imgUrl, ratio);
+                    setImageAspectRatio(ratio);
+                  }
                 }}
               />
               <View style={{
@@ -715,9 +718,15 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 source={{ uri: images[0] }}
                 style={{ width: '100%', aspectRatio: imageAspectRatio }}
                 contentFit="contain"
+                transition={0}
                 onLoad={(e) => {
                   const { width: w, height: h } = e.source;
-                  if (w && h) setImageAspectRatio(w / h);
+                  if (w && h) {
+                    const ratio = w / h;
+                    const imgUrl = images[0];
+                    if (imgUrl) imageAspectRatioCache.set(imgUrl, ratio);
+                    setImageAspectRatio(ratio);
+                  }
                 }}
                 testID={`post-image-${post.id}`}
               />
@@ -743,6 +752,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                     source={{ uri }}
                     style={{ width: width - 24, aspectRatio: 4 / 3 }}
                     contentFit="cover"
+                    transition={0}
                     testID={i === 0 ? `post-image-${post.id}` : undefined}
                   />
                 </Pressable>
@@ -1317,7 +1327,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                   return (
                     <View style={{ borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#1a3a5c', backgroundColor: '#001935', marginBottom: 16 }}>
                       {thumbnail && post.type !== 'video' ? (
-                        <Image source={{ uri: thumbnail }} style={{ width: '100%', aspectRatio: 1.91 }} contentFit="cover" />
+                        <Image source={{ uri: thumbnail }} style={{ width: '100%', aspectRatio: 1.91 }} contentFit="cover" transition={0} />
                       ) : post.type === 'video' && post.videoUrl ? (
                         <View style={{ width: '100%', aspectRatio: 1.91, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
                           <Text style={{ fontSize: 32 }}>🎬</Text>

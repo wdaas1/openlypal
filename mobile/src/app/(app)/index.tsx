@@ -211,6 +211,11 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
+  const renderItem = useCallback(({ item }: { item: FeedItem }) => {
+    if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+    if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
+    return <PostCard post={item.data} videoKey={item.key} />;
+  }, []);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -220,12 +225,9 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
       testID="feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
-      renderItem={({ item }) => {
-        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
-        return <PostCard post={item.data} videoKey={item.key} />;
-      }}
+      renderItem={renderItem}
       estimatedItemSize={450}
+      drawDistance={500}
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
@@ -262,6 +264,11 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
+  const renderItem = useCallback(({ item }: { item: FeedItem }) => {
+    if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+    if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
+    return <PostCard post={item.data} videoKey={item.key} />;
+  }, []);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -271,12 +278,9 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
       testID="following-feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
-      renderItem={({ item }) => {
-        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
-        return <PostCard post={item.data} videoKey={item.key} />;
-      }}
+      renderItem={renderItem}
       estimatedItemSize={450}
+      drawDistance={500}
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
@@ -313,6 +317,11 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
+  const renderItem = useCallback(({ item }: { item: FeedItem }) => {
+    if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+    if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
+    return <PostCard post={item.data} videoKey={item.key} />;
+  }, []);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -322,11 +331,9 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
       testID="unfiltered-feed-list"
       data={feedItems}
       keyExtractor={(item) => item.key}
-      renderItem={({ item }) => {
-        if (item.type === 'ad') return <AdCard index={item.adIndex} />;
-        return <PostCard post={item.data} videoKey={item.key} />;
-      }}
+      renderItem={renderItem}
       estimatedItemSize={450}
+      drawDistance={500}
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
