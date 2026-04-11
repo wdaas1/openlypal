@@ -9,12 +9,13 @@ import * as Haptics from 'expo-haptics';
 import { Logo } from '@/components/Logo';
 import { Mail } from 'lucide-react-native';
 
-function buildUsername(displayName: string, suffix: number): string {
-  const base = displayName
+function buildUsernameFromEmail(email: string, suffix: number): string {
+  const local = email.split('@')[0] ?? '';
+  const base = local
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
     .slice(0, 16);
-  return base ? `${base}${suffix}` : '';
+  return base ? `${base}${suffix}` : `user${suffix}`;
 }
 
 export default function SignUpScreen() {
@@ -29,30 +30,17 @@ export default function SignUpScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [usernameEdited, setUsernameEdited] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const suffixRef = useRef(Math.floor(1000 + Math.random() * 9000));
 
-  const handleNameChange = (text: string) => {
-    setName(text);
-    if (!usernameEdited) {
-      setUsername(buildUsername(text, suffixRef.current));
-    }
-  };
-
-  const handleUsernameChange = (text: string) => {
-    setUsernameEdited(true);
-    setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
-  };
-
   const signUp = useMutation({
     mutationFn: async () => {
+      const generatedUsername = buildUsernameFromEmail(email.trim(), suffixRef.current);
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
-          data: { name: name.trim(), username: username.trim() || undefined },
+          data: { name: name.trim(), username: generatedUsername },
           emailRedirectTo: 'https://openlypal.com',
         },
       });
@@ -70,14 +58,11 @@ export default function SignUpScreen() {
       if (!data.user) {
         throw new Error('Failed to create account');
       }
-      return data;
+      return { data, generatedUsername };
     },
-    onSuccess: async () => {
+    onSuccess: async ({ generatedUsername }) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const trimmedUsername = username.trim();
-      if (trimmedUsername) {
-        await AsyncStorage.setItem('pending_username', trimmedUsername);
-      }
+      await AsyncStorage.setItem('pending_username', generatedUsername);
       setVerificationSent(true);
     },
   });
@@ -106,7 +91,7 @@ export default function SignUpScreen() {
               <TextInput
                 testID="name-input"
                 value={name}
-                onChangeText={handleNameChange}
+                onChangeText={setName}
                 placeholder="Display name"
                 placeholderTextColor="#4a6fa5"
                 autoCapitalize="words"
@@ -114,37 +99,6 @@ export default function SignUpScreen() {
                 className="rounded-xl px-5 py-4 text-white text-base"
                 style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
               />
-
-              <View>
-                <View style={{ position: 'relative' }}>
-                  <Text style={{
-                    position: 'absolute', left: 18, top: 14,
-                    color: '#4a6fa5', fontSize: 16, zIndex: 1,
-                  }}>@</Text>
-                  <TextInput
-                    testID="username-input"
-                    value={username}
-                    onChangeText={handleUsernameChange}
-                    placeholder="username"
-                    placeholderTextColor="#2a4a6a"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    className="rounded-xl py-4 text-white text-base"
-                    style={{
-                      backgroundColor: '#0a2d50',
-                      borderColor: '#1a3a5c',
-                      borderWidth: 1,
-                      paddingLeft: 34,
-                      paddingRight: 18,
-                    }}
-                  />
-                </View>
-                {username ? (
-                  <Text style={{ color: '#2a4a6a', fontSize: 12, marginTop: 4, marginLeft: 4 }}>
-                    You can always change this later
-                  </Text>
-                ) : null}
-              </View>
 
               <TextInput
                 testID="email-input"

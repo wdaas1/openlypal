@@ -65,7 +65,6 @@ export default function EditProfileScreen() {
   const { data: session } = useSession();
 
   const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [website, setWebsite] = useState('');
   const [location, setLocation] = useState('');
@@ -74,7 +73,6 @@ export default function EditProfileScreen() {
   const [dobError, setDobError] = useState('');
   const [gender, setGender] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState('');
-  const [usernameError, setUsernameError] = useState('');
   const [activePicker, setActivePicker] = useState<PickerType>(null);
 
   const handleDateOfBirthChange = (text: string) => {
@@ -117,7 +115,6 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (profile) {
       setName(profile.name ?? '');
-      setUsername(profile.username ?? '');
       setBio(profile.bio ?? '');
       setWebsite(profile.website ?? '');
       setLocation(profile.location ?? '');
@@ -170,7 +167,6 @@ export default function EditProfileScreen() {
 
   const saveProfile = useMutation({
     mutationFn: async () => {
-      setUsernameError('');
       setDobError('');
       const dob = dateOfBirth.trim();
       if (dob) {
@@ -190,7 +186,6 @@ export default function EditProfileScreen() {
       }
       return api.patch('/api/users/me', {
         name: name.trim(),
-        username: username.trim() || undefined,
         bio: bio.trim(),
         website: website.trim() || undefined,
         location: location.trim() || undefined,
@@ -219,7 +214,7 @@ export default function EditProfileScreen() {
       } else if (err.message === 'DOB_INVALID') {
         setDobError('The date you entered does not exist.');
       } else if (err.message?.includes('already taken') || err.message?.includes('CONFLICT')) {
-        setUsernameError('Username already taken. Choose another.');
+        // username conflict (no longer editable, kept for safety)
       }
     },
   });
@@ -337,38 +332,6 @@ export default function EditProfileScreen() {
               />
             </View>
 
-            {/* Username */}
-            <View>
-              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
-                Username
-              </Text>
-              <View style={{ position: 'relative' }}>
-                <Text style={{
-                  position: 'absolute', left: 14, top: 12, color: '#4a6fa5',
-                  fontSize: 16, zIndex: 1
-                }}>@</Text>
-                <TextInput
-                  testID="username-input"
-                  value={username}
-                  onChangeText={(t) => { setUsername(t); setUsernameError(''); }}
-                  placeholder="username"
-                  placeholderTextColor="#2a4a6a"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  className="text-white text-base py-3 rounded-xl"
-                  style={{
-                    backgroundColor: '#0a2d50',
-                    borderColor: usernameError ? '#FF4E6A' : '#1a3a5c',
-                    borderWidth: 1,
-                    paddingLeft: 32,
-                    paddingRight: 14,
-                  }}
-                />
-              </View>
-              {usernameError ? (
-                <Text className="text-xs mt-1" style={{ color: '#FF4E6A' }}>{usernameError}</Text>
-              ) : null}
-            </View>
 
             {/* Pronouns */}
             <View>
