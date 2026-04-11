@@ -410,35 +410,6 @@ export function MediaViewer({ visible, onClose, type, uri, post }: MediaViewerPr
               </View>
             ) : null}
 
-            {/* Similar posts link */}
-            <Pressable
-              onPress={() => {
-                triggerDismiss();
-                const tag = post.tags?.[0] ?? post.category;
-                if (tag) {
-                  setTimeout(() => {
-                    try {
-                      router.push({ pathname: '/(app)/search' as any, params: { q: tag } });
-                    } catch (_) {}
-                  }, 350);
-                }
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                alignSelf: 'flex-start',
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                borderRadius: 20,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderWidth: 0.5,
-                borderColor: 'rgba(255,255,255,0.25)',
-              }}
-            >
-              <ExternalLink size={13} color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Similar posts</Text>
-            </Pressable>
           </Animated.View>
         ) : null}
       </View>
