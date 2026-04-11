@@ -13,8 +13,10 @@ import {
   setupNotificationListeners,
 } from '@/lib/notifications';
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '@/lib/supabase';
 import { api } from '@/lib/api/api';
+import type { Conversation } from '@/lib/types';
 
 export const unstable_settings = {
   initialRouteName: '(app)',
@@ -130,6 +132,47 @@ function RootLayoutNav() {
 
     return () => {
       cleanupListeners?.();
+    };
+  }, [session?.user?.id]);
+
+  // Poll for new messages and fire a local notification when unread count increases
+  const prevUnreadRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const checkMessages = async () => {
+      try {
+        const conversations = await api.get<Conversation[]>('/api/conversations');
+        if (!conversations) return;
+
+        const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
+
+        if (prevUnreadRef.current !== null && totalUnread > prevUnreadRef.current) {
+          // Find the conversation that has a new unread message
+          const newConv = conversations.find((c) => c.unreadCount > 0);
+          const senderName = newConv?.user?.name ?? newConv?.user?.username ?? 'Someone';
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'New Message',
+              body: senderName,
+              sound: true,
+            },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
+          });
+        }
+
+        prevUnreadRef.current = totalUnread;
+      } catch {
+        // Non-fatal — polling will retry
+      }
+    };
+
+    checkMessages();
+    const interval = setInterval(checkMessages, 5000);
+    return () => {
+      clearInterval(interval);
+      prevUnreadRef.current = null;
     };
   }, [session?.user?.id]);
 

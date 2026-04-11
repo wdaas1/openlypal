@@ -48,17 +48,15 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return null;
   }
 
-  // Get the project ID from Expo config
+  // Get the project ID from Expo config (may not be present in dev builds)
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId;
 
-  if (!projectId) {
-    return null;
-  }
-
   try {
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    const tokenData = projectId
+      ? await Notifications.getExpoPushTokenAsync({ projectId })
+      : await Notifications.getExpoPushTokenAsync();
     const token = tokenData.data;
 
     // Cache token locally
