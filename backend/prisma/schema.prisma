@@ -54,6 +54,11 @@ model User {
   liveMomentMessages   LiveMomentMessage[]
   publicKey            String?
   pushToken            String?
+  notifyNewPosts       Boolean  @default(true)
+  notifyLikes          Boolean  @default(true)
+  notifyComments       Boolean  @default(true)
+  notifyFollows        Boolean  @default(true)
+  notifyReblogs        Boolean  @default(true)
   profileModules       ProfileModule[]
   ownedRooms           Room[]       @relation("RoomOwner")
   roomMembers          RoomMember[]

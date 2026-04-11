@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { moderatePostContent } from "../lib/contentModeration";
+import { sendPushNotification } from "../lib/push-notifications";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -386,6 +387,23 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
     include: postInclude(user.id),
   });
 
+  // Notify followers about new post (fire-and-forget)
+  (async () => {
+    try {
+      const followers = await prisma.follow.findMany({
+        where: { followingId: user.id },
+        include: { follower: { select: { pushToken: true, notifyNewPosts: true } } },
+      });
+      const posterName = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, username: true } });
+      const name = posterName?.name ?? posterName?.username ?? "Someone you follow";
+      await Promise.all(
+        followers
+          .filter((f) => f.follower.pushToken && f.follower.notifyNewPosts)
+          .map((f) => sendPushNotification(f.follower.pushToken!, "New Post", `${name} just posted`, { type: "new_post", userId: user.id }))
+      );
+    } catch {}
+  })();
+
   return c.json({ data: mapPost(post as Parameters<typeof mapPost>[0], user.id) });
 });
 
@@ -480,6 +498,17 @@ postsRouter.post("/:id/like", async (c) => {
   }
 
   await prisma.like.create({ data: { userId: user.id, postId } });
+
+  // Notify post owner of new like (don't notify self-likes)
+  if (post.userId !== user.id) {
+    const owner = await prisma.user.findUnique({ where: { id: post.userId }, select: { pushToken: true, notifyLikes: true } });
+    if (owner?.pushToken && owner.notifyLikes) {
+      const liker = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, username: true } });
+      const likerName = liker?.name ?? liker?.username ?? "Someone";
+      await sendPushNotification(owner.pushToken, "New Like", `${likerName} liked your post`, { type: "like", postId });
+    }
+  }
+
   return c.json({ data: { liked: true } });
 });
 
@@ -526,6 +555,16 @@ postsRouter.post("/:id/reblog", zValidator("json", reblogSchema), async (c) => {
   const reblog = await prisma.reblog.create({
     data: { userId: user.id, postId, comment: body.comment },
   });
+
+  // Notify post owner of new reblog (don't notify self-reblogs)
+  if (post.userId !== user.id) {
+    const owner = await prisma.user.findUnique({ where: { id: post.userId }, select: { pushToken: true, notifyReblogs: true } });
+    if (owner?.pushToken && owner.notifyReblogs) {
+      const reblogger = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, username: true } });
+      const rebloggerName = reblogger?.name ?? reblogger?.username ?? "Someone";
+      await sendPushNotification(owner.pushToken, "New Reblog", `${rebloggerName} reblogged your post`, { type: "reblog", postId });
+    }
+  }
 
   return c.json({ data: reblog });
 });
@@ -699,6 +738,17 @@ postsRouter.post("/:id/comments", zValidator("json", commentSchema), async (c) =
       user: { select: { id: true, name: true, username: true, image: true } },
     },
   });
+
+  // Notify post owner of new comment
+  const commentPost = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true } });
+  if (commentPost && commentPost.userId !== user.id) {
+    const owner = await prisma.user.findUnique({ where: { id: commentPost.userId }, select: { pushToken: true, notifyComments: true } });
+    if (owner?.pushToken && owner.notifyComments) {
+      const commenter = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, username: true } });
+      const commenterName = commenter?.name ?? commenter?.username ?? "Someone";
+      await sendPushNotification(owner.pushToken, "New Comment", `${commenterName} commented on your post`, { type: "comment", postId });
+    }
+  }
 
   return c.json({
     data: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -47,6 +47,15 @@ export default function SettingsScreen() {
   const invalidateSession = useInvalidateSession();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const [notifPrefs, setNotifPrefs] = useState({
+    notifyNewPosts: true,
+    notifyLikes: true,
+    notifyComments: true,
+    notifyFollows: true,
+    notifyReblogs: true,
+  });
+  const [notifLoading, setNotifLoading] = useState(false);
+
   const isAdmin = session?.user?.email === ADMIN_EMAIL;
 
   const { data: profile } = useQuery({
@@ -83,6 +92,24 @@ export default function SettingsScreen() {
       setShowDeleteModal(false);
     },
   });
+
+  useEffect(() => {
+    if (!session?.user) return;
+    api.get<typeof notifPrefs>('/api/users/me/notification-preferences').then((prefs) => {
+      if (prefs) setNotifPrefs(prefs);
+    }).catch(() => {});
+  }, [session?.user?.id]);
+
+  const toggleNotif = async (key: keyof typeof notifPrefs) => {
+    const newValue = !notifPrefs[key];
+    setNotifPrefs((prev) => ({ ...prev, [key]: newValue }));
+    try {
+      await api.patch('/api/users/me/notification-preferences', { [key]: newValue });
+    } catch {
+      // revert on error
+      setNotifPrefs((prev) => ({ ...prev, [key]: !newValue }));
+    }
+  };
 
   const SettingRow = ({
     icon,
@@ -276,6 +303,54 @@ export default function SettingsScreen() {
               <Text className="text-xs" style={{ color: '#4a6fa5' }}>Data controller: Clear Step Digital Ltd</Text>
             </View>
           </View>
+        </View>
+
+        {/* Notifications */}
+        <SectionHeader title="Notifications" />
+        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+          {([
+            { key: 'notifyNewPosts' as const, label: 'New Posts', sublabel: 'Posts from people you follow', icon: <Bell size={18} color="#4a6fa5" /> },
+            { key: 'notifyLikes' as const, label: 'Likes', sublabel: 'When someone likes your post', icon: <Bell size={18} color="#4a6fa5" /> },
+            { key: 'notifyComments' as const, label: 'Comments', sublabel: 'When someone comments on your post', icon: <Bell size={18} color="#4a6fa5" /> },
+            { key: 'notifyFollows' as const, label: 'New Followers', sublabel: 'When someone follows you', icon: <Bell size={18} color="#4a6fa5" /> },
+            { key: 'notifyReblogs' as const, label: 'Reblogs', sublabel: 'When someone reblogs your post', icon: <Bell size={18} color="#4a6fa5" /> },
+          ]).map((item, index, arr) => (
+            <View
+              key={item.key}
+              className="flex-row items-center px-4 py-4"
+              style={index < arr.length - 1 ? { borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 } : undefined}
+            >
+              <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
+                {item.icon}
+              </View>
+              <View className="flex-1">
+                <Text className="text-white font-medium text-sm">{item.label}</Text>
+                <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>{item.sublabel}</Text>
+              </View>
+              <Pressable
+                testID={`notif-toggle-${item.key}`}
+                onPress={() => toggleNotif(item.key)}
+                style={{
+                  width: 48,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: notifPrefs[item.key] ? '#00CF35' : '#1a3a5c',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                }}
+              >
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#FFFFFF',
+                    transform: [{ translateX: notifPrefs[item.key] ? 20 : 0 }],
+                  }}
+                />
+              </Pressable>
+            </View>
+          ))}
         </View>
 
         {/* Account */}

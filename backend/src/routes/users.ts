@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
+import { sendPushNotification } from "../lib/push-notifications";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null; username?: string | null } | null;
@@ -553,6 +554,15 @@ usersRouter.post("/:id/follow", async (c) => {
   }
 
   await prisma.follow.create({ data: { followerId: user.id, followingId } });
+
+  // Notify the followed user
+  const followed = await prisma.user.findUnique({ where: { id: followingId }, select: { pushToken: true, notifyFollows: true } });
+  if (followed?.pushToken && followed.notifyFollows) {
+    const followerUser = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, username: true } });
+    const followerName = followerUser?.name ?? followerUser?.username ?? "Someone";
+    await sendPushNotification(followed.pushToken, "New Follower", `${followerName} started following you`, { type: "follow", userId: user.id });
+  }
+
   return c.json({ data: { following: true } });
 });
 
@@ -631,6 +641,36 @@ usersRouter.get("/:id/reblogs", async (c) => {
   });
 
   return c.json({ data });
+});
+
+// GET /me/notification-preferences
+usersRouter.get("/me/notification-preferences", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const prefs = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { notifyNewPosts: true, notifyLikes: true, notifyComments: true, notifyFollows: true, notifyReblogs: true },
+  });
+  return c.json({ data: prefs });
+});
+
+// PATCH /me/notification-preferences
+usersRouter.patch("/me/notification-preferences", zValidator("json", z.object({
+  notifyNewPosts: z.boolean().optional(),
+  notifyLikes: z.boolean().optional(),
+  notifyComments: z.boolean().optional(),
+  notifyFollows: z.boolean().optional(),
+  notifyReblogs: z.boolean().optional(),
+})), async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const body = c.req.valid("json");
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: body,
+    select: { notifyNewPosts: true, notifyLikes: true, notifyComments: true, notifyFollows: true, notifyReblogs: true },
+  });
+  return c.json({ data: updated });
 });
 
 export { usersRouter };
