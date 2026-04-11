@@ -229,7 +229,7 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
-      scrollEventThrottle={16}
+      scrollEventThrottle={32}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
@@ -281,7 +281,7 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
-      scrollEventThrottle={16}
+      scrollEventThrottle={32}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={
@@ -332,7 +332,7 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
       removeClippedSubviews={true}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
-      scrollEventThrottle={16}
+      scrollEventThrottle={32}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
       refreshControl={

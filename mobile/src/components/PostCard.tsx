@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 
 import { Image } from 'expo-image';
@@ -262,10 +262,6 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
     mutationFn: async () => {
       await api.post(`/api/posts/${post.id}/like`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
-    },
   });
 
   const reportMutation = useMutation({
@@ -287,10 +283,6 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
   const bookmarkMutation = useMutation({
     mutationFn: async () => {
       await api.post(`/api/posts/${post.id}/bookmark`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
 
@@ -342,7 +334,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
 
   const isOwnPost = session?.user?.id === post.userId;
 
-  const handleLike = () => {
+  const { mutate: mutateLike } = likeMutation;
+  const handleLike = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     heartScale.value = withSequence(
       withSpring(1.4, { damping: 4 }),
@@ -351,8 +344,28 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
     const nowLiked = !localIsLiked;
     setLocalIsLiked(nowLiked);
     setLocalLikeCount(prev => prev + (nowLiked ? 1 : -1));
-    likeMutation.mutate();
-  };
+    mutateLike();
+  }, [localIsLiked, heartScale, mutateLike]);
+
+  const { mutate: mutateBookmark } = bookmarkMutation;
+  const handleBookmark = useCallback((e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    mutateBookmark();
+  }, [mutateBookmark]);
+
+  const handleShare = useCallback((e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    setCaptionCopied(false);
+    setShareModalVisible(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const handleMenuOpen = useCallback((e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMenuVisible(true);
+  }, []);
 
   const handleTap = () => {
     const now = Date.now();
@@ -417,8 +430,6 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
 
@@ -549,11 +560,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
         {/* More options button */}
         <Pressable
           testID={`post-menu-button-${post.id}`}
-          onPress={(e) => {
-            e.stopPropagation();
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setMenuVisible(true);
-          }}
+          onPress={handleMenuOpen}
           style={{ padding: 4 }}
         >
           <MoreHorizontal size={18} color="#4a6fa5" />
@@ -950,11 +957,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
         {/* Bookmark */}
         <Pressable
           testID={`bookmark-button-${post.id}`}
-          onPress={(e) => {
-            e.stopPropagation();
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            bookmarkMutation.mutate();
-          }}
+          onPress={handleBookmark}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 'auto' }}
         >
           <Bookmark
@@ -979,12 +982,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, from, ro
         {/* Share */}
         <Pressable
           testID={`share-button-${post.id}`}
-          onPress={(e) => {
-            e.stopPropagation();
-            setCaptionCopied(false);
-            setShareModalVisible(true);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }}
+          onPress={handleShare}
         >
           <ShareIcon size={18} color="#4a6fa5" />
         </Pressable>
