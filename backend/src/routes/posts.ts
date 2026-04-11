@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
+import { moderatePostContent } from "../lib/contentModeration";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -351,6 +352,20 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
 
   const body = c.req.valid("json");
 
+  // Run AI content moderation for posts with media
+  let detectedExplicit = body.isExplicit;
+  let detectedContentScore = body.contentScore ?? 0;
+
+  const imageUrlsToCheck = body.imageUrls ?? (body.imageUrl ? [body.imageUrl] : []);
+  const hasMedia = imageUrlsToCheck.length > 0 || !!body.videoUrl;
+
+  if (hasMedia && !body.isExplicit) {
+    // Only auto-detect if poster didn't already flag it as explicit
+    const modResult = await moderatePostContent(imageUrlsToCheck, body.videoUrl);
+    detectedExplicit = modResult.isExplicit;
+    detectedContentScore = modResult.contentScore;
+  }
+
   const post = await prisma.post.create({
     data: {
       type: body.type,
@@ -361,9 +376,9 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
       videoUrl: body.videoUrl ?? null,
       linkUrl: body.linkUrl ?? null,
       tags: body.tags && body.tags.length > 0 ? body.tags.join(",") : null,
-      isExplicit: body.isExplicit,
+      isExplicit: detectedExplicit,
       category: body.category ?? null,
-      contentScore: body.contentScore ?? 0,
+      contentScore: detectedContentScore,
       userId: user.id,
       roomId: body.roomId ?? null,
     },
