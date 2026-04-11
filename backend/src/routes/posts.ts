@@ -169,6 +169,7 @@ postsRouter.get("/", async (c) => {
     where: {
       hidden: false,
       roomId: null,
+      type: { not: "live_recap" },
       ...(filterUserId ? { userId: filterUserId } : {}),
       ...(tag ? { tags: { contains: tag } } : {}),
     },
@@ -187,7 +188,7 @@ postsRouter.get("/", async (c) => {
 
     // Exclude reblogs where the original post has a roomId or is hidden
     const filteredReblogs = reblogs.filter(
-      (r) => r.post && r.post.roomId === null && !r.post.hidden
+      (r) => r.post && r.post.roomId === null && !r.post.hidden && r.post.type !== "live_recap"
     );
 
     const postItems: PostFeedItem[] = posts.map((p) => ({
@@ -224,7 +225,7 @@ postsRouter.get("/feed/unfiltered", async (c) => {
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
 
   const posts = await prisma.post.findMany({
-    where: { hidden: false, roomId: null },
+    where: { hidden: false, roomId: null, type: { not: "live_recap" } },
     include: postInclude(user?.id),
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -251,7 +252,7 @@ postsRouter.get("/feed/following", async (c) => {
   // Fetch posts and reblogs in parallel
   const [posts, reblogs] = await Promise.all([
     prisma.post.findMany({
-      where: { userId: { in: followingIds }, hidden: false, roomId: null },
+      where: { userId: { in: followingIds }, hidden: false, roomId: null, type: { not: "live_recap" } },
       include: postInclude(user.id),
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -266,7 +267,7 @@ postsRouter.get("/feed/following", async (c) => {
 
   // Exclude reblogs where the original post has a roomId or is hidden
   const filteredReblogs = reblogs.filter(
-    (r) => r.post && r.post.roomId === null && !r.post.hidden
+    (r) => r.post && r.post.roomId === null && !r.post.hidden && r.post.type !== "live_recap"
   );
 
   // Map to unified feed items
