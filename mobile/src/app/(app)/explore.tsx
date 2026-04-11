@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, RefreshControl, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,18 +29,6 @@ const TRENDING_TABS: { id: TrendingType; label: string }[] = [
   { id: 'controversial', label: 'Controversial' },
 ];
 
-const POPULAR_HASHTAGS: TrendingHashtag[] = [
-  { tag: 'art', count: 14200, trend: 'up' },
-  { tag: 'photography', count: 9800, trend: 'stable' },
-  { tag: 'music', count: 8300, trend: 'up' },
-  { tag: 'writing', count: 6100, trend: 'down' },
-  { tag: 'memes', count: 22400, trend: 'up' },
-  { tag: 'aesthetic', count: 11700, trend: 'stable' },
-  { tag: 'nature', count: 7600, trend: 'down' },
-  { tag: 'fashion', count: 5400, trend: 'up' },
-];
-
-const SORTED_HASHTAGS = [...POPULAR_HASHTAGS].sort((a, b) => b.count - a.count);
 
 const CATEGORIES = ['All', 'Art', 'Music', 'Tech', 'Gaming', 'Fashion', 'Food', 'Travel', 'Wellness', 'Social', 'Dating', 'Friendships', 'Politics', 'Thoughts'];
 
@@ -150,6 +138,14 @@ export default function ExploreScreen() {
       return result ?? [];
     },
     enabled: searchQuery.length > 2,
+  });
+
+  const { data: trendingHashtags, isLoading: loadingHashtags } = useQuery({
+    queryKey: ['explore', 'tags'],
+    queryFn: async () => {
+      const result = await api.get<TrendingHashtag[]>('/api/explore/tags');
+      return (result ?? []).sort((a, b) => b.count - a.count);
+    },
   });
 
   const followMutation = useMutation({
@@ -352,70 +348,76 @@ export default function ExploreScreen() {
               </Pressable>
             </View>
             {/* 2-column grid */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {SORTED_HASHTAGS.map((item, index) => (
-                <Pressable
-                  key={item.tag}
-                  testID={`hashtag-${item.tag}`}
-                  onPress={() => setSearchQuery(item.tag)}
-                  style={{
-                    width: (SCREEN_WIDTH - 48) / 2,
-                    height: 80,
-                    borderRadius: 18,
-                    backgroundColor: '#0a2d50',
-                    borderColor: '#1a3a5c',
-                    borderWidth: 1,
-                    overflow: 'hidden',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 12,
-                  }}
-                >
-                  {/* Left accent bar */}
-                  <View style={{
-                    width: 3,
-                    height: '60%',
-                    borderRadius: 2,
-                    backgroundColor: accentColorForTrend(item.trend),
-                    marginRight: 10,
-                  }} />
+            {loadingHashtags ? (
+              <View testID="hashtags-loading" style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <ActivityIndicator color="#00CF35" />
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {(trendingHashtags ?? []).map((item, index) => (
+                  <Pressable
+                    key={item.tag}
+                    testID={`hashtag-${item.tag}`}
+                    onPress={() => setSearchQuery(item.tag)}
+                    style={{
+                      width: (SCREEN_WIDTH - 48) / 2,
+                      height: 80,
+                      borderRadius: 18,
+                      backgroundColor: '#0a2d50',
+                      borderColor: '#1a3a5c',
+                      borderWidth: 1,
+                      overflow: 'hidden',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    {/* Left accent bar */}
+                    <View style={{
+                      width: 3,
+                      height: '60%',
+                      borderRadius: 2,
+                      backgroundColor: accentColorForTrend(item.trend),
+                      marginRight: 10,
+                    }} />
 
-                  {/* Content */}
-                  <View style={{ flex: 1 }}>
-                    {/* Rank + tag */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Text style={{ color: '#00CF35', fontWeight: '900', fontSize: 14 }}>
-                        {index + 1}
-                      </Text>
-                      <Text style={{ color: '#00CF35', fontSize: 13, fontWeight: '600' }}>
-                        #{item.tag}
-                      </Text>
+                    {/* Content */}
+                    <View style={{ flex: 1 }}>
+                      {/* Rank + tag */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Text style={{ color: '#00CF35', fontWeight: '900', fontSize: 14 }}>
+                          {index + 1}
+                        </Text>
+                        <Text style={{ color: '#00CF35', fontSize: 13, fontWeight: '600' }}>
+                          #{item.tag}
+                        </Text>
+                      </View>
+
+                      {/* Count + trend icon */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                        <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
+                          {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count} posts
+                        </Text>
+                        <TrendIcon trend={item.trend} />
+                      </View>
                     </View>
 
-                    {/* Count + trend icon */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                      <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
-                        {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count} posts
-                      </Text>
-                      <TrendIcon trend={item.trend} />
-                    </View>
-                  </View>
-
-                  {/* Watermark rank number */}
-                  <Text style={{
-                    position: 'absolute',
-                    right: 8,
-                    bottom: 4,
-                    fontSize: 32,
-                    fontWeight: '900',
-                    color: '#00CF35',
-                    opacity: 0.15,
-                  }}>
-                    {index + 1}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+                    {/* Watermark rank number */}
+                    <Text style={{
+                      position: 'absolute',
+                      right: 8,
+                      bottom: 4,
+                      fontSize: 32,
+                      fontWeight: '900',
+                      color: '#00CF35',
+                      opacity: 0.15,
+                    }}>
+                      {index + 1}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
         ) : null}
 
