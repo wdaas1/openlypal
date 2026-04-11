@@ -101,6 +101,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   const [captionCopied, setCaptionCopied] = useState(false);
   const lastTapRef = useRef<number>(0);
   const imageLastTapRef = useRef<number>(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Video scrubbing — zero React state on hot path, all via Reanimated shared values
   const scrubDimOpacity = useSharedValue(0);
@@ -382,7 +384,11 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap
+      // Double tap — cancel pending navigation
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
+      }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       doubleTapHeartScale.value = withSequence(
         withSpring(1.4, { damping: 4 }),
@@ -396,14 +402,12 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       }
     } else {
       // Single tap - navigate to post
-      const timer = setTimeout(() => {
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null;
         from === 'room' && roomId
           ? router.push(`/(app)/rooms/${roomId}/post/${post.id}` as any)
           : router.push({ pathname: '/(app)/post/[id]' as any, params: { id: post.id, from: from ?? 'feed', roomId: roomId ?? '', momentId: momentId ?? '' } });
       }, DOUBLE_TAP_DELAY + 50);
-      lastTapRef.current = now;
-      // Actually store so double tap can clear navigation
-      return () => clearTimeout(timer);
     }
     lastTapRef.current = now;
   };
@@ -413,7 +417,11 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
     if (now - imageLastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap — heart it
+      // Double tap — heart it, cancel any pending single-tap open
+      if (imageTimerRef.current) {
+        clearTimeout(imageTimerRef.current);
+        imageTimerRef.current = null;
+      }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       doubleTapHeartScale.value = withSequence(
         withSpring(1.4, { damping: 4 }),
@@ -427,11 +435,10 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       }
     } else {
       // Single tap — open viewer after delay (cancelled if double-tap follows)
-      const timer = setTimeout(() => {
+      imageTimerRef.current = setTimeout(() => {
+        imageTimerRef.current = null;
         setMediaViewer({ visible: true, type: 'image', uri: (post.imageUrls?.[0] ?? post.imageUrl)! });
       }, DOUBLE_TAP_DELAY + 50);
-      imageLastTapRef.current = now;
-      return () => clearTimeout(timer);
     }
     imageLastTapRef.current = now;
   };
