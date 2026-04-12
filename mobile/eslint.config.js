@@ -4,10 +4,12 @@ const expoConfig = require("eslint-config-expo/flat");
 const pluginQuery = require("@tanstack/eslint-plugin-query");
 
 module.exports = defineConfig([
-  expoConfig,
+  // Global ignores — must be a standalone object (no other keys) so ESLint
+  // flat config treats them as project-wide exclusions, not config-local ones.
   {
     ignores: [
       "**/dist/**",
+      "dist/**",
       "**/backend/generated/**",
       "**/backend/prisma/**",
       "backend/generated/**",
@@ -27,6 +29,9 @@ module.exports = defineConfig([
       "nativewind-env.d.ts",
       "rootStore.example.ts",
     ],
+  },
+  expoConfig,
+  {
     settings: {
       "import/resolver": {
         typescript: {
