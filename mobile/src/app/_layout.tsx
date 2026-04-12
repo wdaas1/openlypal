@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -152,14 +153,16 @@ function RootLayoutNav() {
           const newConv = conversations.find((c) => c.unreadCount > 0);
           const senderName = newConv?.user?.name ?? newConv?.user?.username ?? 'Someone';
 
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'New Message',
-              body: senderName,
-              sound: true,
-            },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
-          });
+          if (Platform.OS !== 'web') {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: 'New Message',
+                body: senderName,
+                sound: true,
+              },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
+            });
+          }
         }
 
         prevUnreadRef.current = totalUnread;
