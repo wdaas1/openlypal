@@ -81,6 +81,7 @@ const allowed = [
   /^https:\/\/([a-z0-9-]+\.)*vibecodeapp\.com$/,
   /^https:\/\/([a-z0-9-]+\.)*vibecode\.dev$/,
   /^https:\/\/vibecode\.dev$/,
+  /^https:\/\/(.*\.)?openlypal\.com$/,
 ];
 
 app.use(
