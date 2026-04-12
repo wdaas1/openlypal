@@ -14,8 +14,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { LogOut } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
+import { supabase } from '@/lib/supabase';
 
 const SLIDES = [
   {
@@ -134,7 +136,32 @@ export default function OnboardingScreen() {
   if (phase === 'interests') {
     return (
       <View testID="onboarding-interests-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
-        <View style={{ flex: 1, paddingTop: insets.top + 24, paddingHorizontal: 20 }}>
+        {/* Sign out — top-left */}
+        <View style={{ position: 'absolute', top: insets.top + 16, left: 20, zIndex: 10 }}>
+          <Pressable
+            testID="onboarding-interests-signout-button"
+            onPress={async () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              await supabase.auth.signOut();
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              backgroundColor: 'rgba(255,255,255,0.07)',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: '#1a3a5c',
+            }}
+          >
+            <LogOut size={14} color="#4a6fa5" />
+            <Text style={{ color: '#4a6fa5', fontWeight: '600', fontSize: 14 }}>Sign out</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ flex: 1, paddingTop: insets.top + 64, paddingHorizontal: 20 }}>
 
           {/* Personalized profile card */}
           <View style={{
@@ -275,6 +302,31 @@ export default function OnboardingScreen() {
   // ── Intro slides phase ───────────────────────────────────────────────────────
   return (
     <View testID="onboarding-slides-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
+      {/* Sign out — top-left */}
+      <View style={{ position: 'absolute', top: insets.top + 16, left: 20, zIndex: 10 }}>
+        <Pressable
+          testID="onboarding-signout-button"
+          onPress={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await supabase.auth.signOut();
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            backgroundColor: 'rgba(255,255,255,0.07)',
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: '#1a3a5c',
+          }}
+        >
+          <LogOut size={14} color="#4a6fa5" />
+          <Text style={{ color: '#4a6fa5', fontWeight: '600', fontSize: 14 }}>Sign out</Text>
+        </Pressable>
+      </View>
+
       {/* Skip */}
       <View
         style={{

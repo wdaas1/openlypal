@@ -211,7 +211,7 @@ function RootLayoutNav() {
       } else {
         if (cancelled) return;
         setOnboardingDone(null);
-        router.replace('/sign-in' as any);
+        router.replace('/welcome' as any);
       }
       if (!cancelled) SplashScreen.hideAsync();
     })();
@@ -222,6 +222,7 @@ function RootLayoutNav() {
     <ThemeProvider value={TumblrDark}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="welcome" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
         <Stack.Screen name="onboarding" />
