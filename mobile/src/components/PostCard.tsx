@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, InteractionManager } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TouchableWithoutFeedback, Share, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, InteractionManager, Linking } from 'react-native';
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -44,6 +44,7 @@ import { MediaViewer } from '@/components/MediaViewer';
 import { LinkPreview } from './LinkPreview';
 import { useSession } from '@/lib/auth/use-session';
 import { videoVisibility } from '@/lib/videoVisibility';
+import { relationshipsApi } from '@/lib/api/relationships';
 
 const imageAspectRatioCache = new Map<string, number>();
 
@@ -122,6 +123,12 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     (p) => { p.loop = false; p.muted = true; }
   );
   const { data: session } = useSession();
+
+  const { data: relationships } = useQuery({
+    queryKey: ['relationships'],
+    queryFn: () => relationshipsApi.getAll(),
+    enabled: shareModalVisible,
+  });
 
   const playerRef = useRef(player);
   playerRef.current = player;
@@ -1352,92 +1359,267 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 borderTopRightRadius: 24,
                 paddingBottom: 36,
                 paddingTop: 8,
-                paddingHorizontal: 20,
               }}>
-                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 20 }} />
+                {/* Drag handle */}
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
 
-                {/* Header */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', flex: 1 }}>Share Post</Text>
-                  <Pressable testID="share-modal-close" onPress={() => setShareModalVisible(false)}>
-                    <X size={20} color="#4a6fa5" />
-                  </Pressable>
-                </View>
-
-                {/* Post preview card */}
+                {/* Post preview */}
                 {(() => {
                   const author = post.user.username ? `@${post.user.username}` : post.user.name;
-                  const thumbnail = post.imageUrls?.[0] ?? post.imageUrl ?? (post.type === 'video' ? post.videoUrl : null);
+                  const thumbnail = post.imageUrls?.[0] ?? post.imageUrl ?? null;
                   const caption = post.title ?? post.content ?? post.linkUrl ?? null;
                   return (
-                    <View style={{ borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#1a3a5c', backgroundColor: '#001935', marginBottom: 16 }}>
-                      {thumbnail && post.type !== 'video' ? (
-                        <Image source={{ uri: thumbnail }} style={{ width: '100%', aspectRatio: 1.91 }} contentFit="cover" transition={0} />
-                      ) : post.type === 'video' && post.videoUrl ? (
-                        <View style={{ width: '100%', aspectRatio: 1.91, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 32 }}>🎬</Text>
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginHorizontal: 16,
+                      marginBottom: 20,
+                      padding: 10,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: '#1a3a5c',
+                      backgroundColor: '#001935',
+                      gap: 10,
+                    }}>
+                      {thumbnail ? (
+                        <Image
+                          source={{ uri: thumbnail }}
+                          style={{ width: 64, height: 64, borderRadius: 8 }}
+                          contentFit="cover"
+                          transition={0}
+                        />
+                      ) : post.type === 'video' ? (
+                        <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 24 }}>🎬</Text>
                         </View>
-                      ) : null}
-                      <View style={{ padding: 12, gap: 4 }}>
-                        <Text style={{ color: '#00CF35', fontSize: 13, fontWeight: '700' }}>{author}</Text>
+                      ) : (
+                        <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
+                          <ShareIcon size={20} color="#4a6fa5" />
+                        </View>
+                      )}
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <UserAvatar uri={post.user.image} name={post.user.name} size={18} />
+                          <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '700' }}>{author}</Text>
+                        </View>
                         {caption ? (
-                          <Text style={{ color: '#c8d8e8', fontSize: 13, lineHeight: 18 }} numberOfLines={2}>{caption}</Text>
+                          <Text style={{ color: '#c8d8e8', fontSize: 12, lineHeight: 17 }} numberOfLines={2}>{caption}</Text>
                         ) : null}
-                        <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 2 }}>openlypal.com/post/{post.id}</Text>
+                        <Text style={{ color: '#4a6fa5', fontSize: 10 }}>openlypal.com/post/{post.id}</Text>
                       </View>
                     </View>
                   );
                 })()}
 
-                {/* Action buttons */}
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <Pressable
-                    testID="share-copy-button"
-                    onPress={() => {
-                      const url = `https://openlypal.com/post/${post.id}`;
-                      Clipboard.setStringAsync(url).then(() => {
-                        setCaptionCopied(true);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        setTimeout(() => setCaptionCopied(false), 2000);
-                      });
-                    }}
-                    style={{
-                      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                      gap: 6, borderRadius: 14, paddingVertical: 13,
-                      backgroundColor: captionCopied ? 'rgba(0,207,53,0.12)' : '#001935',
-                      borderWidth: 1, borderColor: captionCopied ? '#00CF35' : '#1a3a5c',
-                    }}
-                  >
-                    <Copy size={15} color={captionCopied ? '#00CF35' : '#4a6fa5'} />
-                    <Text style={{ color: captionCopied ? '#00CF35' : '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
-                      {captionCopied ? 'Copied!' : 'Copy Link'}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    testID="share-open-button"
-                    onPress={() => {
-                      const author = post.user.username ? `@${post.user.username}` : post.user.name;
-                      const postUrl = `https://openlypal.com/post/${post.id}`;
-                      const caption = post.title ?? post.content ?? '';
-                      const previewText = caption.length > 120 ? caption.slice(0, 120) + '…' : caption;
-                      const message = previewText
-                        ? `${previewText}\n\n— ${author} on Openly\n${postUrl}`
-                        : `${author} on Openly\n${postUrl}`;
-                      const thumbnail = post.imageUrls?.[0] ?? post.imageUrl ?? null;
-                      const shareOptions: Parameters<typeof Share.share>[0] = { message };
-                      if (Platform.OS === 'ios') shareOptions.url = postUrl;
-                      setShareModalVisible(false);
-                      setTimeout(() => Share.share(shareOptions), 300);
-                    }}
-                    style={{
-                      flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                      gap: 6, borderRadius: 14, paddingVertical: 13, backgroundColor: '#00CF35',
-                    }}
-                  >
-                    <ShareIcon size={15} color="#001935" />
-                    <Text style={{ color: '#001935', fontWeight: '700', fontSize: 14 }}>Share</Text>
-                  </Pressable>
-                </View>
+                {/* Send to — contacts row */}
+                {relationships && relationships.length > 0 ? (
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700', marginHorizontal: 16, marginBottom: 12 }}>Send to</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ flexGrow: 0 }}
+                      contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}
+                    >
+                      {relationships.slice(0, 8).map((rel) => {
+                        const postUrl = `https://openlypal.com/post/${post.id}`;
+                        const authorName = post.user.username ? `@${post.user.username}` : post.user.name;
+                        const caption = post.title ?? post.content ?? '';
+                        const preview = caption.length > 80 ? caption.slice(0, 80) + '…' : caption;
+                        const message = preview
+                          ? `${preview}\n\n— ${authorName} on Openly\n${postUrl}`
+                          : `${authorName} on Openly\n${postUrl}`;
+                        return (
+                          <Pressable
+                            key={rel.user.id}
+                            testID={`share-contact-${rel.user.id}`}
+                            onPress={() => {
+                              setShareModalVisible(false);
+                              setTimeout(() => Share.share({ message, ...(Platform.OS === 'ios' ? { url: postUrl } : {}) }), 300);
+                            }}
+                            style={{ alignItems: 'center', gap: 6, width: 60 }}
+                          >
+                            <UserAvatar uri={rel.user.image} name={rel.user.name} size={52} />
+                            <Text style={{ color: '#c8d8e8', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>
+                              {rel.user.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : null}
+
+                {/* Platform icons row */}
+                {(() => {
+                  const postUrl = `https://openlypal.com/post/${post.id}`;
+                  const authorName = post.user.username ? `@${post.user.username}` : post.user.name;
+                  const captionText = post.title ?? post.content ?? '';
+                  const preview = captionText.length > 80 ? captionText.slice(0, 80) + '…' : captionText;
+                  const message = preview
+                    ? `${preview}\n\n— ${authorName} on Openly\n${postUrl}`
+                    : `${authorName} on Openly\n${postUrl}`;
+                  const encoded = encodeURIComponent(message);
+                  const encodedUrl = encodeURIComponent(postUrl);
+
+                  const platforms: {
+                    key: string;
+                    label: string;
+                    bg: string;
+                    labelColor?: string;
+                    icon?: React.ReactNode;
+                    iconText?: string;
+                    onPress: () => void;
+                  }[] = [
+                    {
+                      key: 'copy',
+                      label: 'Copy Link',
+                      bg: '#2a4060',
+                      icon: <Copy size={22} color="#FFFFFF" />,
+                      onPress: () => {
+                        Clipboard.setStringAsync(postUrl).then(() => {
+                          setCaptionCopied(true);
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          setTimeout(() => setCaptionCopied(false), 2000);
+                        });
+                      },
+                    },
+                    {
+                      key: 'messages',
+                      label: 'Messages',
+                      bg: '#00CF35',
+                      icon: <MessageSquare size={22} color="#FFFFFF" />,
+                      onPress: () => {
+                        setShareModalVisible(false);
+                        setTimeout(() => Linking.openURL(`sms:?body=${encoded}`), 300);
+                      },
+                    },
+                    {
+                      key: 'whatsapp',
+                      label: 'WhatsApp',
+                      bg: '#25D366',
+                      iconText: 'WA',
+                      onPress: () => {
+                        setShareModalVisible(false);
+                        setTimeout(() => Linking.openURL(`whatsapp://send?text=${encoded}`), 300);
+                      },
+                    },
+                    {
+                      key: 'twitter',
+                      label: 'X (Twitter)',
+                      bg: '#000000',
+                      iconText: 'X',
+                      onPress: () => {
+                        setShareModalVisible(false);
+                        setTimeout(() => {
+                          Linking.canOpenURL('twitter://post').then((can) => {
+                            if (can) {
+                              Linking.openURL(`twitter://post?message=${encoded}`);
+                            } else {
+                              Linking.openURL(`https://twitter.com/intent/tweet?text=${encoded}`);
+                            }
+                          });
+                        }, 300);
+                      },
+                    },
+                    {
+                      key: 'facebook',
+                      label: 'Facebook',
+                      bg: '#1877F2',
+                      iconText: 'f',
+                      onPress: () => {
+                        setShareModalVisible(false);
+                        setTimeout(() => Linking.openURL(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`), 300);
+                      },
+                    },
+                    {
+                      key: 'telegram',
+                      label: 'Telegram',
+                      bg: '#229ED9',
+                      iconText: 'TG',
+                      onPress: () => {
+                        setShareModalVisible(false);
+                        setTimeout(() => Linking.openURL(`tg://msg?text=${encoded}`), 300);
+                      },
+                    },
+                    {
+                      key: 'more',
+                      label: 'More',
+                      bg: '#2a4060',
+                      icon: <MoreHorizontal size={22} color="#FFFFFF" />,
+                      onPress: () => {
+                        setShareModalVisible(false);
+                        const shareOptions: Parameters<typeof Share.share>[0] = { message };
+                        if (Platform.OS === 'ios') shareOptions.url = postUrl;
+                        setTimeout(() => Share.share(shareOptions), 300);
+                      },
+                    },
+                  ];
+
+                  return (
+                    <View style={{ marginBottom: 20 }}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ flexGrow: 0 }}
+                        contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}
+                      >
+                        {platforms.map((p) => (
+                          <Pressable
+                            key={p.key}
+                            testID={`share-platform-${p.key}`}
+                            onPress={p.onPress}
+                            style={{ alignItems: 'center', gap: 6, width: 60 }}
+                          >
+                            <View style={{
+                              width: 56,
+                              height: 56,
+                              borderRadius: 28,
+                              backgroundColor: p.bg,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}>
+                              {p.icon ? p.icon : (
+                                <Text style={{ color: p.labelColor ?? '#FFFFFF', fontSize: p.iconText === 'f' ? 22 : 16, fontWeight: '800' }}>{p.iconText}</Text>
+                              )}
+                            </View>
+                            <Text style={{ color: '#c8d8e8', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>{p.label}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  );
+                })()}
+
+                {/* Copy Link full-width button */}
+                <Pressable
+                  testID="share-copy-button"
+                  onPress={() => {
+                    const url = `https://openlypal.com/post/${post.id}`;
+                    Clipboard.setStringAsync(url).then(() => {
+                      setCaptionCopied(true);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      setTimeout(() => setCaptionCopied(false), 2000);
+                    });
+                  }}
+                  style={{
+                    marginHorizontal: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    backgroundColor: captionCopied ? 'rgba(0,207,53,0.12)' : '#001935',
+                    borderWidth: 1,
+                    borderColor: captionCopied ? '#00CF35' : '#1a3a5c',
+                  }}
+                >
+                  {captionCopied ? <Check size={16} color="#00CF35" /> : <Copy size={16} color="#4a6fa5" />}
+                  <Text style={{ color: captionCopied ? '#00CF35' : '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
+                    {captionCopied ? 'Link Copied!' : 'Copy Link'}
+                  </Text>
+                </Pressable>
               </View>
             </TouchableWithoutFeedback>
           </View>
