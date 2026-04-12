@@ -63,6 +63,19 @@ function RootLayoutNav() {
           await api.patch('/api/users/me', { username: pendingUsername });
           await AsyncStorage.removeItem('pending_username');
         }
+
+        // On web, AsyncStorage (localStorage) is empty on first visit even if the
+        // user already completed onboarding on native. If the backend profile
+        // already has a username the user is past onboarding — mark it done so
+        // they aren't sent back to /onboarding every session.
+        if (profile?.username) {
+          const key = `onboarding_done_${userId}`;
+          const existing = await AsyncStorage.getItem(key);
+          if (!existing) {
+            await AsyncStorage.setItem(key, 'true');
+            setOnboardingDone(true);
+          }
+        }
       } catch {
         // Non-critical — profile will load normally on the profile screen
       }
@@ -182,21 +195,27 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading || !navigationState?.key) return;
 
-    if (session?.user) {
-      // Wait until onboarding status has been checked before routing a logged-in user
-      if (onboardingDone === null) return;
-      if (!onboardingDone) {
-        router.replace('/onboarding' as any);
+    let cancelled = false;
+    (async () => {
+      if (session?.user) {
+        // Read fresh from AsyncStorage every time instead of trusting React state.
+        // On web (localStorage), the state can be stale after onboarding completes
+        // or when a Supabase token refresh triggers this effect after navigation.
+        const val = await AsyncStorage.getItem(`onboarding_done_${session.user.id}`);
+        if (cancelled) return;
+        if (val !== 'true') {
+          router.replace('/onboarding' as any);
+        } else {
+          router.replace('/(app)' as any);
+        }
       } else {
-        router.replace('/(app)' as any);
+        if (cancelled) return;
+        setOnboardingDone(null);
+        router.replace('/sign-in' as any);
       }
-    } else {
-      // No session — go to sign-in immediately regardless of onboardingDone state
-      setOnboardingDone(null);
-      router.replace('/sign-in' as any);
-    }
-
-    SplashScreen.hideAsync();
+      if (!cancelled) SplashScreen.hideAsync();
+    })();
+    return () => { cancelled = true; };
   }, [session, isLoading, navigationState?.key, onboardingDone]);
 
   return (
