@@ -482,7 +482,12 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       <Pressable
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          router.push({ pathname: '/(app)/messenger/[userId]' as any, params: { userId: post.userId } });
+          const shareUrl = `https://openlypal.com/post/${post.id}`;
+          const shareText = post.content?.slice(0, 80) ?? 'Check out this post';
+          Share.share({
+            message: `Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`,
+            url: shareUrl,
+          });
         }}
         style={{
           backgroundColor: '#00CF35',
@@ -494,8 +499,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           borderRadius: 16,
         }}
       >
-        <MessageSquare size={24} color="#001935" />
-        <Text style={{ color: '#001935', fontSize: 10, fontWeight: '700', marginTop: 4 }}>DM</Text>
+        <ShareIcon size={24} color="#001935" />
+        <Text style={{ color: '#001935', fontSize: 10, fontWeight: '700', marginTop: 4 }}>Share</Text>
       </Pressable>
     );
   };
