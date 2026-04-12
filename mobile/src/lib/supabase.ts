@@ -1,5 +1,6 @@
 import { createClient, AuthApiError } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -8,6 +9,7 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 // library falls back to a broken path that causes "Lock was stolen by another
 // request" errors on concurrent auth operations.  We replace it with a simple
 // promise-based mutex queue that is safe for the single-JS-thread environment.
+// On web we skip this entirely and let Supabase use navigator.locks natively.
 const lockQueues = new Map<string, Array<() => void>>();
 const lockHeld = new Set<string>();
 
@@ -57,8 +59,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
-    lock: reactNativeLock,
+    // On web: detect session from URL so OAuth / magic-link tokens are picked up.
+    // On native: disable so Expo Linking handles the deep-link instead.
+    detectSessionInUrl: Platform.OS === 'web',
+    // On native: use custom lock (navigator.locks unavailable in React Native).
+    // On web: omit so Supabase uses the native navigator.locks API — required
+    //         for sign-in to complete correctly in the browser.
+    ...(Platform.OS !== 'web' ? { lock: reactNativeLock } : {}),
   },
 });
 
