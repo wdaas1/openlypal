@@ -1054,13 +1054,6 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           </Text>
         ) : null}
 
-        {/* Share */}
-        <Pressable
-          testID={`share-button-${post.id}`}
-          onPress={handleShare}
-        >
-          <ShareIcon size={18} color="#4a6fa5" />
-        </Pressable>
       </View>
 
       {/* Media Viewer */}
