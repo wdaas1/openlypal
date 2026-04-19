@@ -65,13 +65,13 @@ export default function SignInScreen() {
     <SafeAreaView testID="sign-in-screen" className="flex-1" style={{ backgroundColor: '#001935' }}>
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="height"
       >
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-1 px-8 pt-16 pb-8">
+          <View style={{ paddingHorizontal: 32, paddingTop: 48, paddingBottom: 32 }}>
             <View className="items-center mb-12">
               <Logo size={80} showBackground={false} />
               <Text className="text-white text-xl font-semibold mt-2">
