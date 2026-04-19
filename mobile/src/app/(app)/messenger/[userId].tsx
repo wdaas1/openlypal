@@ -20,8 +20,10 @@ import { api } from '@/lib/api/api';
 import type { Message, Conversation } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSession } from '@/lib/auth/use-session';
+import { useTheme } from '@/lib/theme';
 
 export default function ChatScreen() {
+  const theme = useTheme();
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
   const handleBack = () => {
@@ -65,7 +67,7 @@ export default function ChatScreen() {
     }
   }, [userId, queryClient]);
 
-  // Poll every 5 seconds
+  // Poll every 2 seconds
   useEffect(() => {
     if (!userId) return;
     const interval = setInterval(() => {
@@ -139,7 +141,7 @@ export default function ChatScreen() {
         {showTime ? (
           <Text style={{
             textAlign: 'center',
-            color: '#4a6fa5',
+            color: theme.subtext,
             fontSize: 11,
             marginVertical: 10,
             fontWeight: '500',
@@ -165,7 +167,7 @@ export default function ChatScreen() {
 
           <View style={{
             maxWidth: '72%',
-            backgroundColor: isMe ? '#00CF35' : '#0a2d50',
+            backgroundColor: isMe ? '#00CF35' : theme.card,
             borderRadius: 18,
             borderBottomRightRadius: isMe ? 4 : 18,
             borderBottomLeftRadius: isMe ? 18 : 4,
@@ -173,7 +175,7 @@ export default function ChatScreen() {
             paddingVertical: 10,
           }}>
             <Text style={{
-              color: isMe ? '#001935' : '#ffffff',
+              color: isMe ? '#001935' : theme.text,
               fontSize: 15,
               lineHeight: 20,
             }}>
@@ -186,7 +188,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <SafeAreaView testID="chat-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="chat-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View style={{
         flexDirection: 'row',
@@ -194,30 +196,30 @@ export default function ChatScreen() {
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#1a3a5c',
+        borderBottomColor: theme.border,
       }}>
         <Pressable
           testID="back-button"
           onPress={handleBack}
           style={{ marginRight: 12, padding: 4 }}
         >
-          <ArrowLeft size={22} color="#ffffff" />
+          <ArrowLeft size={22} color={theme.text} />
         </Pressable>
 
         {otherUser ? (
           <>
             <UserAvatar uri={otherUser.image} name={otherUser.name} size={36} />
             <View style={{ marginLeft: 10 }}>
-              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>
+              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
                 {otherUser.name}
               </Text>
               {otherUser.username ? (
-                <Text style={{ color: '#4a6fa5', fontSize: 12 }}>@{otherUser.username}</Text>
+                <Text style={{ color: theme.subtext, fontSize: 12 }}>@{otherUser.username}</Text>
               ) : null}
             </View>
           </>
         ) : (
-          <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Chat</Text>
+          <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>Chat</Text>
         )}
       </View>
 
@@ -243,7 +245,7 @@ export default function ChatScreen() {
             }}
             ListEmptyComponent={
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 15, textAlign: 'center' }}>
+                <Text style={{ color: theme.subtext, fontSize: 15, textAlign: 'center' }}>
                   No messages yet. Say hello!
                 </Text>
               </View>
@@ -259,7 +261,7 @@ export default function ChatScreen() {
           paddingTop: 12,
           paddingBottom: inputBottomPadding,
           borderTopWidth: 0.5,
-          borderTopColor: '#1a3a5c',
+          borderTopColor: theme.border,
           gap: 10,
         }}>
           <TextInput
@@ -267,15 +269,15 @@ export default function ChatScreen() {
             value={text}
             onChangeText={setText}
             placeholder="Message..."
-            placeholderTextColor="#4a6fa5"
+            placeholderTextColor={theme.subtext}
             multiline
             style={{
               flex: 1,
-              backgroundColor: '#0a2d50',
+              backgroundColor: theme.card,
               borderRadius: 22,
               paddingHorizontal: 16,
               paddingVertical: 10,
-              color: '#ffffff',
+              color: theme.text,
               fontSize: 15,
               maxHeight: 120,
               lineHeight: 20,
@@ -291,7 +293,7 @@ export default function ChatScreen() {
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: text.trim() ? '#00CF35' : '#0a2d50',
+              backgroundColor: text.trim() ? '#00CF35' : theme.card,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -299,7 +301,7 @@ export default function ChatScreen() {
             {isSending ? (
               <ActivityIndicator color="#001935" size="small" />
             ) : (
-              <Send size={18} color={text.trim() ? '#001935' : '#4a6fa5'} />
+              <Send size={18} color={text.trim() ? '#001935' : theme.subtext} />
             )}
           </Pressable>
         </View>

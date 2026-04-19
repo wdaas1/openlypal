@@ -16,6 +16,7 @@ import { ArrowLeft, Plus, Trash2, Eye, EyeOff, MousePointerClick, BarChart2, X, 
 import * as Haptics from 'expo-haptics';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
+import { useTheme } from '@/lib/theme';
 
 type AdminAd = {
   id: string;
@@ -51,21 +52,21 @@ function fetchAdminAds(): Promise<AdminAd[]> {
     .then(d => d.data ?? []);
 }
 
-function BudgetBar({ spent, budget, accent }: { spent: number; budget: number; accent: string }) {
+function BudgetBar({ spent, budget, accent, theme }: { spent: number; budget: number; accent: string; theme: { border: string; subtext: string; text: string } }) {
   const pct = Math.min(spent / budget, 1);
   const isExhausted = pct >= 1;
   return (
     <View style={{ marginTop: 10 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-        <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
+        <Text style={{ color: theme.subtext, fontSize: 10 }}>
           Spent <Text style={{ color: isExhausted ? '#FF4E6A' : accent, fontWeight: '700' }}>${spent.toFixed(2)}</Text>
-          {' '}of <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>${budget.toFixed(2)}</Text>
+          {' '}of <Text style={{ color: theme.text, fontWeight: '700' }}>${budget.toFixed(2)}</Text>
         </Text>
         <Text style={{ color: isExhausted ? '#FF4E6A' : accent, fontSize: 10, fontWeight: '700' }}>
           {isExhausted ? 'BUDGET EXHAUSTED' : `${(pct * 100).toFixed(0)}%`}
         </Text>
       </View>
-      <View style={{ height: 4, backgroundColor: '#1a3a5c', borderRadius: 2, overflow: 'hidden' }}>
+      <View style={{ height: 4, backgroundColor: theme.border, borderRadius: 2, overflow: 'hidden' }}>
         <View style={{ height: '100%', width: `${pct * 100}%`, backgroundColor: isExhausted ? '#FF4E6A' : accent, borderRadius: 2 }} />
       </View>
     </View>
@@ -73,6 +74,7 @@ function BudgetBar({ spent, budget, accent }: { spent: number; budget: number; a
 }
 
 export default function AdminAdsScreen() {
+  const appTheme = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
@@ -84,7 +86,7 @@ export default function AdminAdsScreen() {
   const [subtext, setSubtext] = useState('');
   const [cta, setCta] = useState('');
   const [clickUrl, setClickUrl] = useState('');
-  const [theme, setTheme] = useState<'green' | 'purple' | 'orange' | 'blue'>('green');
+  const [adTheme, setAdTheme] = useState<'green' | 'purple' | 'orange' | 'blue'>('green');
   const [budget, setBudget] = useState('');
   const [cpm, setCpm] = useState('');
 
@@ -127,7 +129,6 @@ export default function AdminAdsScreen() {
   const createAd = useMutation({
     mutationFn: async () => {
       const budgetVal = budget.trim() ? parseFloat(budget) : null;
-      // cpm is $ per 1000 impressions, convert to per-impression
       const cpmVal = cpm.trim() ? parseFloat(cpm) : null;
       const ratePerImpression = cpmVal != null ? cpmVal / 1000 : null;
       await fetch(`${baseUrl}/api/ads/admin`, {
@@ -138,7 +139,7 @@ export default function AdminAdsScreen() {
           headline,
           subtext,
           cta,
-          theme,
+          theme: adTheme,
           clickUrl: clickUrl.trim() || null,
           active: true,
           budget: budgetVal,
@@ -153,7 +154,7 @@ export default function AdminAdsScreen() {
       setSubtext('');
       setCta('');
       setClickUrl('');
-      setTheme('green');
+      setAdTheme('green');
       setBudget('');
       setCpm('');
       queryClient.invalidateQueries({ queryKey: ['admin-ads'] });
@@ -163,8 +164,8 @@ export default function AdminAdsScreen() {
 
   if (!admin) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#4a6fa5', fontSize: 16 }}>Admin access required</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: appTheme.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: appTheme.subtext, fontSize: 16 }}>Admin access required</Text>
       </SafeAreaView>
     );
   }
@@ -177,13 +178,13 @@ export default function AdminAdsScreen() {
   const canCreate = headline.trim() && subtext.trim() && cta.trim();
 
   return (
-    <SafeAreaView testID="admin-ads-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="admin-ads-screen" style={{ flex: 1, backgroundColor: appTheme.bg }} edges={['top']}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1a3a5c' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: appTheme.border }}>
         <Pressable testID="back-button" onPress={() => router.back()} style={{ marginRight: 12 }}>
-          <ArrowLeft size={22} color="#FFFFFF" />
+          <ArrowLeft size={22} color={appTheme.text} />
         </Pressable>
-        <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', flex: 1 }}>Sponsored Ads</Text>
+        <Text style={{ color: appTheme.text, fontSize: 18, fontWeight: '800', flex: 1 }}>Sponsored Ads</Text>
         <Pressable
           testID="create-ad-button"
           onPress={() => setShowCreate(true)}
@@ -203,9 +204,9 @@ export default function AdminAdsScreen() {
             { label: 'CTR', value: `${ctr}%`, color: '#fb923c' },
             { label: 'Revenue', value: `$${totalRevenue.toFixed(2)}`, color: '#a78bfa' },
           ].map(stat => (
-            <View key={stat.label} style={{ flex: 1, backgroundColor: '#0a2d50', borderRadius: 12, padding: 10, alignItems: 'center' }}>
+            <View key={stat.label} style={{ flex: 1, backgroundColor: appTheme.card, borderRadius: 12, padding: 10, alignItems: 'center' }}>
               <Text style={{ color: stat.color, fontSize: 15, fontWeight: '800' }}>{stat.value}</Text>
-              <Text style={{ color: '#4a6fa5', fontSize: 10, marginTop: 2 }}>{stat.label}</Text>
+              <Text style={{ color: appTheme.subtext, fontSize: 10, marginTop: 2 }}>{stat.label}</Text>
             </View>
           ))}
         </View>
@@ -214,7 +215,7 @@ export default function AdminAdsScreen() {
         {isLoading ? (
           <ActivityIndicator color="#00CF35" style={{ marginTop: 40 }} />
         ) : ads.length === 0 ? (
-          <Text style={{ color: '#4a6fa5', textAlign: 'center', marginTop: 40 }}>No ads yet. Tap "New Ad" to create one.</Text>
+          <Text style={{ color: appTheme.subtext, textAlign: 'center', marginTop: 40 }}>No ads yet. Tap "New Ad" to create one.</Text>
         ) : (
           ads.map(ad => {
             const accent = THEME_COLORS[ad.theme] ?? '#00CF35';
@@ -222,27 +223,27 @@ export default function AdminAdsScreen() {
             const hasBudget = ad.budget != null && ad.spent != null;
             const cpmDisplay = ad.ratePerImpression != null ? `$${(ad.ratePerImpression * 1000).toFixed(2)} CPM` : null;
             return (
-              <View key={ad.id} testID={`ad-row-${ad.id}`} style={{ backgroundColor: '#0a2d50', borderRadius: 14, padding: 14, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: ad.active ? accent : '#1a3a5c' }}>
+              <View key={ad.id} testID={`ad-row-${ad.id}`} style={{ backgroundColor: appTheme.card, borderRadius: 14, padding: 14, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: ad.active ? accent : appTheme.border }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>{ad.headline}</Text>
+                      <Text style={{ color: appTheme.text, fontSize: 15, fontWeight: '700' }}>{ad.headline}</Text>
                       {!ad.active ? (
                         <View style={{ backgroundColor: '#FF4E6A20', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
                           <Text style={{ color: '#FF4E6A', fontSize: 9, fontWeight: '700' }}>PAUSED</Text>
                         </View>
                       ) : null}
                     </View>
-                    <Text style={{ color: '#4a6fa5', fontSize: 12 }}>{ad.subtext}</Text>
+                    <Text style={{ color: appTheme.subtext, fontSize: 12 }}>{ad.subtext}</Text>
                     <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                       <View style={{ backgroundColor: `${accent}20`, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
                         <Text style={{ color: accent, fontSize: 10, fontWeight: '700' }}>{ad.cta}</Text>
                       </View>
-                      <View style={{ backgroundColor: '#1a3a5c', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
-                        <Text style={{ color: '#4a6fa5', fontSize: 10 }}>{ad.theme}</Text>
+                      <View style={{ backgroundColor: appTheme.border, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
+                        <Text style={{ color: appTheme.subtext, fontSize: 10 }}>{ad.theme}</Text>
                       </View>
                       {cpmDisplay ? (
-                        <View style={{ backgroundColor: '#1a3a5c', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
+                        <View style={{ backgroundColor: appTheme.border, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
                           <Text style={{ color: '#a78bfa', fontSize: 10, fontWeight: '600' }}>{cpmDisplay}</Text>
                         </View>
                       ) : null}
@@ -250,7 +251,7 @@ export default function AdminAdsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                     <Pressable testID={`toggle-ad-${ad.id}`} onPress={() => toggleActive.mutate({ id: ad.id, active: !ad.active })}>
-                      {ad.active ? <Eye size={18} color="#00CF35" /> : <EyeOff size={18} color="#4a6fa5" />}
+                      {ad.active ? <Eye size={18} color="#00CF35" /> : <EyeOff size={18} color={appTheme.subtext} />}
                     </Pressable>
                     <Pressable testID={`delete-ad-${ad.id}`} onPress={() => deleteAd.mutate(ad.id)}>
                       <Trash2 size={18} color="#FF4E6A" />
@@ -259,21 +260,21 @@ export default function AdminAdsScreen() {
                 </View>
 
                 {/* Stats row */}
-                <View style={{ flexDirection: 'row', gap: 14, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#1a3a5c', flexWrap: 'wrap' }}>
-                  <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                <View style={{ flexDirection: 'row', gap: 14, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: appTheme.border, flexWrap: 'wrap' }}>
+                  <Text style={{ color: appTheme.subtext, fontSize: 11 }}>
                     <Text style={{ color: '#60a5fa', fontWeight: '700' }}>{ad.impressions.toLocaleString()}</Text> views
                   </Text>
-                  <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                  <Text style={{ color: appTheme.subtext, fontSize: 11 }}>
                     <Text style={{ color: '#00CF35', fontWeight: '700' }}>{ad.clicks.toLocaleString()}</Text> clicks
                   </Text>
-                  <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                  <Text style={{ color: appTheme.subtext, fontSize: 11 }}>
                     <Text style={{ color: '#fb923c', fontWeight: '700' }}>{adCtr}%</Text> CTR
                   </Text>
-                  <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                  <Text style={{ color: appTheme.subtext, fontSize: 11 }}>
                     <Text style={{ color: '#FF4E6A', fontWeight: '700' }}>{ad._count.dismissals}</Text> dismissed
                   </Text>
                   {ad.spent != null ? (
-                    <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                    <Text style={{ color: appTheme.subtext, fontSize: 11 }}>
                       <Text style={{ color: '#a78bfa', fontWeight: '700' }}>${ad.spent.toFixed(2)}</Text> earned
                     </Text>
                   ) : null}
@@ -281,7 +282,7 @@ export default function AdminAdsScreen() {
 
                 {/* Budget progress bar */}
                 {hasBudget ? (
-                  <BudgetBar spent={ad.spent!} budget={ad.budget!} accent={accent} />
+                  <BudgetBar spent={ad.spent!} budget={ad.budget!} accent={accent} theme={{ border: appTheme.border, subtext: appTheme.subtext, text: appTheme.text }} />
                 ) : null}
               </View>
             );
@@ -296,14 +297,14 @@ export default function AdminAdsScreen() {
           style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
         >
           <ScrollView
-            style={{ backgroundColor: '#0a1f35', borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, borderTopColor: '#1a3a5c' }}
+            style={{ backgroundColor: appTheme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, borderTopColor: appTheme.border }}
             contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '800', flex: 1 }}>Create Ad</Text>
+              <Text style={{ color: appTheme.text, fontSize: 17, fontWeight: '800', flex: 1 }}>Create Ad</Text>
               <Pressable onPress={() => setShowCreate(false)}>
-                <X size={20} color="#4a6fa5" />
+                <X size={20} color={appTheme.subtext} />
               </Pressable>
             </View>
 
@@ -314,14 +315,14 @@ export default function AdminAdsScreen() {
               { label: 'Click URL (optional)', value: clickUrl, set: setClickUrl, placeholder: 'https://example.com' },
             ].map(field => (
               <View key={field.label} style={{ marginBottom: 12 }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>{field.label}</Text>
+                <Text style={{ color: appTheme.subtext, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>{field.label}</Text>
                 <TextInput
                   testID={`input-${field.label.toLowerCase().replace(/\s+/g, '-')}`}
                   value={field.value}
                   onChangeText={field.set}
                   placeholder={field.placeholder}
-                  placeholderTextColor="#2a4a6a"
-                  style={{ backgroundColor: '#001935', borderRadius: 10, padding: 12, color: '#FFFFFF', fontSize: 14, borderWidth: 1, borderColor: '#1a3a5c' }}
+                  placeholderTextColor={appTheme.subtext}
+                  style={{ backgroundColor: appTheme.inputBg, borderRadius: 10, padding: 12, color: appTheme.text, fontSize: 14, borderWidth: 1, borderColor: appTheme.border }}
                 />
               </View>
             ))}
@@ -329,58 +330,58 @@ export default function AdminAdsScreen() {
             {/* Pricing fields */}
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>CPM Rate ($)</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#001935', borderRadius: 10, borderWidth: 1, borderColor: '#1a3a5c', paddingHorizontal: 10 }}>
+                <Text style={{ color: appTheme.subtext, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>CPM Rate ($)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: appTheme.inputBg, borderRadius: 10, borderWidth: 1, borderColor: appTheme.border, paddingHorizontal: 10 }}>
                   <DollarSign size={14} color="#a78bfa" />
                   <TextInput
                     testID="input-cpm"
                     value={cpm}
                     onChangeText={setCpm}
                     placeholder="5.00"
-                    placeholderTextColor="#2a4a6a"
+                    placeholderTextColor={appTheme.subtext}
                     keyboardType="decimal-pad"
-                    style={{ flex: 1, padding: 12, color: '#FFFFFF', fontSize: 14 }}
+                    style={{ flex: 1, padding: 12, color: appTheme.text, fontSize: 14 }}
                   />
                 </View>
-                <Text style={{ color: '#2a4a6a', fontSize: 10, marginTop: 3 }}>per 1,000 views</Text>
+                <Text style={{ color: appTheme.subtext, fontSize: 10, marginTop: 3 }}>per 1,000 views</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Budget ($)</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#001935', borderRadius: 10, borderWidth: 1, borderColor: '#1a3a5c', paddingHorizontal: 10 }}>
+                <Text style={{ color: appTheme.subtext, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Budget ($)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: appTheme.inputBg, borderRadius: 10, borderWidth: 1, borderColor: appTheme.border, paddingHorizontal: 10 }}>
                   <DollarSign size={14} color="#00CF35" />
                   <TextInput
                     testID="input-budget"
                     value={budget}
                     onChangeText={setBudget}
                     placeholder="100.00"
-                    placeholderTextColor="#2a4a6a"
+                    placeholderTextColor={appTheme.subtext}
                     keyboardType="decimal-pad"
-                    style={{ flex: 1, padding: 12, color: '#FFFFFF', fontSize: 14 }}
+                    style={{ flex: 1, padding: 12, color: appTheme.text, fontSize: 14 }}
                   />
                 </View>
-                <Text style={{ color: '#2a4a6a', fontSize: 10, marginTop: 3 }}>auto-pauses when reached</Text>
+                <Text style={{ color: appTheme.subtext, fontSize: 10, marginTop: 3 }}>auto-pauses when reached</Text>
               </View>
             </View>
 
             {cpm.trim() && budget.trim() ? (
-              <View style={{ backgroundColor: '#001935', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#1a3a5c' }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 12 }}>
+              <View style={{ backgroundColor: appTheme.inputBg, borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: appTheme.border }}>
+                <Text style={{ color: appTheme.subtext, fontSize: 12 }}>
                   At <Text style={{ color: '#a78bfa', fontWeight: '700' }}>${parseFloat(cpm || '0').toFixed(2)} CPM</Text>,
                   a <Text style={{ color: '#00CF35', fontWeight: '700' }}>${parseFloat(budget || '0').toFixed(2)}</Text> budget
-                  buys <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{Math.floor((parseFloat(budget || '0') / parseFloat(cpm || '1')) * 1000).toLocaleString()}</Text> views
+                  buys <Text style={{ color: appTheme.text, fontWeight: '700' }}>{Math.floor((parseFloat(budget || '0') / parseFloat(cpm || '1')) * 1000).toLocaleString()}</Text> views
                 </Text>
               </View>
             ) : null}
 
             {/* Theme picker */}
-            <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Theme</Text>
+            <Text style={{ color: appTheme.subtext, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Theme</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
               {THEMES.map(t => (
                 <Pressable
                   key={t}
                   testID={`theme-${t}`}
-                  onPress={() => setTheme(t)}
-                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: THEME_COLORS[t], borderWidth: theme === t ? 3 : 0, borderColor: '#FFFFFF' }}
+                  onPress={() => setAdTheme(t)}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: THEME_COLORS[t], borderWidth: adTheme === t ? 3 : 0, borderColor: appTheme.text }}
                 />
               ))}
             </View>
@@ -389,11 +390,11 @@ export default function AdminAdsScreen() {
               testID="submit-create-ad"
               onPress={() => createAd.mutate()}
               disabled={!canCreate || createAd.isPending}
-              style={{ backgroundColor: canCreate ? '#00CF35' : '#1a3a5c', borderRadius: 14, padding: 14, alignItems: 'center' }}
+              style={{ backgroundColor: canCreate ? '#00CF35' : appTheme.border, borderRadius: 14, padding: 14, alignItems: 'center' }}
             >
               {createAd.isPending
                 ? <ActivityIndicator color="#001935" />
-                : <Text style={{ color: canCreate ? '#001935' : '#4a6fa5', fontWeight: '700', fontSize: 15 }}>Create Ad</Text>
+                : <Text style={{ color: canCreate ? '#001935' : appTheme.subtext, fontWeight: '700', fontSize: 15 }}>Create Ad</Text>
               }
             </Pressable>
           </ScrollView>

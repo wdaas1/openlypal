@@ -7,6 +7,7 @@ import { api } from '@/lib/api/api';
 import { ArrowLeft, Search, UserPlus, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useSession } from '@/lib/auth/use-session';
+import { useTheme } from '@/lib/theme';
 
 type User = {
   id: string;
@@ -16,6 +17,7 @@ type User = {
 };
 
 export default function AddMembersScreen() {
+  const theme = useTheme();
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const router = useRouter();
   const handleBack = () => {
@@ -55,26 +57,26 @@ export default function AddMembersScreen() {
   const filteredUsers = (users ?? []).filter((u) => u.id !== session?.user?.id);
 
   return (
-    <SafeAreaView testID="add-members-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
+    <SafeAreaView testID="add-members-screen" style={{ flex: 1, backgroundColor: theme.bg }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable testID="back-button" onPress={handleBack}>
-          <ArrowLeft size={22} color="#fff" />
+          <ArrowLeft size={22} color={theme.text} />
         </Pressable>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Add Members</Text>
+        <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>Add Members</Text>
       </View>
 
       {/* Search */}
       <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#0a2d50', borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: '#1a3a5c' }}>
-          <Search size={16} color="#4a6fa5" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: theme.border }}>
+          <Search size={16} color={theme.subtext} />
           <TextInput
             testID="search-input"
             value={search}
             onChangeText={setSearch}
             placeholder="Search by username or name..."
-            placeholderTextColor="#4a6fa5"
+            placeholderTextColor={theme.subtext}
             autoCapitalize="none"
-            style={{ flex: 1, color: '#fff', padding: 12, fontSize: 15 }}
+            style={{ flex: 1, color: theme.text, padding: 12, fontSize: 15 }}
           />
         </View>
       </View>
@@ -90,26 +92,26 @@ export default function AddMembersScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
           ListEmptyComponent={
             search.trim().length >= 1 ? (
-              <Text style={{ color: '#4a6fa5', textAlign: 'center', marginTop: 40 }}>No users found</Text>
+              <Text style={{ color: theme.subtext, textAlign: 'center', marginTop: 40 }}>No users found</Text>
             ) : (
-              <Text style={{ color: '#4a6fa5', textAlign: 'center', marginTop: 40 }}>Search for users to add</Text>
+              <Text style={{ color: theme.subtext, textAlign: 'center', marginTop: 40 }}>Search for users to add</Text>
             )
           }
           renderItem={({ item }) => {
             const isAlreadyMember = memberIds.has(item.id);
             const isAdded = addedIds.includes(item.id);
             return (
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#0a2d50', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1a3a5c' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: theme.border }}>
                 {item.image ? (
                   <Image source={{ uri: item.image }} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }} />
                 ) : (
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#1a3a5c', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{(item.name ?? '?')[0].toUpperCase()}</Text>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>{(item.name ?? '?')[0].toUpperCase()}</Text>
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>{item.name}</Text>
-                  {item.username ? <Text style={{ color: '#4a6fa5', fontSize: 13 }}>@{item.username}</Text> : null}
+                  <Text style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>{item.name}</Text>
+                  {item.username ? <Text style={{ color: theme.subtext, fontSize: 13 }}>@{item.username}</Text> : null}
                 </View>
                 {isAlreadyMember || isAdded ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,207,53,0.12)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>

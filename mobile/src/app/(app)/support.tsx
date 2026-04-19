@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { HelpCircle, Mail, ChevronLeft, ChevronDown, ChevronUp, ExternalLink, Info } from 'lucide-react-native';
 import Constants from 'expo-constants';
+import { useTheme } from '@/lib/theme';
 
 const FAQ_ITEMS = [
   {
@@ -29,25 +30,26 @@ const FAQ_ITEMS = [
 ];
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   return (
     <Pressable
       testID={`faq-item-${question.slice(0, 10)}`}
       onPress={() => setExpanded((v) => !v)}
-      style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+      style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
     >
       <View className="flex-row items-center justify-between px-4 py-4">
-        <Text className="text-white font-medium text-sm flex-1 pr-3">{question}</Text>
+        <Text style={{ color: theme.text }} className="font-medium text-sm flex-1 pr-3">{question}</Text>
         {expanded ? (
-          <ChevronUp size={16} color="#4a6fa5" />
+          <ChevronUp size={16} color={theme.subtext} />
         ) : (
-          <ChevronDown size={16} color="#4a6fa5" />
+          <ChevronDown size={16} color={theme.subtext} />
         )}
       </View>
       {expanded ? (
         <View className="px-4 pb-4">
-          <Text className="text-sm leading-5" style={{ color: '#a0b4c8' }}>
+          <Text className="text-sm leading-5" style={{ color: theme.subtext }}>
             {answer}
           </Text>
         </View>
@@ -57,6 +59,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export default function SupportScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -72,20 +75,20 @@ export default function SupportScreen() {
   };
 
   return (
-    <SafeAreaView testID="support-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="support-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
+      <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
         <Pressable
           testID="back-button"
           onPress={handleBack}
           className="mr-3 p-1"
           style={{ borderRadius: 20 }}
         >
-          <ChevronLeft size={24} color="#FFFFFF" />
+          <ChevronLeft size={24} color={theme.text} />
         </Pressable>
         <View className="flex-row items-center gap-2">
           <HelpCircle size={18} color="#00CF35" />
-          <Text className="text-white font-bold text-lg">Support & FAQ</Text>
+          <Text style={{ color: theme.text }} className="font-bold text-lg">Support & FAQ</Text>
         </View>
       </View>
 
@@ -93,20 +96,20 @@ export default function SupportScreen() {
 
         {/* Contact Us */}
         <View className="px-4 mt-5">
-          <Text className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a6fa5' }}>
+          <Text className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: theme.subtext }}>
             Contact Us
           </Text>
-          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}>
+          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}>
             <View
               className="flex-row items-center px-4 py-4"
-              style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+              style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
             >
-              <View className="mr-3 rounded-lg items-center justify-center" style={{ width: 36, height: 36, backgroundColor: '#001935' }}>
+              <View className="mr-3 rounded-lg items-center justify-center" style={{ width: 36, height: 36, backgroundColor: theme.inputBg }}>
                 <Mail size={18} color="#00CF35" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-medium text-sm">Email Support</Text>
-                <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>info@clearstepsdigital.com</Text>
+                <Text style={{ color: theme.text }} className="font-medium text-sm">Email Support</Text>
+                <Text className="text-xs mt-0.5" style={{ color: theme.subtext }}>info@clearstepsdigital.com</Text>
               </View>
             </View>
 
@@ -126,11 +129,11 @@ export default function SupportScreen() {
 
         {/* FAQ */}
         <View className="px-4 mt-6">
-          <Text className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a6fa5' }}>
+          <Text className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: theme.subtext }}>
             Frequently Asked Questions
           </Text>
-          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}>
-            {FAQ_ITEMS.map((item, index) => (
+          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}>
+            {FAQ_ITEMS.map((item) => (
               <FAQItem
                 key={item.id}
                 question={item.question}
@@ -142,24 +145,24 @@ export default function SupportScreen() {
 
         {/* About */}
         <View className="px-4 mt-6 mb-8">
-          <Text className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a6fa5' }}>
+          <Text className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: theme.subtext }}>
             About
           </Text>
-          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}>
+          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}>
             <View
               className="flex-row items-center justify-between px-4 py-4"
-              style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+              style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
             >
               <View className="flex-row items-center gap-3">
-                <View className="rounded-lg items-center justify-center" style={{ width: 36, height: 36, backgroundColor: '#001935' }}>
+                <View className="rounded-lg items-center justify-center" style={{ width: 36, height: 36, backgroundColor: theme.inputBg }}>
                   <Info size={18} color="#00CF35" />
                 </View>
-                <Text className="text-white font-medium text-sm">App Version</Text>
+                <Text style={{ color: theme.text }} className="font-medium text-sm">App Version</Text>
               </View>
-              <Text className="text-sm" style={{ color: '#4a6fa5' }}>{appVersion}</Text>
+              <Text className="text-sm" style={{ color: theme.subtext }}>{appVersion}</Text>
             </View>
             <View className="px-4 py-4">
-              <Text className="text-sm text-center" style={{ color: '#4a6fa5' }}>
+              <Text className="text-sm text-center" style={{ color: theme.subtext }}>
                 © 2025 Clear Step Digital Ltd{'\n'}All rights reserved.
               </Text>
             </View>

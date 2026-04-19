@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
 import type { TrendingHashtag } from '@/lib/types';
+import { useTheme } from '@/lib/theme';
 
 function accentColorForTrend(trend?: 'up' | 'down' | 'stable'): string {
   if (trend === 'up') return '#00CF35';
@@ -26,6 +27,7 @@ function formatCount(count: number): string {
 }
 
 export default function AllHashtagsScreen() {
+  const theme = useTheme();
   const router = useRouter();
 
   const { data: allHashtags, isLoading } = useQuery({
@@ -37,7 +39,7 @@ export default function AllHashtagsScreen() {
   });
 
   return (
-    <SafeAreaView testID="all-hashtags-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="all-hashtags-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View style={{
         flexDirection: 'row',
@@ -46,19 +48,19 @@ export default function AllHashtagsScreen() {
         paddingTop: 4,
         paddingBottom: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#0a2d50',
+        borderBottomColor: theme.card,
       }}>
         <Pressable
           testID="back-button"
           onPress={() => router.back()}
-          style={{ padding: 6, marginRight: 10, borderRadius: 20, backgroundColor: '#0a2d50' }}
+          style={{ padding: 6, marginRight: 10, borderRadius: 20, backgroundColor: theme.card }}
           hitSlop={8}
         >
-          <ArrowLeft size={20} color="#FFFFFF" />
+          <ArrowLeft size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 20 }}>Trending Hashtags</Text>
-          <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }}>
+          <Text style={{ color: theme.text, fontWeight: '700', fontSize: 20 }}>Trending Hashtags</Text>
+          <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 1 }}>
             {isLoading ? 'Loading...' : `${allHashtags?.length ?? 0} tags`}
           </Text>
         </View>
@@ -82,10 +84,10 @@ export default function AllHashtagsScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: '#0a2d50',
+                backgroundColor: theme.card,
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: '#1a3a5c',
+                borderColor: theme.border,
                 paddingVertical: 16,
                 paddingHorizontal: 16,
                 overflow: 'hidden',
@@ -110,7 +112,7 @@ export default function AllHashtagsScreen() {
                 <Text style={{ color: '#00CF35', fontWeight: '700', fontSize: 16 }}>
                   #{item.tag}
                 </Text>
-                <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 2 }}>
+                <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }}>
                   {formatCount(item.count)} posts
                 </Text>
               </View>

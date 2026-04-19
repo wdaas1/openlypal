@@ -9,6 +9,7 @@ import { useFocusEffect } from 'expo-router';
 import { api } from '@/lib/api/api';
 import { UserAvatar } from '@/components/UserAvatar';
 import { localStore } from '@/lib/local-store';
+import { useTheme } from '@/lib/theme';
 
 interface ActivityItem {
   id: string;
@@ -81,6 +82,7 @@ function getActivityText(type: string, item: ActivityItem): string {
 const OUTGOING_TYPES = new Set(['like_given', 'reblog_given', 'comment_given', 'follow_given']);
 
 function ActivityRow({ item, isOutgoing }: { item: ActivityItem; isOutgoing: boolean }) {
+  const theme = useTheme();
   const router = useRouter();
 
   const handlePress = () => {
@@ -122,7 +124,7 @@ function ActivityRow({ item, isOutgoing }: { item: ActivityItem; isOutgoing: boo
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        borderBottomColor: '#1a3a5c',
+        borderBottomColor: theme.border,
         borderBottomWidth: 0.5,
         opacity: pressed ? 0.6 : 1,
       })}
@@ -134,33 +136,34 @@ function ActivityRow({ item, isOutgoing }: { item: ActivityItem; isOutgoing: boo
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {getActivityIcon(item.type)}
           {isOutgoing ? (
-            <Text style={{ color: '#ffffff', fontSize: 14, flex: 1 }}>
+            <Text style={{ color: theme.text, fontSize: 14, flex: 1 }}>
               {text}
             </Text>
           ) : (
-            <Text style={{ color: '#ffffff', fontSize: 14, flex: 1 }}>
+            <Text style={{ color: theme.text, fontSize: 14, flex: 1 }}>
               <Text style={{ fontWeight: 'bold' }}>{item.user.username ?? item.user.name}</Text>
               {' '}{text}
             </Text>
           )}
         </View>
         {!isOutgoing && (item.post?.title || item.post?.content) ? (
-          <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 4 }} numberOfLines={1}>
+          <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }} numberOfLines={1}>
             {item.post?.title ?? item.post?.content}
           </Text>
         ) : null}
-        <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 4 }}>
+        <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>
           {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
         </Text>
       </View>
       {showChevron ? (
-        <Text style={{ color: '#4a6fa5', fontSize: 18, marginLeft: 8 }}>{'›'}</Text>
+        <Text style={{ color: theme.subtext, fontSize: 18, marginLeft: 8 }}>{'›'}</Text>
       ) : null}
     </Pressable>
   );
 }
 
 function SectionHeader({ title }: { title: string }) {
+  const theme = useTheme();
   return (
     <View
       style={{
@@ -169,7 +172,7 @@ function SectionHeader({ title }: { title: string }) {
         paddingBottom: 8,
       }}
     >
-      <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
+      <Text style={{ color: theme.subtext, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
         {title}
       </Text>
     </View>
@@ -177,6 +180,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export default function ActivityScreen() {
+  const theme = useTheme();
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -199,10 +203,10 @@ export default function ActivityScreen() {
   const outgoing = data?.outgoing ?? [];
 
   return (
-    <SafeAreaView testID="activity-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="activity-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
-      <View className="px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-        <Text className="text-white text-xl font-bold">Activity</Text>
+      <View className="px-4 py-3" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
+        <Text style={{ color: theme.text }} className="text-xl font-bold">Activity</Text>
       </View>
 
       {isLoading ? (
@@ -229,7 +233,7 @@ export default function ActivityScreen() {
               marginTop: 16,
               marginBottom: 8,
               borderRadius: 16,
-              backgroundColor: '#011e3d',
+              backgroundColor: theme.card,
               borderWidth: 1,
               borderColor: 'rgba(0,207,53,0.25)',
               flexDirection: 'row',
@@ -253,10 +257,10 @@ export default function ActivityScreen() {
               <Users size={20} color="#00CF35" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 14 }}>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>
                 Relationship Map
               </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: 2 }}>
+              <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }}>
                 See your friendship strength and who you're drifting from
               </Text>
             </View>
@@ -267,7 +271,7 @@ export default function ActivityScreen() {
           <SectionHeader title="Notifications" />
           {notifications.length === 0 ? (
             <View style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
-              <Text style={{ color: '#4a6fa5', fontSize: 14 }}>No notifications yet</Text>
+              <Text style={{ color: theme.subtext, fontSize: 14 }}>No notifications yet</Text>
             </View>
           ) : (
             notifications.map((item) => (
@@ -279,7 +283,7 @@ export default function ActivityScreen() {
           <SectionHeader title="Your Activity" />
           {outgoing.length === 0 ? (
             <View style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
-              <Text style={{ color: '#4a6fa5', fontSize: 14 }}>Nothing here yet</Text>
+              <Text style={{ color: theme.subtext, fontSize: 14 }}>Nothing here yet</Text>
             </View>
           ) : (
             outgoing.map((item) => (

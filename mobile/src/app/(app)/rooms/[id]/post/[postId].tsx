@@ -14,6 +14,8 @@ import { api } from '@/lib/api/api';
 import type { Post, Comment } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
+import { useTheme } from '@/lib/theme';
+import type { Theme } from '@/lib/theme';
 
 type CommentSort = 'top' | 'new' | 'controversial';
 
@@ -43,11 +45,13 @@ function CommentItem({
   postUserId,
   onReply,
   isNested,
+  theme,
 }: {
   comment: Comment;
   postUserId: string;
   onReply: (id: string, username: string) => void;
   isNested?: boolean;
+  theme: Theme;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -84,34 +88,19 @@ function CommentItem({
   };
 
   const netScore = upvotes - downvotes;
-  const netScoreColor = netScore > 0 ? '#00CF35' : netScore < 0 ? '#FF4E6A' : '#4a6fa5';
-  const bubbleBg = isNested ? 'rgba(0,20,45,0.8)' : '#0a2d50';
+  const netScoreColor = netScore > 0 ? '#00CF35' : netScore < 0 ? '#FF4E6A' : theme.subtext;
+  const bubbleBg = isNested ? theme.cardAlt : theme.card;
 
   if (comment.isDeleted === true) {
     return (
       <View style={{ marginBottom: 12 }}>
         <View style={{ flexDirection: 'row' }}>
           {isNested ? (
-            <View style={{
-              width: 2,
-              backgroundColor: 'rgba(0,207,53,0.25)',
-              marginRight: 10,
-            }} />
+            <View style={{ width: 2, backgroundColor: 'rgba(0,207,53,0.25)', marginRight: 10 }} />
           ) : null}
           <View style={{ flex: 1 }}>
-            <View style={{
-              borderRadius: 12,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              backgroundColor: bubbleBg,
-              opacity: 0.5,
-            }}>
-              <Text style={{
-                color: 'rgba(255,255,255,0.3)',
-                fontSize: 13,
-                fontStyle: 'italic',
-                lineHeight: 18,
-              }}>
+            <View style={{ borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: bubbleBg, opacity: 0.5 }}>
+              <Text style={{ color: theme.subtext, fontSize: 13, fontStyle: 'italic', lineHeight: 18 }}>
                 [deleted]
               </Text>
             </View>
@@ -120,13 +109,7 @@ function CommentItem({
         {replyCount > 0 ? (
           <View style={{ marginLeft: 42, marginTop: 8, gap: 8 }}>
             {(comment.replies ?? []).map((reply) => (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                postUserId={postUserId}
-                onReply={onReply}
-                isNested
-              />
+              <CommentItem key={reply.id} comment={reply} postUserId={postUserId} onReply={onReply} isNested theme={theme} />
             ))}
           </View>
         ) : null}
@@ -140,11 +123,7 @@ function CommentItem({
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row' }}>
         {isNested ? (
-          <View style={{
-            width: 2,
-            backgroundColor: 'rgba(0,207,53,0.25)',
-            marginRight: 10,
-          }} />
+          <View style={{ width: 2, backgroundColor: 'rgba(0,207,53,0.25)', marginRight: 10 }} />
         ) : null}
         <Pressable
           testID={`comment-avatar-${comment.id}`}
@@ -159,59 +138,39 @@ function CommentItem({
                 testID={`comment-username-${comment.id}`}
                 onPress={() => router.push({ pathname: '/(app)/user/[id]' as any, params: { id: comment.userId } })}
               >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>
+                <Text style={{ color: theme.text, fontWeight: '700', fontSize: 12 }}>
                   {comment.user.username ?? comment.user.name}
                 </Text>
               </Pressable>
               {isCreator ? (
-                <View style={{
-                  backgroundColor: 'rgba(0,207,53,0.2)',
-                  borderRadius: 6,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderWidth: 0.5,
-                  borderColor: '#00CF35',
-                }}>
+                <View style={{ backgroundColor: 'rgba(0,207,53,0.2)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 0.5, borderColor: '#00CF35' }}>
                   <Text style={{ color: '#00CF35', fontSize: 9, fontWeight: '800' }}>Creator</Text>
                 </View>
               ) : null}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
+                <Text style={{ color: theme.subtext, fontSize: 10 }}>
                   {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                 </Text>
                 {comment.editedAt ? (
-                  <Text style={{ color: '#4a6fa5', fontSize: 10 }}>(edited)</Text>
+                  <Text style={{ color: theme.subtext, fontSize: 10 }}>(edited)</Text>
                 ) : null}
               </View>
             </View>
-            <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 18 }}>
-              {comment.content}
-            </Text>
+            <Text style={{ color: theme.text, fontSize: 13, lineHeight: 18 }}>{comment.content}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 6, paddingLeft: 4, gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Pressable
-                testID={`upvote-${comment.id}`}
-                onPress={() => handleVote(1)}
-              >
-                <ChevronUp size={16} color={myVote === 1 ? '#00CF35' : '#4a6fa5'} />
+              <Pressable testID={`upvote-${comment.id}`} onPress={() => handleVote(1)}>
+                <ChevronUp size={16} color={myVote === 1 ? '#00CF35' : theme.subtext} />
               </Pressable>
-              <Text style={{ color: netScoreColor, fontSize: 11, fontWeight: '700', minWidth: 16, textAlign: 'center' }}>
-                {netScore}
-              </Text>
-              <Pressable
-                testID={`downvote-${comment.id}`}
-                onPress={() => handleVote(-1)}
-              >
-                <ChevronDown size={16} color={myVote === -1 ? '#FF4E6A' : '#4a6fa5'} />
+              <Text style={{ color: netScoreColor, fontSize: 11, fontWeight: '700', minWidth: 16, textAlign: 'center' }}>{netScore}</Text>
+              <Pressable testID={`downvote-${comment.id}`} onPress={() => handleVote(-1)}>
+                <ChevronDown size={16} color={myVote === -1 ? '#FF4E6A' : theme.subtext} />
               </Pressable>
             </View>
             {!isNested ? (
-              <Pressable
-                testID={`reply-${comment.id}`}
-                onPress={() => onReply(comment.id, comment.user.username ?? comment.user.name)}
-              >
-                <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '500' }}>Reply</Text>
+              <Pressable testID={`reply-${comment.id}`} onPress={() => onReply(comment.id, comment.user.username ?? comment.user.name)}>
+                <Text style={{ color: theme.subtext, fontSize: 12, fontWeight: '500' }}>Reply</Text>
               </Pressable>
             ) : null}
           </View>
@@ -222,13 +181,10 @@ function CommentItem({
         <View style={{ marginLeft: 42, marginTop: 6 }}>
           <Pressable
             testID={`toggle-replies-${comment.id}`}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setRepliesCollapsed(prev => !prev);
-            }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRepliesCollapsed(prev => !prev); }}
             style={{ paddingVertical: 4, paddingHorizontal: 2, alignSelf: 'flex-start' }}
           >
-            <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600' }}>
+            <Text style={{ color: theme.subtext, fontSize: 12, fontWeight: '600' }}>
               {repliesCollapsed
                 ? `View ${effectiveReplyCount > 0 ? effectiveReplyCount : replyCount} ${effectiveReplyCount === 1 ? 'reply' : 'replies'}`
                 : 'Hide replies'}
@@ -237,13 +193,7 @@ function CommentItem({
           {!repliesCollapsed ? (
             <View style={{ marginTop: 6, gap: 8 }}>
               {(comment.replies ?? []).map((reply) => (
-                <CommentItem
-                  key={reply.id}
-                  comment={reply}
-                  postUserId={postUserId}
-                  onReply={onReply}
-                  isNested
-                />
+                <CommentItem key={reply.id} comment={reply} postUserId={postUserId} onReply={onReply} isNested theme={theme} />
               ))}
             </View>
           ) : null}
@@ -253,13 +203,13 @@ function CommentItem({
   );
 }
 
-const SORT_TABS: { id: CommentSort; label: string; icon?: React.ReactNode }[] = [
+const SORT_TABS: { id: CommentSort; label: string }[] = [
   { id: 'top', label: 'Top' },
   { id: 'new', label: 'New' },
   { id: 'controversial', label: 'Hot' },
 ];
 
-function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: string; postTitle?: string; postContent?: string; imageUrl?: string }) {
+function ShareSection({ postId, postTitle, postContent, imageUrl, theme }: { postId: string; postTitle?: string; postContent?: string; imageUrl?: string; theme: Theme }) {
   const [copied, setCopied] = useState(false);
   const shareUrl = `https://openlypal.com/post/${postId}`;
   const shareText = postTitle ?? postContent?.slice(0, 80) ?? 'Check out this post';
@@ -271,103 +221,31 @@ function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: st
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleTwitter = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}`)}&url=${encodeURIComponent(shareUrl)}`;
-    Linking.openURL(twitterUrl);
-  };
-
-  const handleFacebook = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-    Linking.openURL(fbUrl);
-  };
-
-  const handleWhatsApp = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`)}`;
-    Linking.openURL(waUrl);
-  };
-
-  const handleTelegram = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}`)}`;
-    Linking.openURL(tgUrl);
-  };
-
-  const handleInstagram = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL('instagram://');
-  };
-
   const handleNativeShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await RNShare.share({
-        message: `Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`,
-        url: imageUrl ?? shareUrl,
-      });
-    } catch {
-      // user dismissed
-    }
+      await RNShare.share({ message: `Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`, url: imageUrl ?? shareUrl });
+    } catch {}
   };
 
   return (
-    <View
-      testID="share-section"
-      style={{
-        marginHorizontal: 16,
-        marginTop: 24,
-        marginBottom: 16,
-        borderRadius: 16,
-        backgroundColor: '#0a2d50',
-        borderWidth: 0.5,
-        borderColor: '#1a3a5c',
-        padding: 16,
-      }}
-    >
-      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15, marginBottom: 14 }}>
-        Share this post
-      </Text>
+    <View testID="share-section" style={{ marginHorizontal: 16, marginTop: 24, marginBottom: 16, borderRadius: 16, backgroundColor: theme.card, borderWidth: 0.5, borderColor: theme.border, padding: 16 }}>
+      <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15, marginBottom: 14 }}>Share this post</Text>
 
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
         <Pressable
           testID="share-copy-link"
           onPress={handleCopyLink}
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            paddingVertical: 10,
-            borderRadius: 24,
-            backgroundColor: copied ? 'rgba(0,207,53,0.2)' : 'rgba(255,255,255,0.07)',
-            borderWidth: 0.5,
-            borderColor: copied ? '#00CF35' : '#1a3a5c',
-          }}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 24, backgroundColor: copied ? 'rgba(0,207,53,0.2)' : theme.cardAlt, borderWidth: 0.5, borderColor: copied ? '#00CF35' : theme.border }}
         >
-          <Copy size={15} color={copied ? '#00CF35' : '#FFFFFF'} />
-          <Text style={{ color: copied ? '#00CF35' : '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
-            {copied ? 'Copied!' : 'Copy Link'}
-          </Text>
+          <Copy size={15} color={copied ? '#00CF35' : theme.text} />
+          <Text style={{ color: copied ? '#00CF35' : theme.text, fontSize: 12, fontWeight: '600' }}>{copied ? 'Copied!' : 'Copy Link'}</Text>
         </Pressable>
 
         <Pressable
           testID="share-native"
           onPress={handleNativeShare}
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            paddingVertical: 10,
-            borderRadius: 24,
-            backgroundColor: 'rgba(0,207,53,0.15)',
-            borderWidth: 0.5,
-            borderColor: 'rgba(0,207,53,0.4)',
-          }}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 24, backgroundColor: 'rgba(0,207,53,0.15)', borderWidth: 0.5, borderColor: 'rgba(0,207,53,0.4)' }}
         >
           <Share size={15} color="#00CF35" />
           <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600' }}>More</Text>
@@ -375,105 +253,28 @@ function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: st
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-        <Pressable
-          testID="share-twitter"
-          onPress={handleTwitter}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 24,
-            backgroundColor: 'rgba(255,255,255,0.07)',
-            borderWidth: 0.5,
-            borderColor: '#1a3a5c',
-          }}
-        >
-          <Twitter size={14} color="#FFFFFF" />
-          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>X</Text>
+        <Pressable testID="share-twitter" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}`)}&url=${encodeURIComponent(shareUrl)}`); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 24, backgroundColor: theme.cardAlt, borderWidth: 0.5, borderColor: theme.border }}>
+          <Twitter size={14} color={theme.text} />
+          <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>X</Text>
         </Pressable>
 
-        <Pressable
-          testID="share-facebook"
-          onPress={handleFacebook}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 24,
-            backgroundColor: 'rgba(24,119,242,0.15)',
-            borderWidth: 0.5,
-            borderColor: 'rgba(24,119,242,0.35)',
-          }}
-        >
+        <Pressable testID="share-facebook" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 24, backgroundColor: 'rgba(24,119,242,0.15)', borderWidth: 0.5, borderColor: 'rgba(24,119,242,0.35)' }}>
           <Facebook size={14} color="#1877F2" />
           <Text style={{ color: '#1877F2', fontSize: 12, fontWeight: '600' }}>Facebook</Text>
         </Pressable>
 
-        <Pressable
-          testID="share-whatsapp"
-          onPress={handleWhatsApp}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 24,
-            backgroundColor: 'rgba(37,211,102,0.12)',
-            borderWidth: 0.5,
-            borderColor: 'rgba(37,211,102,0.3)',
-          }}
-        >
+        <Pressable testID="share-whatsapp" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`https://wa.me/?text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}\n\n${shareUrl}`)}`); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 24, backgroundColor: 'rgba(37,211,102,0.12)', borderWidth: 0.5, borderColor: 'rgba(37,211,102,0.3)' }}>
           <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: '#001935', fontSize: 8, fontWeight: '900', lineHeight: 10 }}>W</Text>
           </View>
           <Text style={{ color: '#25D366', fontSize: 12, fontWeight: '600' }}>WhatsApp</Text>
         </Pressable>
 
-        <Pressable
-          testID="share-telegram"
-          onPress={handleTelegram}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 24,
-            backgroundColor: 'rgba(0,136,204,0.12)',
-            borderWidth: 0.5,
-            borderColor: 'rgba(0,136,204,0.3)',
-          }}
-        >
+        <Pressable testID="share-telegram" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Check this out on Openly 👇\n\n${shareText}`)}`); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 24, backgroundColor: 'rgba(0,136,204,0.12)', borderWidth: 0.5, borderColor: 'rgba(0,136,204,0.3)' }}>
           <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#0088CC', alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '900', lineHeight: 10 }}>T</Text>
           </View>
           <Text style={{ color: '#0088CC', fontSize: 12, fontWeight: '600' }}>Telegram</Text>
-        </Pressable>
-
-        <Pressable
-          testID="share-instagram"
-          onPress={handleInstagram}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 5,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 24,
-            backgroundColor: 'rgba(225,48,108,0.12)',
-            borderWidth: 0.5,
-            borderColor: 'rgba(225,48,108,0.3)',
-          }}
-        >
-          <View style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: '#E1306C', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '900', lineHeight: 10 }}>IG</Text>
-          </View>
-          <Text style={{ color: '#E1306C', fontSize: 12, fontWeight: '600' }}>Instagram</Text>
         </Pressable>
       </View>
     </View>
@@ -483,12 +284,11 @@ function ShareSection({ postId, postTitle, postContent, imageUrl }: { postId: st
 const NAV_HEIGHT = 100;
 
 export default function RoomPostDetailScreen() {
+  const theme = useTheme();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const id = postId ?? '';
   const router = useRouter();
-  const handleBack = () => {
-    router.back();
-  };
+  const handleBack = () => { router.back(); };
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [commentText, setCommentText] = useState('');
@@ -524,9 +324,7 @@ export default function RoomPostDetailScreen() {
   });
 
   const likeMutation = useMutation({
-    mutationFn: async () => {
-      await api.post(`/api/posts/${id}/like`);
-    },
+    mutationFn: async () => { await api.post(`/api/posts/${id}/like`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['post', id] });
       queryClient.invalidateQueries({ queryKey: ['feed'] });
@@ -535,10 +333,7 @@ export default function RoomPostDetailScreen() {
 
   const handleLike = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    heartScale.value = withSequence(
-      withSpring(1.4, { damping: 4 }),
-      withSpring(1, { damping: 6 })
-    );
+    heartScale.value = withSequence(withSpring(1.4, { damping: 4 }), withSpring(1, { damping: 6 }));
     const nowLiked = !localIsLiked;
     setLocalIsLiked(nowLiked);
     setLocalLikeCount(prev => prev + (nowLiked ? 1 : -1));
@@ -546,9 +341,7 @@ export default function RoomPostDetailScreen() {
   };
 
   const reblogMutation = useMutation({
-    mutationFn: async () => {
-      await api.post(`/api/posts/${id}/reblog`);
-    },
+    mutationFn: async () => { await api.post(`/api/posts/${id}/reblog`); },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ['post', id] });
@@ -574,7 +367,7 @@ export default function RoomPostDetailScreen() {
 
   if (loadingPost) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#001935' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
         <ActivityIndicator testID="loading-indicator" color="#00CF35" size="large" />
       </SafeAreaView>
     );
@@ -582,8 +375,8 @@ export default function RoomPostDetailScreen() {
 
   if (!post) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#001935' }}>
-        <Text style={{ color: '#4a6fa5' }}>Post not found</Text>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
+        <Text style={{ color: theme.subtext }}>Post not found</Text>
       </SafeAreaView>
     );
   }
@@ -595,12 +388,12 @@ export default function RoomPostDetailScreen() {
   const hasMoreComments = (post.commentCount ?? 0) > commentCount;
 
   return (
-    <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
+    <SafeAreaView testID="post-detail-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
         <Pressable testID="back-button" onPress={handleBack}>
-          <ArrowLeft size={24} color="#FFFFFF" />
+          <ArrowLeft size={24} color={theme.text} />
         </Pressable>
-        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 17, marginLeft: 16 }}>Post</Text>
+        <Text style={{ color: theme.text, fontWeight: '700', fontSize: 17, marginLeft: 16 }}>Post</Text>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -613,88 +406,56 @@ export default function RoomPostDetailScreen() {
             >
               <UserAvatar uri={post.user.image} name={post.user.name} size={44} />
               <View style={{ marginLeft: 12 }}>
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                  {post.user.username ?? post.user.name}
-                </Text>
-                <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }}>{timeAgo}</Text>
+                <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }}>{post.user.username ?? post.user.name}</Text>
+                <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 1 }}>{timeAgo}</Text>
               </View>
             </Pressable>
 
-            {post.title ? (
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 22, marginBottom: 12, lineHeight: 28 }}>{post.title}</Text>
-            ) : null}
-
-            {post.content ? (
-              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 15, marginBottom: 16, lineHeight: 22 }}>
-                {post.content}
-              </Text>
-            ) : null}
+            {post.title ? <Text style={{ color: theme.text, fontWeight: '700', fontSize: 22, marginBottom: 12, lineHeight: 28 }}>{post.title}</Text> : null}
+            {post.content ? <Text style={{ color: theme.text, fontSize: 15, marginBottom: 16, lineHeight: 22 }}>{post.content}</Text> : null}
 
             {post.imageUrl ? (
-              <Pressable
-                testID="detail-open-image-viewer"
-                onPress={() => setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! })}
-              >
+              <Pressable testID="detail-open-image-viewer" onPress={() => setMediaViewer({ visible: true, type: 'image', uri: post.imageUrl! })}>
                 <Image
                   source={{ uri: post.imageUrl }}
                   style={{ width: '100%', aspectRatio: imageAspectRatio, borderRadius: 12, marginBottom: 16 }}
                   contentFit="contain"
-                  onLoad={(e) => {
-                    const { width: w, height: h } = e.source;
-                    if (w && h) setImageAspectRatio(w / h);
-                  }}
+                  onLoad={(e) => { const { width: w, height: h } = e.source; if (w && h) setImageAspectRatio(w / h); }}
                 />
               </Pressable>
             ) : null}
 
-            {post.type === 'video' && post.videoUrl ? (
-              <VideoPlayer uri={post.videoUrl} />
-            ) : null}
+            {post.type === 'video' && post.videoUrl ? <VideoPlayer uri={post.videoUrl} /> : null}
 
             {post.linkUrl ? (
-              <View style={{ borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 16, backgroundColor: '#0a2d50' }}>
+              <View style={{ borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 16, backgroundColor: theme.card }}>
                 <Text style={{ color: '#00CF35', fontSize: 13 }}>{post.linkUrl}</Text>
               </View>
             ) : null}
 
             {tags.length > 0 ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {tags.map((tag) => (
-                  <Text key={tag} style={{ color: '#00CF35', fontSize: 13 }}>#{tag}</Text>
-                ))}
+                {tags.map((tag) => <Text key={tag} style={{ color: '#00CF35', fontSize: 13 }}>#{tag}</Text>)}
               </View>
             ) : null}
 
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', paddingVertical: 16,
-              borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
-              borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5,
-            }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderTopColor: theme.border, borderTopWidth: 0.5, borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
               <Pressable testID="detail-like-button" onPress={handleLike} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
                 <Animated.View style={heartAnimatedStyle}>
-                  <Heart size={22} color={localIsLiked ? '#FF4E6A' : '#4a6fa5'} fill={localIsLiked ? '#FF4E6A' : 'transparent'} />
+                  <Heart size={22} color={localIsLiked ? '#FF4E6A' : theme.subtext} fill={localIsLiked ? '#FF4E6A' : 'transparent'} />
                 </Animated.View>
-                <Text style={{ marginLeft: 8, fontSize: 13, color: localIsLiked ? '#FF4E6A' : '#4a6fa5' }}>
-                  {localLikeCount}
-                </Text>
+                <Text style={{ marginLeft: 8, fontSize: 13, color: localIsLiked ? '#FF4E6A' : theme.subtext }}>{localLikeCount}</Text>
               </Pressable>
               <Pressable testID="detail-reblog-button" onPress={() => reblogMutation.mutate()} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
-                <Repeat2 size={22} color="#4a6fa5" />
-                <Text style={{ marginLeft: 8, fontSize: 13, color: '#4a6fa5' }}>{post.reblogCount}</Text>
+                <Repeat2 size={22} color={theme.subtext} />
+                <Text style={{ marginLeft: 8, fontSize: 13, color: theme.subtext }}>{post.reblogCount}</Text>
               </Pressable>
               <Pressable style={{ flexDirection: 'row', alignItems: 'center', marginRight: 28 }}>
-                <MessageCircle size={22} color="#4a6fa5" />
-                <Text style={{ marginLeft: 8, fontSize: 13, color: '#4a6fa5' }}>{post.commentCount}</Text>
+                <MessageCircle size={22} color={theme.subtext} />
+                <Text style={{ marginLeft: 8, fontSize: 13, color: theme.subtext }}>{post.commentCount}</Text>
               </Pressable>
-              <Pressable testID="detail-share-button" onPress={async () => {
-                try {
-                  await RNShare.share({
-                    message: `${post.title ?? post.content?.slice(0, 80) ?? 'Check out this post'}\n\nhttps://openlypal.com/post/${id}`,
-                    title: post.title ?? undefined,
-                  });
-                } catch {}
-              }} style={{ marginLeft: 'auto' }}>
-                <Share size={20} color="#4a6fa5" />
+              <Pressable testID="detail-share-button" onPress={async () => { try { await RNShare.share({ message: `${post.title ?? post.content?.slice(0, 80) ?? 'Check out this post'}\n\nhttps://openlypal.com/post/${id}`, title: post.title ?? undefined }); } catch {} }} style={{ marginLeft: 'auto' }}>
+                <Share size={20} color={theme.subtext} />
               </Pressable>
             </View>
           </View>
@@ -702,46 +463,17 @@ export default function RoomPostDetailScreen() {
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <MessageCircle size={16} color="#4a6fa5" />
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>
-                  Comments ({commentCount})
-                </Text>
+                <MessageCircle size={16} color={theme.subtext} />
+                <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }}>Comments ({commentCount})</Text>
               </View>
-              <View style={{
-                flexDirection: 'row',
-                marginLeft: 'auto',
-                backgroundColor: 'rgba(10,45,80,0.8)',
-                borderRadius: 20,
-                padding: 3,
-              }}>
+              <View style={{ flexDirection: 'row', marginLeft: 'auto', backgroundColor: theme.card, borderRadius: 20, padding: 3 }}>
                 {SORT_TABS.map((tab) => {
                   const isActive = commentSort === tab.id;
-                  const textColor = isActive ? '#001935' : '#4a6fa5';
+                  const textColor = isActive ? '#001935' : theme.subtext;
                   return (
-                    <Pressable
-                      key={tab.id}
-                      testID={`sort-${tab.id}`}
-                      onPress={() => setCommentSort(tab.id)}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 17,
-                        backgroundColor: isActive ? '#00CF35' : 'transparent',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 3,
-                      }}
-                    >
-                      {tab.id === 'controversial' ? (
-                        <TrendingUp size={11} color={textColor} />
-                      ) : null}
-                      <Text style={{
-                        fontSize: 11,
-                        fontWeight: '700',
-                        color: textColor,
-                      }}>
-                        {tab.label}
-                      </Text>
+                    <Pressable key={tab.id} testID={`sort-${tab.id}`} onPress={() => setCommentSort(tab.id)} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 17, backgroundColor: isActive ? '#00CF35' : 'transparent', flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      {tab.id === 'controversial' ? <TrendingUp size={11} color={textColor} /> : null}
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: textColor }}>{tab.label}</Text>
                     </Pressable>
                   );
                 })}
@@ -752,107 +484,63 @@ export default function RoomPostDetailScreen() {
               <ActivityIndicator color="#00CF35" style={{ marginBottom: 16 }} />
             ) : (comments ?? []).length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
-                <MessageCircle size={48} color="#1a3a5c" />
-                <Text style={{ color: '#4a6fa5', fontSize: 14, fontWeight: '500' }}>Be the first to comment</Text>
+                <MessageCircle size={48} color={theme.border} />
+                <Text style={{ color: theme.subtext, fontSize: 14, fontWeight: '500' }}>Be the first to comment</Text>
               </View>
             ) : (
               (comments ?? []).map((comment) => (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  postUserId={post.userId}
-                  onReply={(commentId, username) => setReplyingTo({ id: commentId, username })}
-                />
+                <CommentItem key={comment.id} comment={comment} postUserId={post.userId} onReply={(commentId, username) => setReplyingTo({ id: commentId, username })} theme={theme} />
               ))
             )}
 
             {!loadingComments && hasMoreComments ? (
-              <Pressable
-                testID="load-more-comments"
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#1a3a5c',
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  marginHorizontal: 16,
-                  marginTop: 8,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ color: '#4a6fa5', fontSize: 13, fontWeight: '600' }}>Load more comments</Text>
+              <Pressable testID="load-more-comments" style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 12, paddingVertical: 10, marginHorizontal: 16, marginTop: 8, alignItems: 'center' }}>
+                <Text style={{ color: theme.subtext, fontSize: 13, fontWeight: '600' }}>Load more comments</Text>
               </Pressable>
             ) : null}
           </View>
 
-          <ShareSection postId={id ?? ''} postTitle={post.title ?? undefined} postContent={post.content ?? undefined} imageUrl={post.imageUrl ?? undefined} />
-
+          <ShareSection postId={id} postTitle={post.title ?? undefined} postContent={post.content ?? undefined} imageUrl={post.imageUrl ?? undefined} theme={theme} />
           <View style={{ height: 120 }} />
         </ScrollView>
 
         {replyingTo ? (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center',
-            paddingHorizontal: 16, paddingVertical: 8,
-            backgroundColor: 'rgba(0,207,53,0.08)',
-            borderTopColor: 'rgba(0,207,53,0.2)', borderTopWidth: 0.5,
-            borderBottomColor: 'rgba(0,207,53,0.2)', borderBottomWidth: 0.5,
-          }}>
-            <Text style={{ color: '#4a6fa5', fontSize: 12, flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: 'rgba(0,207,53,0.08)', borderTopColor: 'rgba(0,207,53,0.2)', borderTopWidth: 0.5, borderBottomColor: 'rgba(0,207,53,0.2)', borderBottomWidth: 0.5 }}>
+            <Text style={{ color: theme.subtext, fontSize: 12, flex: 1 }}>
               Replying to <Text style={{ color: '#00CF35', fontWeight: '600' }}>@{replyingTo.username}</Text>
             </Text>
             <Pressable testID="cancel-reply-button" onPress={() => setReplyingTo(null)}>
-              <X size={16} color="#4a6fa5" />
+              <X size={16} color={theme.subtext} />
             </Pressable>
           </View>
         ) : null}
 
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(12, insets.bottom),
-          backgroundColor: 'rgba(0,18,40,0.92)',
-          borderTopColor: '#1a3a5c', borderTopWidth: 0.5,
-        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(12, insets.bottom), backgroundColor: theme.bg, borderTopColor: theme.border, borderTopWidth: 0.5 }}>
           <TextInput
             testID="comment-input"
             value={commentText}
             onChangeText={setCommentText}
             placeholder={replyingTo ? `Reply to @${replyingTo.username}...` : 'Add a comment...'}
-            placeholderTextColor="#4a6fa5"
-            style={{
-              flex: 1, color: '#FFFFFF', fontSize: 13, marginRight: 12,
-              borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
-              backgroundColor: '#001935', borderColor: '#1a3a5c', borderWidth: 1,
-            }}
+            placeholderTextColor={theme.subtext}
+            style={{ flex: 1, color: theme.text, fontSize: 13, marginRight: 12, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
           />
           <Pressable
             testID="send-comment-button"
             onPress={() => addComment.mutate()}
             disabled={!isSendActive || addComment.isPending}
-            style={{
-              borderRadius: 22, padding: 10,
-              backgroundColor: isSendActive ? '#00CF35' : '#1a3a5c',
-              shadowColor: isSendActive ? '#00CF35' : 'transparent',
-              shadowOffset: { width: 0, height: 0 },
-              shadowRadius: isSendActive ? 5 : 0,
-              shadowOpacity: isSendActive ? 0.2 : 0,
-              elevation: isSendActive ? 8 : 0,
-            }}
+            style={{ borderRadius: 22, padding: 10, backgroundColor: isSendActive ? '#00CF35' : theme.card, shadowColor: isSendActive ? '#00CF35' : 'transparent', shadowOffset: { width: 0, height: 0 }, shadowRadius: isSendActive ? 5 : 0, shadowOpacity: isSendActive ? 0.2 : 0, elevation: isSendActive ? 8 : 0 }}
           >
             {addComment.isPending ? (
               <ActivityIndicator color="#001935" size="small" />
             ) : (
-              <Send size={18} color={isSendActive ? '#001935' : '#4a6fa5'} />
+              <Send size={18} color={isSendActive ? '#001935' : theme.subtext} />
             )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
 
       {mediaViewer ? (
-        <MediaViewer
-          visible={mediaViewer.visible}
-          type={mediaViewer.type}
-          uri={mediaViewer.uri}
-          onClose={() => setMediaViewer(null)}
-        />
+        <MediaViewer visible={mediaViewer.visible} type={mediaViewer.type} uri={mediaViewer.uri} onClose={() => setMediaViewer(null)} />
       ) : null}
     </SafeAreaView>
   );

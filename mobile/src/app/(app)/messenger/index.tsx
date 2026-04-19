@@ -10,18 +10,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, Edit2, Search, Lock } from 'lucide-react-native';
+import { MessageSquare, Search, Lock } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
-  useAnimatedProps,
 } from 'react-native-reanimated';
 import { api } from '@/lib/api/api';
 import type { Conversation, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+import { useTheme } from '@/lib/theme';
 
 function isEncryptedContent(content: string): boolean {
   return content.includes('.') && content.length > 60;
@@ -52,6 +52,7 @@ function isOnline(lastMessageDate: string | null | undefined): boolean {
 }
 
 function OnlineDot() {
+  const theme = useTheme();
   const scale = useSharedValue(1);
 
   React.useEffect(() => {
@@ -80,7 +81,7 @@ function OnlineDot() {
           borderRadius: 6.5,
           backgroundColor: '#00CF35',
           borderWidth: 2,
-          borderColor: '#001935',
+          borderColor: theme.bg,
         },
         animatedStyle,
       ]}
@@ -89,6 +90,7 @@ function OnlineDot() {
 }
 
 export default function MessengerScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const [searchFilter, setSearchFilter] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -147,14 +149,14 @@ export default function MessengerScreen() {
           paddingVertical: 12,
           backgroundColor: item.unreadCount > 0
             ? 'rgba(0,207,53,0.04)'
-            : 'rgba(10,30,60,0.7)',
+            : theme.card,
           borderRadius: 16,
           marginHorizontal: 16,
           marginBottom: 8,
           borderWidth: 0.5,
           borderColor: item.unreadCount > 0
             ? 'rgba(0,207,53,0.25)'
-            : 'rgba(255,255,255,0.07)',
+            : theme.border,
         }}
       >
         {/* Avatar with online indicator */}
@@ -175,7 +177,7 @@ export default function MessengerScreen() {
           >
             <Text
               style={{
-                color: '#ffffff',
+                color: theme.text,
                 fontSize: 15,
                 fontWeight: item.unreadCount > 0 ? '700' : '600',
                 flex: 1,
@@ -190,7 +192,7 @@ export default function MessengerScreen() {
                 <Lock size={11} color="#00CF35" />
               ) : null}
               {item.lastMessage ? (
-                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+                <Text style={{ color: theme.subtext, fontSize: 11 }}>
                   {formatTime(item.lastMessage.createdAt)}
                 </Text>
               ) : null}
@@ -215,7 +217,7 @@ export default function MessengerScreen() {
           </View>
           <Text
             style={{
-              color: item.unreadCount > 0 ? '#a0b4c8' : '#4a6fa5',
+              color: theme.subtext,
               fontSize: 13,
               lineHeight: 18,
               fontWeight: item.unreadCount > 0 ? '500' : '400',
@@ -232,7 +234,7 @@ export default function MessengerScreen() {
   return (
     <SafeAreaView
       testID="messenger-screen"
-      style={{ flex: 1, backgroundColor: '#001935' }}
+      style={{ flex: 1, backgroundColor: theme.bg }}
       edges={['top']}
     >
       {/* Header */}
@@ -241,7 +243,7 @@ export default function MessengerScreen() {
           paddingHorizontal: 20,
           paddingVertical: 14,
           borderBottomWidth: 0.5,
-          borderBottomColor: '#1a3a5c',
+          borderBottomColor: theme.border,
           flexDirection: 'row',
           alignItems: 'center',
         }}
@@ -257,29 +259,12 @@ export default function MessengerScreen() {
             <MessageSquare size={20} color="#00CF35" />
           </View>
           <View>
-            <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: '800' }}>Chat</Text>
-            <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 2 }}>
+            <Text style={{ color: theme.text, fontSize: 24, fontWeight: '800' }}>Chat</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }}>
               {headerSubtitle}
             </Text>
           </View>
         </View>
-        {/* Compose button — commented out: implement before publishing if you want the feature to be there */}
-        {/* <Pressable
-          testID="compose-button"
-          onPress={() => {}}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: '#0a2d50',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: '#1a3a5c',
-          }}
-        >
-          <Edit2 size={16} color="#4a6fa5" />
-        </Pressable> */}
       </View>
 
       {isLoading ? (
@@ -300,19 +285,19 @@ export default function MessengerScreen() {
               width: 80,
               height: 80,
               borderRadius: 40,
-              backgroundColor: '#0a2d50',
+              backgroundColor: theme.card,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 20,
               borderWidth: 1,
-              borderColor: '#1a3a5c',
+              borderColor: theme.border,
             }}
           >
-            <MessageSquare size={36} color="#4a6fa5" />
+            <MessageSquare size={36} color={theme.subtext} />
           </View>
           <Text
             style={{
-              color: '#ffffff',
+              color: theme.text,
               fontSize: 20,
               fontWeight: '800',
               textAlign: 'center',
@@ -323,7 +308,7 @@ export default function MessengerScreen() {
           </Text>
           <Text
             style={{
-              color: '#4a6fa5',
+              color: theme.subtext,
               fontSize: 14,
               textAlign: 'center',
               lineHeight: 20,
@@ -358,16 +343,16 @@ export default function MessengerScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: '#0a2d50',
+                backgroundColor: theme.card,
                 borderRadius: 14,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
                 borderWidth: 1,
-                borderColor: searchFocused ? 'rgba(0,207,53,0.4)' : 'rgba(255,255,255,0.07)',
+                borderColor: searchFocused ? 'rgba(0,207,53,0.4)' : theme.border,
                 gap: 8,
               }}
             >
-              <Search size={16} color="#4a6fa5" />
+              <Search size={16} color={theme.subtext} />
               <TextInput
                 testID="messenger-search-input"
                 value={searchFilter}
@@ -375,10 +360,10 @@ export default function MessengerScreen() {
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
                 placeholder="Search conversations..."
-                placeholderTextColor="#4a6fa5"
+                placeholderTextColor={theme.subtext}
                 style={{
                   flex: 1,
-                  color: '#ffffff',
+                  color: theme.text,
                   fontSize: 14,
                   padding: 0,
                 }}
@@ -401,7 +386,7 @@ export default function MessengerScreen() {
               >
                 <Text
                   style={{
-                    color: '#4a6fa5',
+                    color: theme.subtext,
                     fontSize: 11,
                     fontWeight: '700',
                     letterSpacing: 1.2,
@@ -409,7 +394,7 @@ export default function MessengerScreen() {
                 >
                   ACTIVE
                 </Text>
-                <View style={{ flex: 1, height: 0.5, backgroundColor: '#1a3a5c' }} />
+                <View style={{ flex: 1, height: 0.5, backgroundColor: theme.border }} />
               </View>
 
               {/* Quick avatar scroll — online only */}
@@ -465,7 +450,7 @@ export default function MessengerScreen() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             borderWidth: 1.5,
-                            borderColor: '#001935',
+                            borderColor: theme.bg,
                           }}
                         >
                           <Text
@@ -478,7 +463,7 @@ export default function MessengerScreen() {
                     </View>
                     <Text
                       style={{
-                        color: '#a0b4c8',
+                        color: theme.subtext,
                         fontSize: 11,
                         fontWeight: '600',
                         maxWidth: 56,
@@ -513,7 +498,7 @@ export default function MessengerScreen() {
               >
                 <Text
                   style={{
-                    color: '#4a6fa5',
+                    color: theme.subtext,
                     fontSize: 11,
                     fontWeight: '700',
                     letterSpacing: 1.2,
@@ -521,10 +506,10 @@ export default function MessengerScreen() {
                 >
                   SUGGESTED
                 </Text>
-                <View style={{ flex: 1, height: 0.5, backgroundColor: '#1a3a5c' }} />
+                <View style={{ flex: 1, height: 0.5, backgroundColor: theme.border }} />
               </View>
               <Text
-                style={{ color: '#4a6fa5', fontSize: 12, paddingHorizontal: 20, marginBottom: 12 }}
+                style={{ color: theme.subtext, fontSize: 12, paddingHorizontal: 20, marginBottom: 12 }}
               >
                 People you might know
               </Text>
@@ -546,19 +531,19 @@ export default function MessengerScreen() {
                     }
                     style={{
                       alignItems: 'center',
-                      backgroundColor: '#0a2d50',
+                      backgroundColor: theme.card,
                       borderRadius: 16,
                       padding: 16,
                       width: 100,
                       borderWidth: 1,
-                      borderColor: '#1a3a5c',
+                      borderColor: theme.border,
                       gap: 8,
                     }}
                   >
                     <UserAvatar uri={user.image} name={user.name} size={44} />
                     <Text
                       style={{
-                        color: '#ffffff',
+                        color: theme.text,
                         fontSize: 12,
                         fontWeight: '600',
                         textAlign: 'center',

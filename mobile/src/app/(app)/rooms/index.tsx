@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { api } from '@/lib/api/api';
 import { Layers, Plus, Users, FileText, X, ChevronRight, Lock } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '@/lib/theme';
 
 type Room = {
   id: string;
@@ -18,6 +19,7 @@ type Room = {
 };
 
 export default function RoomsScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -43,12 +45,12 @@ export default function RoomsScreen() {
       testID={`room-item-${item.id}`}
       onPress={() => router.push(`/(app)/rooms/${item.id}` as any)}
       style={{
-        backgroundColor: '#0a2d50',
+        backgroundColor: theme.card,
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#1a3a5c',
+        borderColor: theme.border,
         flexDirection: 'row',
         alignItems: 'center',
       }}
@@ -63,29 +65,29 @@ export default function RoomsScreen() {
         <Lock size={20} color="#00CF35" />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>{item.name}</Text>
+        <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>{item.name}</Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Users size={12} color="#4a6fa5" />
-            <Text style={{ color: '#4a6fa5', fontSize: 12 }}>{item.memberCount} {item.memberCount === 1 ? 'member' : 'members'}</Text>
+            <Users size={12} color={theme.subtext} />
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>{item.memberCount} {item.memberCount === 1 ? 'member' : 'members'}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <FileText size={12} color="#4a6fa5" />
-            <Text style={{ color: '#4a6fa5', fontSize: 12 }}>{item.postCount} {item.postCount === 1 ? 'post' : 'posts'}</Text>
+            <FileText size={12} color={theme.subtext} />
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>{item.postCount} {item.postCount === 1 ? 'post' : 'posts'}</Text>
           </View>
         </View>
       </View>
-      <ChevronRight size={18} color="#4a6fa5" />
+      <ChevronRight size={18} color={theme.subtext} />
     </Pressable>
   );
 
   return (
-    <SafeAreaView testID="rooms-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
+    <SafeAreaView testID="rooms-screen" style={{ flex: 1, backgroundColor: theme.bg }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Layers size={22} color="#00CF35" />
-          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800' }}>Rooms</Text>
+          <Text style={{ color: theme.text, fontSize: 22, fontWeight: '800' }}>Rooms</Text>
         </View>
         <Pressable
           testID="create-room-button"
@@ -115,8 +117,8 @@ export default function RoomsScreen() {
               <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(0,207,53,0.1)', borderWidth: 1, borderColor: 'rgba(0,207,53,0.2)', alignItems: 'center', justifyContent: 'center' }}>
                 <Lock size={32} color="#00CF35" />
               </View>
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>No rooms yet</Text>
-              <Text style={{ color: '#4a6fa5', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+              <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>No rooms yet</Text>
+              <Text style={{ color: theme.subtext, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
                 Create a private room to share posts{'\n'}with a select group of friends.
               </Text>
               <Pressable
@@ -134,11 +136,11 @@ export default function RoomsScreen() {
       <Modal visible={showCreate} transparent animationType="fade" onRequestClose={() => setShowCreate(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', paddingHorizontal: 24 }}>
-            <View style={{ backgroundColor: '#0a2d50', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#1a3a5c' }}>
+            <View style={{ backgroundColor: theme.card, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: theme.border }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Create Room</Text>
+                <Text style={{ color: theme.text, fontSize: 18, fontWeight: '800' }}>Create Room</Text>
                 <Pressable onPress={() => setShowCreate(false)}>
-                  <X size={22} color="#4a6fa5" />
+                  <X size={22} color={theme.subtext} />
                 </Pressable>
               </View>
               <TextInput
@@ -146,11 +148,11 @@ export default function RoomsScreen() {
                 value={roomName}
                 onChangeText={setRoomName}
                 placeholder='e.g. "Close Friends"'
-                placeholderTextColor="#4a6fa5"
+                placeholderTextColor={theme.subtext}
                 autoFocus
                 style={{
-                  backgroundColor: '#001935', borderRadius: 12, padding: 14,
-                  color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#1a3a5c',
+                  backgroundColor: theme.inputBg, borderRadius: 12, padding: 14,
+                  color: theme.text, fontSize: 15, borderWidth: 1, borderColor: theme.border,
                   marginBottom: 16,
                 }}
               />
@@ -161,12 +163,12 @@ export default function RoomsScreen() {
                 testID="confirm-create-room"
                 onPress={() => { if (roomName.trim()) createRoom.mutate(roomName.trim()); }}
                 disabled={!roomName.trim() || createRoom.isPending}
-                style={{ backgroundColor: roomName.trim() ? '#00CF35' : '#1a3a5c', borderRadius: 12, padding: 14, alignItems: 'center' }}
+                style={{ backgroundColor: roomName.trim() ? '#00CF35' : theme.border, borderRadius: 12, padding: 14, alignItems: 'center' }}
               >
                 {createRoom.isPending ? (
                   <ActivityIndicator color="#001935" />
                 ) : (
-                  <Text style={{ color: roomName.trim() ? '#001935' : '#4a6fa5', fontWeight: '700', fontSize: 15 }}>Create</Text>
+                  <Text style={{ color: roomName.trim() ? '#001935' : theme.subtext, fontWeight: '700', fontSize: 15 }}>Create</Text>
                 )}
               </Pressable>
             </View>

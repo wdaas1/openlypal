@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Shield, ChevronLeft } from 'lucide-react-native';
+import { useTheme } from '@/lib/theme';
 
 const PRIVACY_POLICY = `Last updated: January 1, 2025
 
@@ -141,6 +142,7 @@ Email: info@clearstepsdigital.com
 © 2024–2025 Clear Step Digital Ltd. All rights reserved.`;
 
 export default function LegalScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -154,25 +156,25 @@ export default function LegalScreen() {
   const content = activeTab === 'privacy' ? PRIVACY_POLICY : TERMS_OF_SERVICE;
 
   return (
-    <SafeAreaView testID="legal-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="legal-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
+      <View className="flex-row items-center px-4 py-3" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
         <Pressable
           testID="back-button"
           onPress={handleBack}
           className="mr-3 p-1"
           style={{ borderRadius: 20 }}
         >
-          <ChevronLeft size={24} color="#FFFFFF" />
+          <ChevronLeft size={24} color={theme.text} />
         </Pressable>
         <View className="flex-row items-center gap-2">
           <Shield size={18} color="#00CF35" />
-          <Text className="text-white font-bold text-lg">Legal</Text>
+          <Text style={{ color: theme.text }} className="font-bold text-lg">Legal</Text>
         </View>
       </View>
 
       {/* Tab Switcher */}
-      <View className="flex-row mx-4 mt-4 rounded-xl overflow-hidden" style={{ backgroundColor: '#0a2d50' }}>
+      <View className="flex-row mx-4 mt-4 rounded-xl overflow-hidden" style={{ backgroundColor: theme.card }}>
         <Pressable
           testID="privacy-tab"
           onPress={() => setActiveTab('privacy')}
@@ -185,7 +187,7 @@ export default function LegalScreen() {
         >
           <Text
             className="font-semibold text-sm"
-            style={{ color: activeTab === 'privacy' ? '#001935' : '#4a6fa5' }}
+            style={{ color: activeTab === 'privacy' ? '#001935' : theme.subtext }}
           >
             Privacy Policy
           </Text>
@@ -202,7 +204,7 @@ export default function LegalScreen() {
         >
           <Text
             className="font-semibold text-sm"
-            style={{ color: activeTab === 'terms' ? '#001935' : '#4a6fa5' }}
+            style={{ color: activeTab === 'terms' ? '#001935' : theme.subtext }}
           >
             Terms of Service
           </Text>
@@ -213,9 +215,9 @@ export default function LegalScreen() {
       <ScrollView className="flex-1 px-4 mt-4" showsVerticalScrollIndicator={false}>
         <View
           className="rounded-xl p-4 mb-6"
-          style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+          style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
         >
-          <Text className="text-sm leading-6" style={{ color: '#a0b4c8' }}>
+          <Text className="text-sm leading-6" style={{ color: theme.subtext }}>
             {content}
           </Text>
         </View>

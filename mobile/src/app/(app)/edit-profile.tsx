@@ -22,6 +22,7 @@ import type { User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { showMediaPicker } from '@/lib/file-picker';
 import { uploadFile } from '@/lib/upload';
+import { useTheme } from '@/lib/theme';
 
 const GENDER_OPTIONS = [
   { label: 'Man', value: 'man' },
@@ -53,6 +54,7 @@ const RELATIONSHIP_OPTIONS = [
 type PickerType = 'gender' | 'relationship' | null;
 
 export default function EditProfileScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -77,28 +79,22 @@ export default function EditProfileScreen() {
 
   const handleDateOfBirthChange = (text: string) => {
     setDobError('');
-    // Strip everything that isn't a digit or slash so we work with raw digits
     const digits = text.replace(/[^\d]/g, '');
     const prev = dateOfBirth;
-
-    // Detect backspace: new text is shorter than previous
     const isDeleting = text.length < prev.length;
 
     let formatted = '';
     if (digits.length <= 2) {
       formatted = digits;
-      // Auto-append slash once we have 2 day digits and the user is not deleting
       if (digits.length === 2 && !isDeleting) {
         formatted = digits + '/';
       }
     } else if (digits.length <= 4) {
       formatted = digits.slice(0, 2) + '/' + digits.slice(2);
-      // Auto-append slash once we have 4 digits (DD/MM) and the user is not deleting
       if (digits.length === 4 && !isDeleting) {
         formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/';
       }
     } else {
-      // DD/MM/YYYY — cap at 8 digits total
       const capped = digits.slice(0, 8);
       formatted = capped.slice(0, 2) + '/' + capped.slice(2, 4) + '/' + capped.slice(4);
     }
@@ -213,8 +209,6 @@ export default function EditProfileScreen() {
         setDobError('Please enter a valid date in DD/MM/YYYY format.');
       } else if (err.message === 'DOB_INVALID') {
         setDobError('The date you entered does not exist.');
-      } else if (err.message?.includes('already taken') || err.message?.includes('CONFLICT')) {
-        // username conflict (no longer editable, kept for safety)
       }
     },
   });
@@ -223,7 +217,7 @@ export default function EditProfileScreen() {
   const relationshipLabel = RELATIONSHIP_OPTIONS.find(o => o.value === relationshipStatus)?.label ?? (relationshipStatus || 'Select status');
 
   return (
-    <SafeAreaView testID="edit-profile-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="edit-profile-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -231,17 +225,17 @@ export default function EditProfileScreen() {
         {/* Header */}
         <View
           className="flex-row items-center justify-between px-4 py-3"
-          style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+          style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
         >
           <Pressable
             testID="back-button"
             onPress={handleBack}
             className="w-9 h-9 items-center justify-center rounded-full"
-            style={{ backgroundColor: '#0a2d50' }}
+            style={{ backgroundColor: theme.card }}
           >
-            <ArrowLeft size={18} color="#FFFFFF" />
+            <ArrowLeft size={18} color={theme.text} />
           </Pressable>
-          <Text className="text-white font-semibold text-base">Edit Profile</Text>
+          <Text style={{ color: theme.text }} className="font-semibold text-base">Edit Profile</Text>
           <Pressable
             testID="save-button"
             onPress={() => saveProfile.mutate()}
@@ -262,7 +256,7 @@ export default function EditProfileScreen() {
           <Pressable
             onPress={() => updateHeaderMutation.mutate()}
             disabled={updateHeaderMutation.isPending}
-            style={{ height: 140, backgroundColor: '#0a2d50' }}
+            style={{ height: 140, backgroundColor: theme.card }}
           >
             {profile?.headerImage ? (
               <Image
@@ -271,7 +265,7 @@ export default function EditProfileScreen() {
                 contentFit="cover"
               />
             ) : (
-              <View className="flex-1" style={{ backgroundColor: '#0a2d50' }} />
+              <View className="flex-1" style={{ backgroundColor: theme.card }} />
             )}
             <View style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -296,7 +290,7 @@ export default function EditProfileScreen() {
             <Pressable
               onPress={() => updateAvatarMutation.mutate()}
               disabled={updateAvatarMutation.isPending}
-              style={{ width: 80, borderColor: '#001935', borderWidth: 4, borderRadius: 44, position: 'relative', alignSelf: 'flex-start' }}
+              style={{ width: 80, borderColor: theme.bg, borderWidth: 4, borderRadius: 44, position: 'relative', alignSelf: 'flex-start' }}
             >
               <UserAvatar uri={profile?.image} name={profile?.name ?? 'U'} size={72} />
               <View style={{
@@ -311,14 +305,14 @@ export default function EditProfileScreen() {
                 )}
               </View>
             </Pressable>
-            <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Tap to change profile photo</Text>
+            <Text className="text-xs mt-2" style={{ color: theme.subtext }}>Tap to change profile photo</Text>
           </View>
 
           {/* Form Fields */}
           <View className="px-4 gap-4">
             {/* Name */}
             <View>
-              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                 Full Name
               </Text>
               <TextInput
@@ -326,16 +320,14 @@ export default function EditProfileScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Your full name"
-                placeholderTextColor="#2a4a6a"
-                className="text-white text-base py-3 px-4 rounded-xl"
-                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                placeholderTextColor={theme.subtext}
+                style={{ color: theme.text, fontSize: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
               />
             </View>
 
-
             {/* Pronouns */}
             <View>
-              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                 Pronouns
               </Text>
               <TextInput
@@ -343,15 +335,14 @@ export default function EditProfileScreen() {
                 value={pronouns}
                 onChangeText={setPronouns}
                 placeholder="e.g. they/them, she/her, he/him"
-                placeholderTextColor="#2a4a6a"
-                className="text-white text-base py-3 px-4 rounded-xl"
-                style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                placeholderTextColor={theme.subtext}
+                style={{ color: theme.text, fontSize: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
               />
             </View>
 
             {/* Bio */}
             <View>
-              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+              <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                 Bio
               </Text>
               <TextInput
@@ -359,29 +350,33 @@ export default function EditProfileScreen() {
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Tell people about yourself..."
-                placeholderTextColor="#2a4a6a"
+                placeholderTextColor={theme.subtext}
                 multiline
                 numberOfLines={4}
                 maxLength={500}
-                className="text-white text-base py-3 px-4 rounded-xl"
                 style={{
-                  backgroundColor: '#0a2d50',
-                  borderColor: '#1a3a5c',
+                  color: theme.text,
+                  fontSize: 16,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
                   borderWidth: 1,
                   textAlignVertical: 'top',
                   minHeight: 100,
                 }}
               />
-              <Text className="text-xs mt-1 text-right" style={{ color: '#2a4a6a' }}>{bio.length}/500</Text>
+              <Text className="text-xs mt-1 text-right" style={{ color: theme.subtext }}>{bio.length}/500</Text>
             </View>
 
             {/* Personal Info Section */}
-            <View style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5, paddingTop: 16, marginTop: 4 }}>
-              <Text className="text-white font-semibold text-sm mb-4">Personal Info</Text>
+            <View style={{ borderTopColor: theme.border, borderTopWidth: 0.5, paddingTop: 16, marginTop: 4 }}>
+              <Text style={{ color: theme.text }} className="font-semibold text-sm mb-4">Personal Info</Text>
 
               {/* Date of Birth */}
               <View className="mb-4">
-                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                   Date of Birth
                 </Text>
                 <TextInput
@@ -389,59 +384,58 @@ export default function EditProfileScreen() {
                   value={dateOfBirth}
                   onChangeText={handleDateOfBirthChange}
                   placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#2a4a6a"
+                  placeholderTextColor={theme.subtext}
                   keyboardType="numeric"
                   maxLength={10}
-                  className="text-white text-base py-3 px-4 rounded-xl"
-                  style={{ backgroundColor: '#0a2d50', borderColor: dobError ? '#FF4E6A' : '#1a3a5c', borderWidth: 1 }}
+                  style={{ color: theme.text, fontSize: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: theme.card, borderColor: dobError ? '#FF4E6A' : theme.border, borderWidth: 1 }}
                 />
                 {dobError ? (
                   <Text className="text-xs mt-1" style={{ color: '#FF4E6A' }}>{dobError}</Text>
                 ) : (
-                  <Text className="text-xs mt-1" style={{ color: '#2a4a6a' }}>Format: DD/MM/YYYY (e.g. 15/06/1990)</Text>
+                  <Text className="text-xs mt-1" style={{ color: theme.subtext }}>Format: DD/MM/YYYY (e.g. 15/06/1990)</Text>
                 )}
               </View>
 
               {/* Gender */}
               <View className="mb-4">
-                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                   Gender
                 </Text>
                 <Pressable
                   testID="gender-picker"
                   onPress={() => setActivePicker('gender')}
                   className="flex-row items-center justify-between py-3 px-4 rounded-xl"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                  style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
                 >
-                  <Text style={{ color: gender ? '#FFFFFF' : '#2a4a6a', fontSize: 16 }}>{genderLabel}</Text>
-                  <ChevronDown size={18} color="#4a6fa5" />
+                  <Text style={{ color: gender ? theme.text : theme.subtext, fontSize: 16 }}>{genderLabel}</Text>
+                  <ChevronDown size={18} color={theme.subtext} />
                 </Pressable>
               </View>
 
               {/* Relationship Status */}
               <View className="mb-4">
-                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                   Relationship Status
                 </Text>
                 <Pressable
                   testID="relationship-picker"
                   onPress={() => setActivePicker('relationship')}
                   className="flex-row items-center justify-between py-3 px-4 rounded-xl"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                  style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
                 >
-                  <Text style={{ color: relationshipStatus ? '#FFFFFF' : '#2a4a6a', fontSize: 16 }}>{relationshipLabel}</Text>
-                  <ChevronDown size={18} color="#4a6fa5" />
+                  <Text style={{ color: relationshipStatus ? theme.text : theme.subtext, fontSize: 16 }}>{relationshipLabel}</Text>
+                  <ChevronDown size={18} color={theme.subtext} />
                 </Pressable>
               </View>
             </View>
 
             {/* Contact Details Section */}
-            <View style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5, paddingTop: 16, marginTop: 4 }}>
-              <Text className="text-white font-semibold text-sm mb-4">Contact Details</Text>
+            <View style={{ borderTopColor: theme.border, borderTopWidth: 0.5, paddingTop: 16, marginTop: 4 }}>
+              <Text style={{ color: theme.text }} className="font-semibold text-sm mb-4">Contact Details</Text>
 
               {/* Website */}
               <View className="mb-4">
-                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                   Website
                 </Text>
                 <TextInput
@@ -449,17 +443,16 @@ export default function EditProfileScreen() {
                   value={website}
                   onChangeText={setWebsite}
                   placeholder="https://yourwebsite.com"
-                  placeholderTextColor="#2a4a6a"
+                  placeholderTextColor={theme.subtext}
                   autoCapitalize="none"
                   keyboardType="url"
-                  className="text-white text-base py-3 px-4 rounded-xl"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                  style={{ color: theme.text, fontSize: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
                 />
               </View>
 
               {/* Location */}
               <View>
-                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a6fa5' }}>
+                <Text className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: theme.subtext }}>
                   Location
                 </Text>
                 <TextInput
@@ -467,9 +460,8 @@ export default function EditProfileScreen() {
                   value={location}
                   onChangeText={setLocation}
                   placeholder="City, Country"
-                  placeholderTextColor="#2a4a6a"
-                  className="text-white text-base py-3 px-4 rounded-xl"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+                  placeholderTextColor={theme.subtext}
+                  style={{ color: theme.text, fontSize: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }}
                 />
               </View>
             </View>
@@ -491,15 +483,15 @@ export default function EditProfileScreen() {
           onPress={() => setActivePicker(null)}
         >
           <Pressable
-            style={{ backgroundColor: '#0a2d50', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}
+            style={{ backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}
             onPress={() => {}}
           >
-            <View className="flex-row items-center justify-between px-4 py-4" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-              <Text className="text-white font-semibold text-base">
+            <View className="flex-row items-center justify-between px-4 py-4" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
+              <Text style={{ color: theme.text }} className="font-semibold text-base">
                 {activePicker === 'gender' ? 'Select Gender' : 'Select Relationship Status'}
               </Text>
               <Pressable onPress={() => setActivePicker(null)}>
-                <X size={20} color="#4a6fa5" />
+                <X size={20} color={theme.subtext} />
               </Pressable>
             </View>
             <ScrollView style={{ maxHeight: 400 }}>
@@ -517,9 +509,9 @@ export default function EditProfileScreen() {
                       setActivePicker(null);
                     }}
                     className="flex-row items-center justify-between px-4 py-4"
-                    style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+                    style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
                   >
-                    <Text style={{ color: isSelected ? '#00CF35' : '#FFFFFF', fontSize: 16 }}>{option.label}</Text>
+                    <Text style={{ color: isSelected ? '#00CF35' : theme.text, fontSize: 16 }}>{option.label}</Text>
                     {isSelected ? <Check size={18} color="#00CF35" /> : null}
                   </Pressable>
                 );

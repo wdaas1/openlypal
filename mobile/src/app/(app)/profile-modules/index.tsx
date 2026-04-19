@@ -14,6 +14,7 @@ import { BlurView } from 'expo-blur';
 import { ArrowLeft, Plus, Trash2, Rocket, Target, Smile, BookOpen, Circle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { profileModulesApi, type ModuleType, type ProfileModule } from '@/lib/api/profile-modules';
+import { useTheme } from '@/lib/theme';
 
 const MODULE_TYPES: { type: ModuleType; label: string; emoji: string; icon: React.ReactNode }[] = [
   { type: 'project', label: 'Projects', emoji: '🚀', icon: <Rocket size={22} color="#00CF35" /> },
@@ -52,6 +53,7 @@ function parseModuleContent(mod: ProfileModule): Record<string, string> {
 }
 
 function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => void }) {
+  const theme = useTheme();
   const content = parseModuleContent(mod);
   const typeInfo = MODULE_TYPES.find(t => t.type === mod.type);
 
@@ -60,9 +62,9 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
       case 'project':
         return (
           <View>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{content.name ?? ''}</Text>
+            <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>{content.name ?? ''}</Text>
             {content.description ? (
-              <Text style={{ color: '#a0b4c8', fontSize: 12, marginTop: 2 }} numberOfLines={2}>{content.description}</Text>
+              <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={2}>{content.description}</Text>
             ) : null}
             {content.url ? (
               <Text style={{ color: '#00CF35', fontSize: 11, marginTop: 4 }} numberOfLines={1}>{content.url}</Text>
@@ -72,9 +74,9 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
       case 'goal':
         return (
           <View>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{content.title ?? ''}</Text>
+            <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>{content.title ?? ''}</Text>
             {content.deadline ? (
-              <Text style={{ color: '#a0b4c8', fontSize: 12, marginTop: 2 }}>Due: {content.deadline}</Text>
+              <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }}>Due: {content.deadline}</Text>
             ) : null}
           </View>
         );
@@ -83,16 +85,16 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 28 }}>{content.emoji ?? '😊'}</Text>
             {content.label ? (
-              <Text style={{ color: '#a0b4c8', fontSize: 13 }}>{content.label}</Text>
+              <Text style={{ color: theme.subtext, fontSize: 13 }}>{content.label}</Text>
             ) : null}
           </View>
         );
       case 'learning':
         return (
           <View>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{content.topic ?? ''}</Text>
+            <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }}>{content.topic ?? ''}</Text>
             {content.resource ? (
-              <Text style={{ color: '#a0b4c8', fontSize: 12, marginTop: 2 }}>{content.resource}</Text>
+              <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }}>{content.resource}</Text>
             ) : null}
           </View>
         );
@@ -100,7 +102,7 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
         return (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#00CF35' }} />
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{content.status ?? ''}</Text>
+            <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>{content.status ?? ''}</Text>
           </View>
         );
       default:
@@ -119,7 +121,7 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
         borderColor: 'rgba(0,207,53,0.2)',
       }}
     >
-      <BlurView intensity={10} tint="dark" style={{ padding: 14 }}>
+      <BlurView intensity={10} tint={theme.isDark ? 'dark' : 'light'} style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
             <View
@@ -162,12 +164,53 @@ function ModuleCard({ mod, onDelete }: { mod: ProfileModule; onDelete: () => voi
   );
 }
 
+function FormInput({
+  placeholder,
+  value,
+  onChangeText,
+  multiline,
+  autoCapitalize,
+  theme,
+}: {
+  placeholder: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  multiline?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  theme: { text: string; subtext: string; card: string; border: string };
+}) {
+  return (
+    <TextInput
+      placeholder={placeholder}
+      placeholderTextColor={theme.subtext}
+      value={value}
+      onChangeText={onChangeText}
+      multiline={multiline}
+      autoCapitalize={autoCapitalize}
+      style={{
+        backgroundColor: theme.card,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        color: theme.text,
+        fontSize: 14,
+        borderWidth: 0.5,
+        borderColor: theme.border,
+        minHeight: multiline ? 72 : undefined,
+        textAlignVertical: multiline ? 'top' : undefined,
+      }}
+    />
+  );
+}
+
 function ProjectForm({
   form,
   setForm,
+  theme,
 }: {
   form: { type: 'project'; name: string; description: string; url: string };
   setForm: (f: FormState) => void;
+  theme: { text: string; subtext: string; card: string; border: string };
 }) {
   return (
     <View style={{ gap: 10 }}>
@@ -175,18 +218,21 @@ function ProjectForm({
         placeholder="Project name"
         value={form.name}
         onChangeText={t => setForm({ ...form, name: t })}
+        theme={theme}
       />
       <FormInput
         placeholder="Short description"
         value={form.description}
         onChangeText={t => setForm({ ...form, description: t })}
         multiline
+        theme={theme}
       />
       <FormInput
         placeholder="URL (optional)"
         value={form.url}
         onChangeText={t => setForm({ ...form, url: t })}
         autoCapitalize="none"
+        theme={theme}
       />
     </View>
   );
@@ -195,9 +241,11 @@ function ProjectForm({
 function GoalForm({
   form,
   setForm,
+  theme,
 }: {
   form: { type: 'goal'; title: string; deadline: string };
   setForm: (f: FormState) => void;
+  theme: { text: string; subtext: string; card: string; border: string };
 }) {
   return (
     <View style={{ gap: 10 }}>
@@ -205,11 +253,13 @@ function GoalForm({
         placeholder="Goal title"
         value={form.title}
         onChangeText={t => setForm({ ...form, title: t })}
+        theme={theme}
       />
       <FormInput
         placeholder="Deadline e.g. Dec 2025 (optional)"
         value={form.deadline}
         onChangeText={t => setForm({ ...form, deadline: t })}
+        theme={theme}
       />
     </View>
   );
@@ -218,9 +268,11 @@ function GoalForm({
 function MoodForm({
   form,
   setForm,
+  theme,
 }: {
   form: { type: 'mood'; emoji: string; label: string };
   setForm: (f: FormState) => void;
+  theme: { text: string; subtext: string; card: string; border: string };
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -236,9 +288,9 @@ function MoodForm({
               borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: form.emoji === e ? 'rgba(0,207,53,0.2)' : 'rgba(10,45,80,0.8)',
+              backgroundColor: form.emoji === e ? 'rgba(0,207,53,0.2)' : theme.card,
               borderWidth: form.emoji === e ? 1.5 : 0.5,
-              borderColor: form.emoji === e ? '#00CF35' : 'rgba(255,255,255,0.1)',
+              borderColor: form.emoji === e ? '#00CF35' : theme.border,
             }}
           >
             <Text style={{ fontSize: 26 }}>{e}</Text>
@@ -249,6 +301,7 @@ function MoodForm({
         placeholder="Describe your mood (optional)"
         value={form.label}
         onChangeText={t => setForm({ ...form, label: t })}
+        theme={theme}
       />
     </View>
   );
@@ -257,9 +310,11 @@ function MoodForm({
 function LearningForm({
   form,
   setForm,
+  theme,
 }: {
   form: { type: 'learning'; topic: string; resource: string };
   setForm: (f: FormState) => void;
+  theme: { text: string; subtext: string; card: string; border: string };
 }) {
   return (
     <View style={{ gap: 10 }}>
@@ -267,11 +322,13 @@ function LearningForm({
         placeholder="What are you learning?"
         value={form.topic}
         onChangeText={t => setForm({ ...form, topic: t })}
+        theme={theme}
       />
       <FormInput
         placeholder="Resource or course (optional)"
         value={form.resource}
         onChangeText={t => setForm({ ...form, resource: t })}
+        theme={theme}
       />
     </View>
   );
@@ -280,9 +337,11 @@ function LearningForm({
 function AvailabilityForm({
   form,
   setForm,
+  theme,
 }: {
   form: { type: 'availability'; status: string };
   setForm: (f: FormState) => void;
+  theme: { text: string; subtext: string; card: string; border: string };
 }) {
   return (
     <View style={{ gap: 8 }}>
@@ -297,9 +356,9 @@ function AvailabilityForm({
             gap: 10,
             padding: 14,
             borderRadius: 12,
-            backgroundColor: form.status === opt ? 'rgba(0,207,53,0.15)' : 'rgba(10,45,80,0.8)',
+            backgroundColor: form.status === opt ? 'rgba(0,207,53,0.15)' : theme.card,
             borderWidth: form.status === opt ? 1.5 : 0.5,
-            borderColor: form.status === opt ? '#00CF35' : 'rgba(255,255,255,0.1)',
+            borderColor: form.status === opt ? '#00CF35' : theme.border,
           }}
         >
           <View
@@ -307,12 +366,12 @@ function AvailabilityForm({
               width: 10,
               height: 10,
               borderRadius: 5,
-              backgroundColor: form.status === opt ? '#00CF35' : '#4a6fa5',
+              backgroundColor: form.status === opt ? '#00CF35' : theme.subtext,
             }}
           />
           <Text
             style={{
-              color: form.status === opt ? '#fff' : '#a0b4c8',
+              color: form.status === opt ? theme.text : theme.subtext,
               fontSize: 14,
               fontWeight: form.status === opt ? '700' : '400',
             }}
@@ -325,44 +384,8 @@ function AvailabilityForm({
   );
 }
 
-function FormInput({
-  placeholder,
-  value,
-  onChangeText,
-  multiline,
-  autoCapitalize,
-}: {
-  placeholder: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  multiline?: boolean;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-}) {
-  return (
-    <TextInput
-      placeholder={placeholder}
-      placeholderTextColor="#4a6fa5"
-      value={value}
-      onChangeText={onChangeText}
-      multiline={multiline}
-      autoCapitalize={autoCapitalize}
-      style={{
-        backgroundColor: 'rgba(10,45,80,0.8)',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        color: '#fff',
-        fontSize: 14,
-        borderWidth: 0.5,
-        borderColor: 'rgba(255,255,255,0.12)',
-        minHeight: multiline ? 72 : undefined,
-        textAlignVertical: multiline ? 'top' : undefined,
-      }}
-    />
-  );
-}
-
 export default function ProfileModulesScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -422,15 +445,15 @@ export default function ProfileModulesScreen() {
     if (!form) return null;
     switch (form.type) {
       case 'project':
-        return <ProjectForm form={form} setForm={setForm} />;
+        return <ProjectForm form={form} setForm={setForm} theme={theme} />;
       case 'goal':
-        return <GoalForm form={form} setForm={setForm} />;
+        return <GoalForm form={form} setForm={setForm} theme={theme} />;
       case 'mood':
-        return <MoodForm form={form} setForm={setForm} />;
+        return <MoodForm form={form} setForm={setForm} theme={theme} />;
       case 'learning':
-        return <LearningForm form={form} setForm={setForm} />;
+        return <LearningForm form={form} setForm={setForm} theme={theme} />;
       case 'availability':
-        return <AvailabilityForm form={form} setForm={setForm} />;
+        return <AvailabilityForm form={form} setForm={setForm} theme={theme} />;
       default:
         return null;
     }
@@ -439,7 +462,7 @@ export default function ProfileModulesScreen() {
   const moduleList = modules ?? [];
 
   return (
-    <SafeAreaView testID="profile-modules-screen" style={{ flex: 1, backgroundColor: '#000d1a' }} edges={['top']}>
+    <SafeAreaView testID="profile-modules-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View
         style={{
@@ -448,7 +471,7 @@ export default function ProfileModulesScreen() {
           paddingHorizontal: 16,
           paddingVertical: 14,
           borderBottomWidth: 0.5,
-          borderBottomColor: 'rgba(255,255,255,0.07)',
+          borderBottomColor: theme.border,
         }}
       >
         <Pressable
@@ -458,15 +481,15 @@ export default function ProfileModulesScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: 'rgba(10,45,80,0.8)',
+            backgroundColor: theme.card,
             alignItems: 'center',
             justifyContent: 'center',
             marginRight: 12,
           }}
         >
-          <ArrowLeft size={18} color="#fff" />
+          <ArrowLeft size={18} color={theme.text} />
         </Pressable>
-        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', flex: 1 }}>My Modules</Text>
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', flex: 1 }}>My Modules</Text>
         <Pressable
           testID="add-module-button"
           onPress={() => {
@@ -485,8 +508,8 @@ export default function ProfileModulesScreen() {
             paddingVertical: 8,
           }}
         >
-          <Plus size={16} color="#000d1a" />
-          <Text style={{ color: '#000d1a', fontSize: 13, fontWeight: '800' }}>Add</Text>
+          <Plus size={16} color="#001935" />
+          <Text style={{ color: '#001935', fontSize: 13, fontWeight: '800' }}>Add</Text>
         </Pressable>
       </View>
 
@@ -494,7 +517,7 @@ export default function ProfileModulesScreen() {
         {/* Type Selector */}
         {showTypeSelector ? (
           <View style={{ padding: 16 }}>
-            <Text style={{ color: '#a0b4c8', fontSize: 13, marginBottom: 12, fontWeight: '600' }}>
+            <Text style={{ color: theme.subtext, fontSize: 13, marginBottom: 12, fontWeight: '600' }}>
               Choose a module type
             </Text>
             <View style={{ gap: 8 }}>
@@ -509,13 +532,13 @@ export default function ProfileModulesScreen() {
                     gap: 14,
                     padding: 16,
                     borderRadius: 16,
-                    backgroundColor: 'rgba(10,45,80,0.7)',
+                    backgroundColor: theme.card,
                     borderWidth: 0.5,
                     borderColor: 'rgba(0,207,53,0.2)',
                   }}
                 >
                   <Text style={{ fontSize: 28 }}>{mt.emoji}</Text>
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{mt.label}</Text>
+                  <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700' }}>{mt.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -524,7 +547,7 @@ export default function ProfileModulesScreen() {
               onPress={() => setShowTypeSelector(false)}
               style={{ marginTop: 12, alignItems: 'center', paddingVertical: 10 }}
             >
-              <Text style={{ color: '#4a6fa5', fontSize: 14 }}>Cancel</Text>
+              <Text style={{ color: theme.subtext, fontSize: 14 }}>Cancel</Text>
             </Pressable>
           </View>
         ) : null}
@@ -540,7 +563,7 @@ export default function ProfileModulesScreen() {
               borderColor: 'rgba(0,207,53,0.3)',
             }}
           >
-            <BlurView intensity={12} tint="dark" style={{ padding: 16 }}>
+            <BlurView intensity={12} tint={theme.isDark ? 'dark' : 'light'} style={{ padding: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Text style={{ fontSize: 22 }}>
                   {MODULE_TYPES.find(t => t.type === selectedType)?.emoji}
@@ -562,12 +585,12 @@ export default function ProfileModulesScreen() {
                     paddingVertical: 13,
                     borderRadius: 12,
                     alignItems: 'center',
-                    backgroundColor: 'rgba(10,45,80,0.8)',
+                    backgroundColor: theme.card,
                     borderWidth: 0.5,
-                    borderColor: 'rgba(255,255,255,0.12)',
+                    borderColor: theme.border,
                   }}
                 >
-                  <Text style={{ color: '#a0b4c8', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                  <Text style={{ color: theme.subtext, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   testID="save-module-button"
@@ -582,9 +605,9 @@ export default function ProfileModulesScreen() {
                   }}
                 >
                   {createMutation.isPending ? (
-                    <ActivityIndicator color="#000d1a" size="small" />
+                    <ActivityIndicator color="#001935" size="small" />
                   ) : (
-                    <Text style={{ color: '#000d1a', fontWeight: '800', fontSize: 14 }}>Save Module</Text>
+                    <Text style={{ color: '#001935', fontWeight: '800', fontSize: 14 }}>Save Module</Text>
                   )}
                 </Pressable>
               </View>
@@ -598,10 +621,10 @@ export default function ProfileModulesScreen() {
         ) : moduleList.length === 0 && !showTypeSelector && !form ? (
           <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 }}>
             <Text style={{ fontSize: 48, marginBottom: 16 }}>🧩</Text>
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 8 }}>
+            <Text style={{ color: theme.text, fontSize: 18, fontWeight: '800', marginBottom: 8 }}>
               No modules yet
             </Text>
-            <Text style={{ color: '#4a6fa5', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+            <Text style={{ color: theme.subtext, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
               Add modules to showcase your projects, goals, mood, and more on your profile.
             </Text>
           </View>
@@ -610,7 +633,7 @@ export default function ProfileModulesScreen() {
             {moduleList.length > 0 ? (
               <Text
                 style={{
-                  color: '#4a6fa5',
+                  color: theme.subtext,
                   fontSize: 11,
                   fontWeight: '700',
                   letterSpacing: 1.2,

@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
 import type { User } from '@/lib/types';
+import { useTheme } from '@/lib/theme';
 
 const CATEGORIES = [
   { id: 'art', label: 'Art & Design', emoji: '🎨' },
@@ -34,6 +35,7 @@ const CATEGORIES = [
 ];
 
 export default function InterestsScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -93,15 +95,15 @@ export default function InterestsScreen() {
           paddingVertical: 20,
           paddingHorizontal: 12,
           alignItems: 'center',
-          backgroundColor: isSelected ? 'rgba(0,207,53,0.12)' : '#0a2d50',
+          backgroundColor: isSelected ? 'rgba(0,207,53,0.12)' : theme.card,
           borderWidth: 1.5,
-          borderColor: isSelected ? '#00CF35' : '#1a3a5c',
+          borderColor: isSelected ? '#00CF35' : theme.border,
         }}
       >
         <Text style={{ fontSize: 32, marginBottom: 8 }}>{item.emoji}</Text>
         <Text
           className="text-xs font-semibold text-center"
-          style={{ color: isSelected ? '#00CF35' : '#a0b4c8' }}
+          style={{ color: isSelected ? '#00CF35' : theme.subtext }}
           numberOfLines={2}
         >
           {item.label}
@@ -111,13 +113,13 @@ export default function InterestsScreen() {
   };
 
   return (
-    <SafeAreaView testID="interests-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="interests-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
+      <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
         <Pressable testID="back-button" onPress={handleBack}>
-          <Text style={{ color: '#4a6fa5' }} className="text-base">Cancel</Text>
+          <Text style={{ color: theme.subtext }} className="text-base">Cancel</Text>
         </Pressable>
-        <Text className="text-white font-bold text-lg">Interests</Text>
+        <Text style={{ color: theme.text }} className="font-bold text-lg">Interests</Text>
         <Pressable
           testID="save-interests-button"
           onPress={() => saveMutation.mutate()}
@@ -134,8 +136,8 @@ export default function InterestsScreen() {
       </View>
 
       <View className="px-4 py-4">
-        <Text className="text-white font-semibold text-base mb-1">What are you into?</Text>
-        <Text className="text-sm" style={{ color: '#4a6fa5' }}>
+        <Text style={{ color: theme.text }} className="font-semibold text-base mb-1">What are you into?</Text>
+        <Text className="text-sm" style={{ color: theme.subtext }}>
           Select topics to personalize your feed. {selectedIds.length > 0 ? `${selectedIds.length} selected.` : null}
         </Text>
       </View>

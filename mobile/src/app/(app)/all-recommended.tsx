@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import type { User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
+import { useTheme } from '@/lib/theme';
 
 function formatCount(count: number): string {
   if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
@@ -15,6 +16,7 @@ function formatCount(count: number): string {
 }
 
 export default function AllRecommendedScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -40,7 +42,7 @@ export default function AllRecommendedScreen() {
   });
 
   return (
-    <SafeAreaView testID="all-recommended-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="all-recommended-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View style={{
         flexDirection: 'row',
@@ -49,20 +51,20 @@ export default function AllRecommendedScreen() {
         paddingTop: 4,
         paddingBottom: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#0a2d50',
+        borderBottomColor: theme.card,
       }}>
         <Pressable
           testID="back-button"
           onPress={() => router.back()}
-          style={{ padding: 6, marginRight: 10, borderRadius: 20, backgroundColor: '#0a2d50' }}
+          style={{ padding: 6, marginRight: 10, borderRadius: 20, backgroundColor: theme.card }}
           hitSlop={8}
         >
-          <ArrowLeft size={20} color="#FFFFFF" />
+          <ArrowLeft size={20} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 20 }}>Recommended Blogs</Text>
+          <Text style={{ color: theme.text, fontWeight: '700', fontSize: 20 }}>Recommended Blogs</Text>
           {users && users.length > 0 ? (
-            <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }}>
+            <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 1 }}>
               {users.length} people to follow
             </Text>
           ) : null}
@@ -96,8 +98,8 @@ export default function AllRecommendedScreen() {
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={() => (
             <View style={{ alignItems: 'center', paddingTop: 64 }}>
-              <Users size={48} color="rgba(255,255,255,0.1)" />
-              <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 15, fontWeight: '600', marginTop: 16 }}>
+              <Users size={48} color={theme.border} />
+              <Text style={{ color: theme.subtext, fontSize: 15, fontWeight: '600', marginTop: 16 }}>
                 No recommendations yet
               </Text>
             </View>
@@ -109,10 +111,10 @@ export default function AllRecommendedScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: '#0a2d50',
+                backgroundColor: theme.card,
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: '#1a3a5c',
+                borderColor: theme.border,
                 borderTopWidth: 2,
                 borderTopColor: 'rgba(0,207,53,0.3)',
                 paddingVertical: 14,
@@ -124,21 +126,21 @@ export default function AllRecommendedScreen() {
 
               {/* User info */}
               <View style={{ flex: 1, marginLeft: 14 }}>
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }} numberOfLines={1}>
+                <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15 }} numberOfLines={1}>
                   {user.name}
                 </Text>
                 {user.username ? (
-                  <Text style={{ color: '#4a6fa5', fontSize: 13, marginTop: 1 }} numberOfLines={1}>
+                  <Text style={{ color: theme.subtext, fontSize: 13, marginTop: 1 }} numberOfLines={1}>
                     @{user.username}
                   </Text>
                 ) : null}
                 {user.followerCount !== undefined ? (
-                  <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 3 }}>
+                  <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 3 }}>
                     {formatCount(user.followerCount)} followers
                   </Text>
                 ) : null}
                 {user.bio ? (
-                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }} numberOfLines={2}>
+                  <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }} numberOfLines={2}>
                     {user.bio}
                   </Text>
                 ) : null}

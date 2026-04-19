@@ -385,7 +385,7 @@ export default function ProfileScreen() {
                 {/* Username + pronouns */}
                 {profile?.username ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                    <Text style={{ color: '#4a6fa5', fontSize: 13 }}>
+                    <Text style={{ color: theme.subtext, fontSize: 13 }}>
                       @{profile.username}
                     </Text>
                     {followerCount > 0 ? (
@@ -393,8 +393,8 @@ export default function ProfileScreen() {
                     ) : null}
                     {profile?.pronouns ? (
                       <>
-                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>·</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                        <Text style={{ color: theme.subtext, fontSize: 12 }}>·</Text>
+                        <Text style={{ color: theme.subtext, fontSize: 12 }}>
                           {profile.pronouns}
                         </Text>
                       </>
@@ -404,7 +404,7 @@ export default function ProfileScreen() {
 
                 {/* Bio */}
                 {profile?.bio ? (
-                  <Text style={{ color: '#a0b4c8', fontSize: 13, marginTop: 8, lineHeight: 18 }}>
+                  <Text style={{ color: theme.subtext, fontSize: 13, marginTop: 8, lineHeight: 18 }}>
                     {profile.bio}
                   </Text>
                 ) : null}
@@ -412,8 +412,8 @@ export default function ProfileScreen() {
                 {/* Location */}
                 {profile?.location ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-                    <MapPin size={12} color="#4a6fa5" />
-                    <Text style={{ color: '#4a6fa5', fontSize: 12 }}>{profile.location}</Text>
+                    <MapPin size={12} color={theme.subtext} />
+                    <Text style={{ color: theme.subtext, fontSize: 12 }}>{profile.location}</Text>
                   </View>
                 ) : null}
 
@@ -447,7 +447,7 @@ export default function ProfileScreen() {
                   onPress={() => Linking.openURL(link.url)}
                   style={{
                     flexDirection: 'row', alignItems: 'center', gap: 5,
-                    backgroundColor: '#0a2d50', borderRadius: 12,
+                    backgroundColor: theme.card, borderRadius: 12,
                     paddingHorizontal: 10, paddingVertical: 4,
                   }}
                 >
@@ -487,10 +487,10 @@ export default function ProfileScreen() {
             testID="pinned-post-card"
             onPress={() => router.push(`/(app)/post/${profile.pinnedPost!.id}` as any)}
             style={{
-              backgroundColor: 'rgba(10,45,80,0.7)',
+              backgroundColor: theme.card,
               borderRadius: 14,
               borderWidth: 0.5,
-              borderColor: 'rgba(255,255,255,0.08)',
+              borderColor: theme.border,
               marginHorizontal: 16,
               marginTop: 12,
               marginBottom: 8,
@@ -501,7 +501,7 @@ export default function ProfileScreen() {
               <Pin size={12} color="#00CF35" />
               <Text style={{ color: '#00CF35', fontSize: 11, fontWeight: '700' }}>Pinned Post</Text>
             </View>
-            <Text style={{ color: '#FFFFFF', fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+            <Text style={{ color: theme.text, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
               {profile.pinnedPost.title ?? profile.pinnedPost.content ?? ''}
             </Text>
           </Pressable>
@@ -510,7 +510,7 @@ export default function ProfileScreen() {
         {/* Tabs — pill segmented control */}
         <View style={{
           flexDirection: 'row',
-          backgroundColor: 'rgba(10,45,80,0.7)',
+          backgroundColor: theme.card,
           borderRadius: 22,
           padding: 4,
           margin: 16,
@@ -526,7 +526,7 @@ export default function ProfileScreen() {
               ]}
             >
               {tab.icon}
-              <Text style={{ fontWeight: '600', fontSize: 13, color: activeTab === tab.id ? '#001935' : 'rgba(255,255,255,0.4)' }}>
+              <Text style={{ fontWeight: '600', fontSize: 13, color: activeTab === tab.id ? '#001935' : theme.subtext }}>
                 {tab.label}
               </Text>
             </Pressable>
@@ -541,20 +541,20 @@ export default function ProfileScreen() {
             <View style={{
               width: 64, height: 64, borderRadius: 18,
               alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-              backgroundColor: '#0a2d50',
+              backgroundColor: theme.card,
               borderWidth: 0.5,
-              borderColor: 'rgba(255,255,255,0.06)',
+              borderColor: theme.border,
             }}>
               {activeTab === 'liked' ? (
-                <Heart size={28} color="#2a4a6a" />
+                <Heart size={28} color={theme.border} />
               ) : (
-                <Grid3X3 size={28} color="#2a4a6a" />
+                <Grid3X3 size={28} color={theme.border} />
               )}
             </View>
-            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
+            <Text style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>
               {activeTab === 'posts' ? 'No posts yet' : activeTab === 'media' ? 'No media yet' : 'No liked posts yet'}
             </Text>
-            <Text style={{ color: '#4a6fa5', fontSize: 13, textAlign: 'center', marginTop: 6 }}>
+            <Text style={{ color: theme.subtext, fontSize: 13, textAlign: 'center', marginTop: 6 }}>
               {activeTab === 'posts'
                 ? 'Share your first post to get started'
                 : activeTab === 'media'

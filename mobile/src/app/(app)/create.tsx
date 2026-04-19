@@ -10,6 +10,7 @@ import { api } from '@/lib/api/api';
 import { cn } from '@/lib/cn';
 import { pickMultipleImages, pickVideo, takePhoto, recordVideo } from '@/lib/file-picker';
 import { uploadFile, uploadFileWithProgress } from '@/lib/upload';
+import { useTheme } from '@/lib/theme';
 
 type PostType = 'text' | 'photo' | 'quote' | 'link' | 'video';
 
@@ -29,6 +30,7 @@ const CATEGORIES = [
 ];
 
 export default function CreateScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -154,24 +156,24 @@ export default function CreateScreen() {
   const isVideoUploading = uploadVideoMutation.isPending || recordVideoMutation.isPending;
 
   return (
-    <SafeAreaView testID="create-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="create-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
+      <View className="flex-row items-center justify-between px-4 py-3" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
         <Pressable testID="cancel-button" onPress={handleBack}>
-          <Text style={{ color: '#4a6fa5' }} className="text-base">Cancel</Text>
+          <Text style={{ color: theme.subtext }} className="text-base">Cancel</Text>
         </Pressable>
-        <Text className="text-white font-bold text-lg">New Post</Text>
+        <Text style={{ color: theme.text }} className="font-bold text-lg">New Post</Text>
         <Pressable
           testID="post-button"
           onPress={() => createPost.mutate()}
           disabled={!canPost || createPost.isPending}
           className="rounded-full px-5 py-1.5"
-          style={{ backgroundColor: canPost ? '#00CF35' : '#0a2d50' }}
+          style={{ backgroundColor: canPost ? '#00CF35' : theme.card }}
         >
           {createPost.isPending ? (
             <ActivityIndicator testID="loading-indicator" color="#001935" size="small" />
           ) : (
-            <Text className="font-bold text-sm" style={{ color: canPost ? '#001935' : '#4a6fa5' }}>
+            <Text className="font-bold text-sm" style={{ color: canPost ? '#001935' : theme.subtext }}>
               Post
             </Text>
           )}
@@ -196,16 +198,16 @@ export default function CreateScreen() {
                   'items-center py-3 rounded-xl px-4',
                 )}
                 style={{
-                  backgroundColor: isActive ? '#00CF35' : '#0a2d50',
-                  borderColor: '#1a3a5c',
+                  backgroundColor: isActive ? '#00CF35' : theme.card,
+                  borderColor: theme.border,
                   borderWidth: isActive ? 0 : 1,
                   minWidth: 64,
                 }}
               >
-                <IconComponent size={20} color={isActive ? '#001935' : '#4a6fa5'} />
+                <IconComponent size={20} color={isActive ? '#001935' : theme.subtext} />
                 <Text
                   className="text-xs font-medium mt-1"
-                  style={{ color: isActive ? '#001935' : '#4a6fa5' }}
+                  style={{ color: isActive ? '#001935' : theme.subtext }}
                 >
                   {pt.label}
                 </Text>
@@ -221,9 +223,8 @@ export default function CreateScreen() {
             value={title}
             onChangeText={setTitle}
             placeholder="Title (optional)"
-            placeholderTextColor="#4a6fa5"
-            className="text-white text-xl font-bold mb-4 pb-3"
-            style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+            placeholderTextColor={theme.subtext}
+            style={{ color: theme.text, fontSize: 20, fontWeight: 'bold', marginBottom: 16, paddingBottom: 12, borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
           />
         ) : null}
 
@@ -233,11 +234,10 @@ export default function CreateScreen() {
           value={content}
           onChangeText={setContent}
           placeholder={postType === 'quote' ? 'Enter your quote...' : 'Go ahead, put anything.'}
-          placeholderTextColor="#4a6fa5"
+          placeholderTextColor={theme.subtext}
           multiline
           textAlignVertical="top"
-          className="text-white text-base mb-4 min-h-[120px]"
-          style={{ lineHeight: 22 }}
+          style={{ color: theme.text, fontSize: 16, marginBottom: 16, minHeight: 120, lineHeight: 22 }}
         />
 
         {/* Image picker for photo posts */}
@@ -247,7 +247,7 @@ export default function CreateScreen() {
               <View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
                   {imageUrls.map((url, index) => (
-                    <View key={url} style={{ width: 120, height: 120, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: '#0a2d50' }}>
+                    <View key={url} style={{ width: 120, height: 120, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: theme.card }}>
                       <Image
                         source={{ uri: url }}
                         style={{ width: 120, height: 120, borderRadius: 12 }}
@@ -268,19 +268,19 @@ export default function CreateScreen() {
                   <Pressable
                     onPress={() => uploadMutation.mutate()}
                     disabled={isUploading}
-                    style={{ width: 120, height: 120, borderRadius: 12, backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: 120, height: 120, borderRadius: 12, backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }}
                   >
                     {uploadMutation.isPending ? (
                       <ActivityIndicator color="#00CF35" />
                     ) : (
                       <>
-                        <ImageIcon size={20} color="#4a6fa5" />
-                        <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 4 }}>Add more</Text>
+                        <ImageIcon size={20} color={theme.subtext} />
+                        <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 4 }}>Add more</Text>
                       </>
                     )}
                   </Pressable>
                 </ScrollView>
-                <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 4 }}>{imageUrls.length} photo{imageUrls.length !== 1 ? 's' : ''} selected</Text>
+                <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 4 }}>{imageUrls.length} photo{imageUrls.length !== 1 ? 's' : ''} selected</Text>
               </View>
             ) : (
               <View className="flex-row gap-3">
@@ -289,14 +289,14 @@ export default function CreateScreen() {
                   onPress={() => uploadMutation.mutate()}
                   disabled={isUploading}
                   className="flex-1 rounded-xl items-center justify-center py-8"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                  style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderStyle: 'dashed' }}
                 >
                   {uploadMutation.isPending ? (
                     <ActivityIndicator testID="upload-loading-indicator" color="#00CF35" />
                   ) : (
                     <>
-                      <ImageIcon size={24} color="#4a6fa5" />
-                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Library</Text>
+                      <ImageIcon size={24} color={theme.subtext} />
+                      <Text className="text-xs mt-2" style={{ color: theme.subtext }}>Library</Text>
                     </>
                   )}
                 </Pressable>
@@ -305,14 +305,14 @@ export default function CreateScreen() {
                   onPress={() => takePictureMutation.mutate()}
                   disabled={isUploading}
                   className="flex-1 rounded-xl items-center justify-center py-8"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                  style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderStyle: 'dashed' }}
                 >
                   {takePictureMutation.isPending ? (
                     <ActivityIndicator testID="camera-loading-indicator" color="#00CF35" />
                   ) : (
                     <>
-                      <Camera size={24} color="#4a6fa5" />
-                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Camera</Text>
+                      <Camera size={24} color={theme.subtext} />
+                      <Text className="text-xs mt-2" style={{ color: theme.subtext }}>Camera</Text>
                     </>
                   )}
                 </Pressable>
@@ -335,9 +335,9 @@ export default function CreateScreen() {
         {postType === 'video' ? (
           <View className="mb-4">
             {videoUrl ? (
-              <View className="rounded-xl overflow-hidden items-center justify-center" style={{ backgroundColor: '#0a2d50', height: 120, position: 'relative' }}>
+              <View className="rounded-xl overflow-hidden items-center justify-center" style={{ backgroundColor: theme.card, height: 120, position: 'relative' }}>
                 <VideoIcon size={28} color="#00CF35" />
-                <Text className="text-sm mt-2 px-4 text-center" style={{ color: '#4a6fa5' }} numberOfLines={1}>
+                <Text className="text-sm mt-2 px-4 text-center" style={{ color: theme.subtext }} numberOfLines={1}>
                   {videoUrl}
                 </Text>
                 <Pressable
@@ -365,14 +365,14 @@ export default function CreateScreen() {
                   onPress={() => uploadVideoMutation.mutate()}
                   disabled={isVideoUploading}
                   className="flex-1 rounded-xl items-center justify-center py-8"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                  style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderStyle: 'dashed' }}
                 >
                   {uploadVideoMutation.isPending ? (
                     <ActivityIndicator testID="upload-video-loading-indicator" color="#00CF35" />
                   ) : (
                     <>
-                      <VideoIcon size={24} color="#4a6fa5" />
-                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Library</Text>
+                      <VideoIcon size={24} color={theme.subtext} />
+                      <Text className="text-xs mt-2" style={{ color: theme.subtext }}>Library</Text>
                     </>
                   )}
                 </Pressable>
@@ -381,14 +381,14 @@ export default function CreateScreen() {
                   onPress={() => recordVideoMutation.mutate()}
                   disabled={isVideoUploading}
                   className="flex-1 rounded-xl items-center justify-center py-8"
-                  style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1, borderStyle: 'dashed' }}
+                  style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderStyle: 'dashed' }}
                 >
                   {recordVideoMutation.isPending ? (
                     <ActivityIndicator testID="record-video-loading-indicator" color="#00CF35" />
                   ) : (
                     <>
-                      <Camera size={24} color="#4a6fa5" />
-                      <Text className="text-xs mt-2" style={{ color: '#4a6fa5' }}>Record</Text>
+                      <Camera size={24} color={theme.subtext} />
+                      <Text className="text-xs mt-2" style={{ color: theme.subtext }}>Record</Text>
                     </>
                   )}
                 </Pressable>
@@ -407,12 +407,12 @@ export default function CreateScreen() {
             {(uploadVideoMutation.isPending || recordVideoMutation.isPending) && videoUploadProgress > 0 ? (
               <View className="mt-3">
                 <View className="flex-row justify-between mb-1">
-                  <Text className="text-xs" style={{ color: '#4a6fa5' }}>Uploading video…</Text>
+                  <Text className="text-xs" style={{ color: theme.subtext }}>Uploading video…</Text>
                   <Text className="text-xs font-semibold" style={{ color: '#00CF35' }}>
                     {Math.round(videoUploadProgress * 100)}%
                   </Text>
                 </View>
-                <View style={{ height: 4, backgroundColor: '#0a2d50', borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ height: 4, backgroundColor: theme.card, borderRadius: 2, overflow: 'hidden' }}>
                   <View
                     testID="video-upload-progress-bar"
                     style={{
@@ -435,11 +435,10 @@ export default function CreateScreen() {
             value={linkUrl}
             onChangeText={setLinkUrl}
             placeholder="Link URL"
-            placeholderTextColor="#4a6fa5"
+            placeholderTextColor={theme.subtext}
             autoCapitalize="none"
             keyboardType="url"
-            className="rounded-xl px-4 py-3 text-white text-sm mb-4"
-            style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+            style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: theme.text, fontSize: 14, marginBottom: 16 }}
           />
         ) : null}
 
@@ -449,15 +448,14 @@ export default function CreateScreen() {
           value={tagsInput}
           onChangeText={setTagsInput}
           placeholder="Tags (comma separated)"
-          placeholderTextColor="#4a6fa5"
-          className="rounded-xl px-4 py-3 text-white text-sm mb-3"
-          style={{ backgroundColor: '#0a2d50', borderColor: '#1a3a5c', borderWidth: 1 }}
+          placeholderTextColor={theme.subtext}
+          style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: theme.text, fontSize: 14, marginBottom: 12 }}
         />
 
         {tagChips.length > 0 ? (
           <View className="flex-row flex-wrap gap-2 mb-4">
             {tagChips.map((tag) => (
-              <View key={tag} className="rounded-full px-3 py-1" style={{ backgroundColor: '#0a2d50' }}>
+              <View key={tag} className="rounded-full px-3 py-1" style={{ backgroundColor: theme.card }}>
                 <Text style={{ color: '#00CF35' }} className="text-xs">#{tag}</Text>
               </View>
             ))}
@@ -465,7 +463,7 @@ export default function CreateScreen() {
         ) : null}
 
         {/* Categories */}
-        <Text className="text-white font-semibold text-sm mb-2">Category</Text>
+        <Text style={{ color: theme.text }} className="font-semibold text-sm mb-2">Category</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 16 }}>
           {CATEGORIES.map((cat) => {
             const isActive = category === cat;
@@ -480,13 +478,13 @@ export default function CreateScreen() {
                 className="rounded-full px-4 py-2"
                 style={{
                   backgroundColor: isActive ? '#00CF35' : 'transparent',
-                  borderColor: isActive ? '#00CF35' : '#1a3a5c',
+                  borderColor: isActive ? '#00CF35' : theme.border,
                   borderWidth: 1,
                 }}
               >
                 <Text
                   className="text-sm font-medium"
-                  style={{ color: isActive ? '#001935' : '#4a6fa5' }}
+                  style={{ color: isActive ? '#001935' : theme.subtext }}
                 >
                   {cat}
                 </Text>
@@ -496,9 +494,9 @@ export default function CreateScreen() {
         </ScrollView>
 
         {/* Explicit Content Toggle */}
-        <View className="flex-row items-center justify-between mb-2 py-3" style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5 }}>
+        <View className="flex-row items-center justify-between mb-2 py-3" style={{ borderTopColor: theme.border, borderTopWidth: 0.5 }}>
           <View className="flex-1">
-            <Text className="text-white font-semibold text-sm">Explicit content</Text>
+            <Text style={{ color: theme.text }} className="font-semibold text-sm">Explicit content</Text>
             {isExplicit ? (
               <Text className="text-xs mt-0.5" style={{ color: '#FF6B35' }}>
                 This post will require a content warning
@@ -515,8 +513,8 @@ export default function CreateScreen() {
               width: 48,
               height: 28,
               borderRadius: 14,
-              backgroundColor: isExplicit ? '#FF6B35' : '#0a2d50',
-              borderColor: isExplicit ? '#FF6B35' : '#1a3a5c',
+              backgroundColor: isExplicit ? '#FF6B35' : theme.card,
+              borderColor: isExplicit ? '#FF6B35' : theme.border,
               borderWidth: 1,
               justifyContent: 'center',
               paddingHorizontal: 2,
@@ -536,10 +534,10 @@ export default function CreateScreen() {
 
         {/* Post to Room */}
         {rooms && rooms.length > 0 ? (
-          <View style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5, paddingTop: 12, marginTop: 4, marginBottom: 4 }}>
+          <View style={{ borderTopColor: theme.border, borderTopWidth: 0.5, paddingTop: 12, marginTop: 4, marginBottom: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <Layers size={14} color="#4a6fa5" />
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Post to Room</Text>
+              <Layers size={14} color={theme.subtext} />
+              <Text style={{ color: theme.text, fontWeight: '600', fontSize: 13 }}>Post to Room</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
               <Pressable
@@ -548,10 +546,10 @@ export default function CreateScreen() {
                   flexDirection: 'row', alignItems: 'center', gap: 5,
                   paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
                   backgroundColor: selectedRoomId === null ? '#00CF35' : 'transparent',
-                  borderWidth: 1, borderColor: selectedRoomId === null ? '#00CF35' : '#1a3a5c',
+                  borderWidth: 1, borderColor: selectedRoomId === null ? '#00CF35' : theme.border,
                 }}
               >
-                <Text style={{ color: selectedRoomId === null ? '#001935' : '#4a6fa5', fontSize: 13, fontWeight: '600' }}>Public</Text>
+                <Text style={{ color: selectedRoomId === null ? '#001935' : theme.subtext, fontSize: 13, fontWeight: '600' }}>Public</Text>
               </Pressable>
               {rooms.map((room) => (
                 <Pressable
@@ -562,11 +560,11 @@ export default function CreateScreen() {
                     flexDirection: 'row', alignItems: 'center', gap: 5,
                     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
                     backgroundColor: selectedRoomId === room.id ? '#00CF35' : 'transparent',
-                    borderWidth: 1, borderColor: selectedRoomId === room.id ? '#00CF35' : '#1a3a5c',
+                    borderWidth: 1, borderColor: selectedRoomId === room.id ? '#00CF35' : theme.border,
                   }}
                 >
-                  <Lock size={11} color={selectedRoomId === room.id ? '#001935' : '#4a6fa5'} />
-                  <Text style={{ color: selectedRoomId === room.id ? '#001935' : '#4a6fa5', fontSize: 13, fontWeight: '600' }}>{room.name}</Text>
+                  <Lock size={11} color={selectedRoomId === room.id ? '#001935' : theme.subtext} />
+                  <Text style={{ color: selectedRoomId === room.id ? '#001935' : theme.subtext, fontSize: 13, fontWeight: '600' }}>{room.name}</Text>
                 </Pressable>
               ))}
             </ScrollView>

@@ -29,6 +29,7 @@ type TabConfig = {
 };
 
 function ChatIcon({ color, size, isActive }: { color: string; size: number; isActive: boolean }) {
+  const theme = useTheme();
   const { data: conversations } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => api.get<Conversation[]>('/api/conversations'),
@@ -56,7 +57,7 @@ function ChatIcon({ color, size, isActive }: { color: string; size: number; isAc
           justifyContent: 'center',
           paddingHorizontal: 3,
           borderWidth: 1.5,
-          borderColor: '#001935',
+          borderColor: theme.bg,
         }}>
           <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800' }}>
             {totalUnread > 9 ? '9+' : String(totalUnread)}

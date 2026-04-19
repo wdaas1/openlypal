@@ -11,6 +11,7 @@ import { getAccessToken } from '@/lib/auth/auth-client';
 import * as Haptics from 'expo-haptics';
 import { showMediaPicker } from '@/lib/file-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useTheme } from '@/lib/theme';
 
 type ActiveLiveMoment = {
   id: string;
@@ -73,6 +74,7 @@ function VideoPost({ uri }: { uri: string }) {
 }
 
 export default function RoomDetailScreen() {
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const handleBack = () => {
@@ -199,7 +201,6 @@ export default function RoomDetailScreen() {
       return;
     }
 
-    // Upload media first
     setIsUploading(true);
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
@@ -242,7 +243,7 @@ export default function RoomDetailScreen() {
 
   if (isLoading || !room) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#001935', alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator testID="loading-indicator" color="#00CF35" />
       </SafeAreaView>
     );
@@ -258,22 +259,22 @@ export default function RoomDetailScreen() {
         marginHorizontal: -4,
         marginTop: 0,
         marginBottom: 8,
-        backgroundColor: '#0a2d50',
+        backgroundColor: theme.card,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#1a3a5c',
+        borderColor: theme.border,
         padding: 12,
       }}
     >
       <TextInput
         testID="compose-input"
         placeholder={`Post in ${room.name}...`}
-        placeholderTextColor="rgba(255,255,255,0.3)"
+        placeholderTextColor={theme.subtext}
         value={composeText}
         onChangeText={setComposeText}
         multiline
         style={{
-          color: '#ffffff',
+          color: theme.text,
           fontSize: 15,
           minHeight: 52,
           textAlignVertical: 'top',
@@ -354,11 +355,11 @@ export default function RoomDetailScreen() {
   );
 
   return (
-    <SafeAreaView testID="room-detail-screen" style={{ flex: 1, backgroundColor: '#001935' }}>
+    <SafeAreaView testID="room-detail-screen" style={{ flex: 1, backgroundColor: theme.bg }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable testID="back-button" onPress={handleBack}>
-          <ArrowLeft size={22} color="#fff" />
+          <ArrowLeft size={22} color={theme.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
           {editingName ? (
@@ -366,12 +367,12 @@ export default function RoomDetailScreen() {
               value={newName}
               onChangeText={setNewName}
               autoFocus
-              style={{ color: '#fff', fontSize: 18, fontWeight: '700', borderBottomWidth: 1, borderBottomColor: '#00CF35', paddingBottom: 2 }}
+              style={{ color: theme.text, fontSize: 18, fontWeight: '700', borderBottomWidth: 1, borderBottomColor: '#00CF35', paddingBottom: 2 }}
             />
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Lock size={16} color="#00CF35" />
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>{room.name}</Text>
+              <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>{room.name}</Text>
             </View>
           )}
         </View>
@@ -381,13 +382,13 @@ export default function RoomDetailScreen() {
               <Check size={20} color="#00CF35" />
             </Pressable>
             <Pressable onPress={() => setEditingName(false)}>
-              <X size={20} color="#4a6fa5" />
+              <X size={20} color={theme.subtext} />
             </Pressable>
           </View>
         ) : isOwner ? (
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Pressable testID="rename-room-button" onPress={() => { setNewName(room.name); setEditingName(true); }}>
-              <Pencil size={18} color="#4a6fa5" />
+              <Pencil size={18} color={theme.subtext} />
             </Pressable>
             <Pressable testID="delete-room-button" onPress={() => deleteRoom.mutate()}>
               <Trash2 size={18} color="#FF4E6A" />
@@ -423,10 +424,10 @@ export default function RoomDetailScreen() {
             backgroundColor: activeLiveMoment.isLive ? '#FF3B30' : '#FF9500',
           }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>
+            <Text style={{ color: theme.text, fontWeight: '800', fontSize: 14 }}>
               {activeLiveMoment.isLive ? '🔴 LIVE NOW' : '⏳ Live Session Scheduled'}
             </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 }}>
+            <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }}>
               {activeLiveMoment.title} · {activeLiveMoment.viewerCount} watching
             </Text>
           </View>
@@ -474,11 +475,11 @@ export default function RoomDetailScreen() {
             onPress={() => setActiveTab(tab)}
             style={{
               paddingVertical: 8, paddingHorizontal: 18, borderRadius: 20,
-              backgroundColor: activeTab === tab ? '#00CF35' : '#0a2d50',
-              borderWidth: 1, borderColor: activeTab === tab ? '#00CF35' : '#1a3a5c',
+              backgroundColor: activeTab === tab ? '#00CF35' : theme.card,
+              borderWidth: 1, borderColor: activeTab === tab ? '#00CF35' : theme.border,
             }}
           >
-            <Text style={{ color: activeTab === tab ? '#001935' : '#4a6fa5', fontWeight: '600', fontSize: 14, textTransform: 'capitalize' }}>{tab}</Text>
+            <Text style={{ color: activeTab === tab ? '#001935' : theme.subtext, fontWeight: '600', fontSize: 14, textTransform: 'capitalize' }}>{tab}</Text>
           </Pressable>
         ))}
         {isOwner ? (
@@ -510,8 +511,8 @@ export default function RoomDetailScreen() {
             ListHeaderComponent={composer}
             ListEmptyComponent={
               <View style={{ alignItems: 'center', paddingTop: 40, gap: 10 }}>
-                <FileText size={40} color="#1a3a5c" />
-                <Text style={{ color: '#4a6fa5', fontSize: 15 }}>No posts in this room yet</Text>
+                <FileText size={40} color={theme.border} />
+                <Text style={{ color: theme.subtext, fontSize: 15 }}>No posts in this room yet</Text>
               </View>
             }
             renderItem={({ item }) => {
@@ -519,7 +520,7 @@ export default function RoomDetailScreen() {
                 return (
                   <View
                     style={{
-                      backgroundColor: '#0a1a2e',
+                      backgroundColor: theme.card,
                       borderRadius: 14,
                       marginBottom: 12,
                       borderWidth: 1,
@@ -544,20 +545,19 @@ export default function RoomDetailScreen() {
                       <Text style={{ color: '#FF3B30', fontWeight: '900', fontSize: 12, letterSpacing: 1.5, flex: 1 }}>
                         LIVE RECAP
                       </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+                      <Text style={{ color: theme.subtext, fontSize: 11 }}>
                         {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </Text>
                     </View>
 
                     <View style={{ padding: 14 }}>
-                      <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
+                      <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
                         {item.title ?? 'Live Session'}
                       </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 18 }}>
+                      <Text style={{ color: theme.subtext, fontSize: 13, lineHeight: 18 }}>
                         {item.content}
                       </Text>
 
-                      {/* Media preview */}
                       {item.imageUrl ? (
                         <Image
                           source={{ uri: item.imageUrl }}
@@ -567,26 +567,6 @@ export default function RoomDetailScreen() {
                       ) : item.videoUrl ? (
                         <VideoPost uri={item.videoUrl} />
                       ) : null}
-
-                      {/* Replay chip — commented out: implement before publishing if you want the feature to be there */}
-                      {/* <View style={{
-                        marginTop: 12,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        alignSelf: 'flex-start',
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.1)',
-                      }}>
-                        <Play size={12} color="rgba(255,255,255,0.4)" />
-                        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '600' }}>
-                          Replay coming soon
-                        </Text>
-                      </View> */}
                     </View>
                   </View>
                 );
@@ -595,23 +575,23 @@ export default function RoomDetailScreen() {
               return (
                 <Pressable
                   onPress={() => router.push(`/(app)/rooms/${id}/post/${item.id}` as any)}
-                  style={{ backgroundColor: '#0a2d50', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#1a3a5c' }}
+                  style={{ backgroundColor: theme.card, borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: theme.border }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     {item.user.image ? (
                       <Image source={{ uri: item.user.image }} style={{ width: 32, height: 32, borderRadius: 16 }} />
                     ) : (
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#1a3a5c', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{(item.user.name ?? '?')[0].toUpperCase()}</Text>
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.border, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: theme.text, fontSize: 13, fontWeight: '700' }}>{(item.user.name ?? '?')[0].toUpperCase()}</Text>
                       </View>
                     )}
                     <View>
-                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{item.user.name}</Text>
-                      {item.user.username ? <Text style={{ color: '#4a6fa5', fontSize: 12 }}>@{item.user.username}</Text> : null}
+                      <Text style={{ color: theme.text, fontWeight: '600', fontSize: 14 }}>{item.user.name}</Text>
+                      {item.user.username ? <Text style={{ color: theme.subtext, fontSize: 12 }}>@{item.user.username}</Text> : null}
                     </View>
                   </View>
-                  {item.title ? <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 6 }}>{item.title}</Text> : null}
-                  {item.content ? <Text style={{ color: '#c0d0e0', fontSize: 14, lineHeight: 20 }} numberOfLines={3}>{item.content}</Text> : null}
+                  {item.title ? <Text style={{ color: theme.text, fontWeight: '700', fontSize: 15, marginBottom: 6 }}>{item.title}</Text> : null}
+                  {item.content ? <Text style={{ color: theme.subtext, fontSize: 14, lineHeight: 20 }} numberOfLines={3}>{item.content}</Text> : null}
                   {item.imageUrl ? (
                     <Image
                       source={{ uri: item.imageUrl }}
@@ -632,17 +612,17 @@ export default function RoomDetailScreen() {
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
           renderItem={({ item }) => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#0a2d50', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1a3a5c' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: theme.border }}>
               {item.user.image ? (
                 <Image source={{ uri: item.user.image }} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }} />
               ) : (
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#1a3a5c', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{(item.user.name ?? '?')[0].toUpperCase()}</Text>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>{(item.user.name ?? '?')[0].toUpperCase()}</Text>
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>{item.user.name}</Text>
-                {item.user.username ? <Text style={{ color: '#4a6fa5', fontSize: 13 }}>@{item.user.username}</Text> : null}
+                <Text style={{ color: theme.text, fontWeight: '600', fontSize: 15 }}>{item.user.name}</Text>
+                {item.user.username ? <Text style={{ color: theme.subtext, fontSize: 13 }}>@{item.user.username}</Text> : null}
               </View>
               {item.userId === room.ownerId ? (
                 <View style={{ backgroundColor: 'rgba(0,207,53,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>

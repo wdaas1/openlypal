@@ -14,6 +14,7 @@ import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
 import { Ghost, ArrowLeft } from 'lucide-react-native';
 import { relationshipsApi, RelationshipStat } from '@/lib/api/relationships';
 import { useSession } from '@/lib/auth/use-session';
+import { useTheme } from '@/lib/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -41,13 +42,14 @@ function strengthColor(score: number): string {
 
 // ---------- Drift Nudge Card ----------
 function NudgeCard({ stat }: { stat: RelationshipStat }) {
+  const theme = useTheme();
   const router = useRouter();
   return (
     <Pressable
       testID={`nudge-card-${stat.user.id}`}
       onPress={() => router.push(`/(app)/messenger/${stat.user.id}` as any)}
       style={{
-        backgroundColor: '#011e3d',
+        backgroundColor: theme.card,
         borderRadius: 16,
         padding: 16,
         marginRight: 12,
@@ -74,11 +76,11 @@ function NudgeCard({ stat }: { stat: RelationshipStat }) {
           {getInitial(stat.user.name)}
         </Text>
       </View>
-      <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 14 }} numberOfLines={1}>
+      <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14 }} numberOfLines={1}>
         {stat.user.name}
       </Text>
       {stat.user.username ? (
-        <Text style={{ color: '#4a7fa5', fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+        <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
           @{stat.user.username}
         </Text>
       ) : null}
@@ -102,6 +104,7 @@ function NudgeCard({ stat }: { stat: RelationshipStat }) {
 }
 
 // ---------- Relationship Map ----------
+// This visualization intentionally uses a dark canvas for readability of the SVG graph
 function RelationshipMap({
   stats,
   userName,
@@ -256,6 +259,7 @@ function RelationshipMap({
 
 // ---------- Friend Card ----------
 function FriendCard({ stat }: { stat: RelationshipStat }) {
+  const theme = useTheme();
   const router = useRouter();
   const barColor = strengthColor(stat.strengthScore);
 
@@ -264,14 +268,14 @@ function FriendCard({ stat }: { stat: RelationshipStat }) {
       testID={`friend-card-${stat.user.id}`}
       onPress={() => router.push(`/(app)/user/${stat.user.id}` as any)}
       style={{
-        backgroundColor: '#011e3d',
+        backgroundColor: theme.card,
         borderRadius: 14,
         padding: 14,
         marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#0a2a44',
+        borderColor: theme.border,
       }}
     >
       {/* Avatar */}
@@ -296,19 +300,19 @@ function FriendCard({ stat }: { stat: RelationshipStat }) {
       {/* Info */}
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
+          <Text style={{ color: theme.text, fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
             {stat.user.name}
           </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>
+          <Text style={{ color: theme.subtext, fontSize: 11 }}>
             {stat.messageCount} msgs
           </Text>
         </View>
         {stat.user.username ? (
-          <Text style={{ color: '#4a7fa5', fontSize: 12, marginTop: 1 }}>
+          <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 1 }}>
             @{stat.user.username}
           </Text>
         ) : null}
-        <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 3 }}>
+        <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 3 }}>
           {stat.lastInteractionAt
             ? daysAgoLabel(stat.daysSince)
             : 'Never'}
@@ -319,7 +323,7 @@ function FriendCard({ stat }: { stat: RelationshipStat }) {
             marginTop: 7,
             height: 3,
             borderRadius: 2,
-            backgroundColor: 'rgba(255,255,255,0.08)',
+            backgroundColor: theme.border,
             overflow: 'hidden',
           }}
         >
@@ -339,6 +343,7 @@ function FriendCard({ stat }: { stat: RelationshipStat }) {
 
 // ---------- Main Screen ----------
 export default function RelationshipsScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const { data: session } = useSession();
 
@@ -360,7 +365,7 @@ export default function RelationshipsScreen() {
   return (
     <SafeAreaView
       testID="relationships-screen"
-      style={{ flex: 1, backgroundColor: '#000d1a' }}
+      style={{ flex: 1, backgroundColor: theme.bg }}
       edges={['top']}
     >
       {/* Header */}
@@ -371,7 +376,7 @@ export default function RelationshipsScreen() {
           paddingHorizontal: 16,
           paddingVertical: 14,
           borderBottomWidth: 0.5,
-          borderBottomColor: '#0a2a44',
+          borderBottomColor: theme.border,
         }}
       >
         <Pressable
@@ -379,9 +384,9 @@ export default function RelationshipsScreen() {
           onPress={() => router.push('/(app)/activity' as any)}
           style={{ marginRight: 12, padding: 4 }}
         >
-          <ArrowLeft size={22} color="#ffffff" />
+          <ArrowLeft size={22} color={theme.text} />
         </Pressable>
-        <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '800', letterSpacing: -0.4 }}>
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 }}>
           Relationship Map
         </Text>
       </View>
@@ -395,12 +400,12 @@ export default function RelationshipsScreen() {
           testID="empty-state"
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}
         >
-          <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 40, marginBottom: 16 }}>
+          <Text style={{ color: theme.subtext, fontSize: 40, marginBottom: 16 }}>
             👥
           </Text>
           <Text
             style={{
-              color: 'rgba(255,255,255,0.55)',
+              color: theme.subtext,
               fontSize: 16,
               fontWeight: '600',
               textAlign: 'center',
@@ -428,7 +433,7 @@ export default function RelationshipsScreen() {
                 }}
               >
                 <Ghost size={18} color="#FF4E6A" />
-                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>
+                <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
                   Drifting Apart
                 </Text>
                 <View
@@ -461,7 +466,7 @@ export default function RelationshipsScreen() {
           <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
             <Text
               style={{
-                color: '#ffffff',
+                color: theme.text,
                 fontSize: 16,
                 fontWeight: '700',
                 marginBottom: 12,
@@ -476,7 +481,7 @@ export default function RelationshipsScreen() {
           <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
             <Text
               style={{
-                color: '#ffffff',
+                color: theme.text,
                 fontSize: 16,
                 fontWeight: '700',
                 marginBottom: 12,
