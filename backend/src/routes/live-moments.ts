@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { wsManager } from "../ws-manager";
+import { sendPushNotification } from "../lib/push-notifications";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -198,6 +199,27 @@ liveMomentsRouter.post(
       },
       include: momentInclude,
     });
+
+    // Send push notifications to all invited users
+    if (invitedUserIds.length > 0) {
+      const invitedUsers = await prisma.user.findMany({
+        where: { id: { in: invitedUserIds } },
+        select: { pushToken: true },
+      });
+      const creatorName = user.name || "Someone";
+      await Promise.allSettled(
+        invitedUsers
+          .filter((u) => u.pushToken)
+          .map((u) =>
+            sendPushNotification(
+              u.pushToken!,
+              "🔴 Live Now",
+              `${creatorName} just started a live moment: "${title}"`,
+              { type: "live_moment", momentId: moment.id }
+            )
+          )
+      );
+    }
 
     const formatted = await formatMoment(moment);
     return c.json({ data: formatted }, 201);
