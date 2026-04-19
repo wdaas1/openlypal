@@ -317,6 +317,8 @@ model Ad {
   active      Boolean       @default(true)
   impressions Int           @default(0)
   clicks      Int           @default(0)
+  budget           Float?   // total $ budget (null = unlimited)
+  ratePerImpression Float?  // $ per impression, e.g. 0.005 = $5 CPM
   createdAt   DateTime      @default(now())
   dismissals AdDismissal[]
 }

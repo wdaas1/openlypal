@@ -52,11 +52,18 @@ adsRouter.get("/admin", async (c) => {
       active: true,
       impressions: true,
       clicks: true,
+      budget: true,
+      ratePerImpression: true,
       createdAt: true,
       _count: { select: { dismissals: true } },
     },
   });
-  return c.json({ data: ads });
+
+  const result = ads.map(ad => ({
+    ...ad,
+    spent: ad.ratePerImpression != null ? ad.impressions * ad.ratePerImpression : null,
+  }));
+  return c.json({ data: result });
 });
 
 // 3. POST /api/ads/admin — create a new ad (auth required)
@@ -71,6 +78,8 @@ adsRouter.post("/admin", async (c) => {
     theme: string;
     clickUrl?: string | null;
     active?: boolean;
+    budget?: number | null;
+    ratePerImpression?: number | null;
   }>();
 
   const ad = await prisma.ad.create({
@@ -81,6 +90,8 @@ adsRouter.post("/admin", async (c) => {
       theme: body.theme ?? "green",
       clickUrl: body.clickUrl ?? null,
       active: body.active ?? true,
+      budget: body.budget ?? null,
+      ratePerImpression: body.ratePerImpression ?? null,
     },
   });
   return c.json({ data: ad });
@@ -99,6 +110,8 @@ adsRouter.patch("/admin/:id", async (c) => {
     theme: string;
     clickUrl: string | null;
     active: boolean;
+    budget: number | null;
+    ratePerImpression: number | null;
   }>>();
 
   const ad = await prisma.ad.update({
@@ -131,13 +144,27 @@ adsRouter.post("/:id/dismiss", async (c) => {
   return c.json({ data: { success: true } });
 });
 
-// 7. POST /api/ads/:id/impression — fire-and-forget impression count
+// 7. POST /api/ads/:id/impression — fire-and-forget impression count with auto-pause
 adsRouter.post("/:id/impression", async (c) => {
   const adId = c.req.param("id");
-  await prisma.ad.update({
+
+  const ad = await prisma.ad.update({
     where: { id: adId },
     data: { impressions: { increment: 1 } },
-  }).catch(() => null); // ignore if ad doesn't exist
+    select: { impressions: true, budget: true, ratePerImpression: true },
+  }).catch(() => null);
+
+  // Auto-pause if budget exhausted
+  if (ad && ad.budget != null && ad.ratePerImpression != null && ad.ratePerImpression > 0) {
+    const spent = ad.impressions * ad.ratePerImpression;
+    if (spent >= ad.budget) {
+      await prisma.ad.update({
+        where: { id: adId },
+        data: { active: false },
+      }).catch(() => null);
+    }
+  }
+
   return c.json({ data: { success: true } });
 });
 
