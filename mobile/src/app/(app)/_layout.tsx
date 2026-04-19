@@ -170,7 +170,7 @@ function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              color: '#ffffff',
+              color: theme.text,
               fontSize: 16,
               fontWeight: '600',
               letterSpacing: -0.2,
@@ -180,7 +180,7 @@ function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
           </Text>
           <Text
             style={{
-              color: 'rgba(255,255,255,0.5)',
+              color: theme.subtext,
               fontSize: 13,
               marginTop: 1,
             }}
@@ -699,6 +699,7 @@ function E2EInitializer() {
 // ─── AppLayout ────────────────────────────────────────────────────────────────
 
 export default function AppLayout() {
+  const theme = useTheme();
   const [modalVisible, setModalVisible] = React.useState(false);
 
   // Animation shared values
@@ -742,7 +743,7 @@ export default function AppLayout() {
 
   return (
     <KeyboardProvider>
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <View style={{ flex: 1, backgroundColor: theme.bg }}>
         <E2EInitializer />
         <Animated.View style={contentAnimStyle}>
           <Stack screenOptions={{ headerShown: false }}>
