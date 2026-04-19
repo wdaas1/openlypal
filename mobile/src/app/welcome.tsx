@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -61,16 +61,18 @@ export default function WelcomeScreen() {
         }}
       />
 
-      <View
-        style={{
-          flex: 1,
-          paddingTop: insets.top + (height > 700 ? 48 : 24),
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: insets.top + (height > 800 ? 40 : height > 700 ? 28 : 20),
           paddingBottom: insets.bottom + 24,
           paddingHorizontal: 28,
         }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {/* Logo + wordmark */}
-        <View style={{ alignItems: 'center', marginBottom: height > 700 ? 44 : 28 }}>
+        <View style={{ alignItems: 'center', marginBottom: height > 800 ? 36 : height > 700 ? 28 : 20 }}>
           <Logo size={72} showBackground={false} />
           <Text
             style={{
@@ -164,7 +166,7 @@ export default function WelcomeScreen() {
             </Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
