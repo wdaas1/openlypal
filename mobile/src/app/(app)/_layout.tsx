@@ -767,6 +767,7 @@ export default function AppLayout() {
             <Stack.Screen name="settings" />
             <Stack.Screen name="edit-profile" />
             <Stack.Screen name="admin" />
+            <Stack.Screen name="admin-ads" />
             <Stack.Screen name="relationships/index" />
             <Stack.Screen name="profile-modules/index" />
           </Stack>
