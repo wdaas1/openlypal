@@ -1,64 +1,49 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, Megaphone, Sparkles, TrendingUp, Star } from 'lucide-react-native';
+import type { Ad } from '@/lib/types';
 
-const AD_THEMES = [
-  {
+const THEME_CONFIG = {
+  green: {
     colors: ['#0f4c2e', '#00CF35', '#0a3d24'] as const,
     icon: TrendingUp,
     iconColor: '#00FF4C',
-    headline: 'Grow Your Audience',
-    subtext: 'Reach thousands of engaged readers on Openly',
-    cta: 'Get Started',
     accentColor: '#00FF4C',
   },
-  {
+  purple: {
     colors: ['#1a1a3e', '#3b2de8', '#0d0d2b'] as const,
     icon: Sparkles,
     iconColor: '#a78bfa',
-    headline: 'Discover Amazing Content',
-    subtext: 'Advertise your brand to our creative community',
-    cta: 'Learn More',
     accentColor: '#a78bfa',
   },
-  {
+  orange: {
     colors: ['#3d1a0a', '#e85f2d', '#2b0d0d'] as const,
     icon: Megaphone,
     iconColor: '#fb923c',
-    headline: 'Your Ad Could Be Here',
-    subtext: 'Connect with passionate creators and their fans',
-    cta: 'Advertise',
     accentColor: '#fb923c',
   },
-  {
+  blue: {
     colors: ['#1a2a3d', '#2d6ae8', '#0d1b2b'] as const,
     icon: Star,
     iconColor: '#60a5fa',
-    headline: 'Premium Placement',
-    subtext: 'Sponsor posts and reach your ideal audience',
-    cta: 'Contact Us',
     accentColor: '#60a5fa',
   },
-] as const;
+} as const;
 
 interface AdCardProps {
-  index: number;
+  ad: Ad;
+  adIndex: number;
+  onDismiss: (adId: string) => void;
 }
 
-export function AdCard({ index }: AdCardProps) {
-  const [dismissed, setDismissed] = useState(false);
+export function AdCard({ ad, adIndex, onDismiss }: AdCardProps) {
   const { width } = useWindowDimensions();
-  const theme = AD_THEMES[index % AD_THEMES.length];
+  const theme = THEME_CONFIG[ad.theme] ?? THEME_CONFIG.green;
   const Icon = theme.icon;
 
-  if (dismissed) return null;
-
   return (
-    <View
-      testID={`ad-card-${index}`}
-      style={{ width, marginBottom: 12 }}
-    >
+    <View testID={`ad-card-${adIndex}`} style={{ width, marginBottom: 12 }}>
       <LinearGradient
         colors={theme.colors}
         start={{ x: 0, y: 0 }}
@@ -67,40 +52,14 @@ export function AdCard({ index }: AdCardProps) {
       >
         {/* Sponsored badge + dismiss */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: 20,
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              gap: 4,
-            }}
-          >
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: theme.accentColor,
-              }}
-            />
-            <Text style={{ color: theme.accentColor, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>
-              SPONSORED
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, gap: 4 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accentColor }} />
+            <Text style={{ color: theme.accentColor, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>SPONSORED</Text>
           </View>
           <Pressable
-            testID={`ad-dismiss-${index}`}
-            onPress={() => setDismissed(true)}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 12,
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            testID={`ad-dismiss-${adIndex}`}
+            onPress={() => onDismiss(ad.id)}
+            style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={13} color="rgba(255,255,255,0.7)" />
           </Pressable>
@@ -108,45 +67,21 @@ export function AdCard({ index }: AdCardProps) {
 
         {/* Content */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <View
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 16,
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: `${theme.accentColor}30`,
-            }}
-          >
+          <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: `${theme.accentColor}30` }}>
             <Icon size={26} color={theme.accentColor} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '800', letterSpacing: -0.3, marginBottom: 3 }}>
-              {theme.headline}
-            </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, lineHeight: 17 }}>
-              {theme.subtext}
-            </Text>
+            <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '800', letterSpacing: -0.3, marginBottom: 3 }}>{ad.headline}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, lineHeight: 17 }}>{ad.subtext}</Text>
           </View>
         </View>
 
         {/* CTA */}
         <Pressable
-          testID={`ad-cta-${index}`}
-          style={{
-            marginTop: 14,
-            alignSelf: 'flex-start',
-            backgroundColor: theme.accentColor,
-            borderRadius: 20,
-            paddingHorizontal: 20,
-            paddingVertical: 8,
-          }}
+          testID={`ad-cta-${adIndex}`}
+          style={{ marginTop: 14, alignSelf: 'flex-start', backgroundColor: theme.accentColor, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 }}
         >
-          <Text style={{ color: '#000000', fontWeight: '700', fontSize: 13 }}>
-            {theme.cta}
-          </Text>
+          <Text style={{ color: '#000000', fontWeight: '700', fontSize: 13 }}>{ad.cta}</Text>
         </Pressable>
       </LinearGradient>
     </View>

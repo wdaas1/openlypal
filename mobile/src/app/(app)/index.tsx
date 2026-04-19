@@ -3,7 +3,7 @@ import { View, Text, RefreshControl, Pressable, useWindowDimensions, ViewToken }
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -18,7 +18,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Search, Bell, ShieldAlert } from 'lucide-react-native';
 import { api } from '@/lib/api/api';
-import type { Post, ReblogFeedItem } from '@/lib/types';
+import type { Post, ReblogFeedItem, Ad } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { ReblogCard } from '@/components/ReblogCard';
 import { AdCard } from '@/components/AdCard';
@@ -76,9 +76,9 @@ type Tab = 'following' | 'foryou' | 'unfiltered';
 type FeedItem =
   | { type: 'post'; data: Post; key: string }
   | { type: 'reblog'; data: ReblogFeedItem; key: string }
-  | { type: 'ad'; adIndex: number; key: string };
+  | { type: 'ad'; ad: Ad; adIndex: number; key: string };
 
-function buildFeedItems(items: (Post | ReblogFeedItem)[]): FeedItem[] {
+function buildFeedItems(items: (Post | ReblogFeedItem)[], ads: Ad[]): FeedItem[] {
   const result: FeedItem[] = [];
   let adIndex = 0;
   items.forEach((item, i) => {
@@ -87,11 +87,34 @@ function buildFeedItems(items: (Post | ReblogFeedItem)[]): FeedItem[] {
     } else {
       result.push({ type: 'post', data: item as Post, key: (item as Post).id });
     }
-    if ((i + 1) % 5 === 0) {
-      result.push({ type: 'ad', adIndex: adIndex++, key: `ad-${adIndex}` });
+    if ((i + 1) % 5 === 0 && ads.length > 0) {
+      const ad = ads[adIndex % ads.length];
+      result.push({ type: 'ad', ad, adIndex, key: `ad-${adIndex}` });
+      adIndex++;
     }
   });
   return result;
+}
+
+function useAds() {
+  const queryClient = useQueryClient();
+  const { data: ads = [] } = useQuery({
+    queryKey: ['ads'],
+    queryFn: () => api.get<Ad[]>('/api/ads'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { mutate: dismissAd } = useMutation({
+    mutationFn: async (adId: string) => {
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+      await fetch(`${baseUrl}/api/ads/${adId}/dismiss`, { method: 'POST', credentials: 'include' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ads'] });
+    },
+  });
+
+  return { ads, dismissAd };
 }
 
 function EmptyState({ message, sub, action, onAction }: {
@@ -200,22 +223,23 @@ function SkeletonLoader() {
 
 function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
   const queryClient = useQueryClient();
+  const { ads, dismissAd } = useAds();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed'],
     queryFn: () => api.get<(Post | ReblogFeedItem)[]>('/api/posts'),
     refetchInterval: 30000,
   });
 
-  const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
+  const feedItems = useMemo(() => buildFeedItems(posts ?? [], ads), [posts, ads]);
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
   const renderItem = useCallback(({ item }: { item: FeedItem }) => {
-    if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+    if (item.type === 'ad') return <AdCard ad={item.ad} adIndex={item.adIndex} onDismiss={dismissAd} />;
     if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
     return <PostCard post={item.data} videoKey={item.key} />;
-  }, []);
+  }, [ads, dismissAd]);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -253,22 +277,23 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
 
 function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
   const queryClient = useQueryClient();
+  const { ads, dismissAd } = useAds();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'following'],
     queryFn: () => api.get<(Post | ReblogFeedItem)[]>('/api/posts/feed/following'),
     refetchInterval: 30000,
   });
 
-  const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
+  const feedItems = useMemo(() => buildFeedItems(posts ?? [], ads), [posts, ads]);
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
   const renderItem = useCallback(({ item }: { item: FeedItem }) => {
-    if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+    if (item.type === 'ad') return <AdCard ad={item.ad} adIndex={item.adIndex} onDismiss={dismissAd} />;
     if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
     return <PostCard post={item.data} videoKey={item.key} />;
-  }, []);
+  }, [ads, dismissAd]);
 
   if (isLoading) return <SkeletonLoader />;
 
@@ -306,22 +331,23 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
 
 function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
   const queryClient = useQueryClient();
+  const { ads, dismissAd } = useAds();
   const { data: posts, isLoading, isRefetching } = useQuery({
     queryKey: ['feed', 'unfiltered'],
     queryFn: () => api.get<Post[]>('/api/posts/feed/unfiltered'),
     refetchInterval: 30000,
   });
 
-  const feedItems = useMemo(() => buildFeedItems(posts ?? []), [posts]);
+  const feedItems = useMemo(() => buildFeedItems(posts ?? [], ads), [posts, ads]);
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 200 }).current;
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoVisibility.update(new Set(viewableItems.map((v) => v.key as string)));
   }, []);
   const renderItem = useCallback(({ item }: { item: FeedItem }) => {
-    if (item.type === 'ad') return <AdCard index={item.adIndex} />;
+    if (item.type === 'ad') return <AdCard ad={item.ad} adIndex={item.adIndex} onDismiss={dismissAd} />;
     if (item.type === 'reblog') return <ReblogCard item={item.data} videoKey={item.key} />;
     return <PostCard post={item.data} videoKey={item.key} />;
-  }, []);
+  }, [ads, dismissAd]);
 
   if (isLoading) return <SkeletonLoader />;
 

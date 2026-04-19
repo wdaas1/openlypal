@@ -304,3 +304,27 @@ model RoomMember {
 
   @@unique([roomId, userId])
 }
+
+// ─── Sponsored Ads ──────────────────────────────────────────
+
+model Ad {
+  id         String        @id @default(cuid())
+  headline   String
+  subtext    String
+  cta        String
+  theme      String        @default("green") // "green" | "purple" | "orange" | "blue"
+  clickUrl   String?
+  active     Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  dismissals AdDismissal[]
+}
+
+model AdDismissal {
+  id        String   @id @default(cuid())
+  userId    String
+  adId      String
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, adId])
+}

@@ -187,3 +187,12 @@ export interface SearchResult {
   users: User[];
   tags: TrendingHashtag[];
 }
+
+export interface Ad {
+  id: string;
+  headline: string;
+  subtext: string;
+  cta: string;
+  theme: 'green' | 'purple' | 'orange' | 'blue';
+  clickUrl: string | null;
+}
