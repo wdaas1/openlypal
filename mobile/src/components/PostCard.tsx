@@ -45,6 +45,7 @@ import { LinkPreview } from './LinkPreview';
 import { useSession } from '@/lib/auth/use-session';
 import { videoVisibility } from '@/lib/videoVisibility';
 import { relationshipsApi } from '@/lib/api/relationships';
+import { useTheme } from '@/lib/theme';
 
 const imageAspectRatioCache = new Map<string, number>();
 
@@ -76,6 +77,7 @@ function formatCount(n: number): string {
 }
 
 const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey, from, roomId, momentId }: PostCardProps) {
+  const theme = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { width, height: screenHeight } = useWindowDimensions();
@@ -518,14 +520,14 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       testID={`post-card-${post.id}`}
       onPress={handleTap}
       style={{
-        backgroundColor: 'rgba(10,30,60,0.95)',
+        backgroundColor: theme.card,
         borderRadius: 16,
         marginHorizontal: 12,
         marginBottom: 10,
         overflow: 'hidden',
         borderWidth: 0.5,
-        borderColor: post.isExplicit ? '#FF4E6A' : 'rgba(255,255,255,0.06)',
-        borderLeftColor: post.isExplicit ? '#FF4E6A' : 'rgba(255,255,255,0.06)',
+        borderColor: post.isExplicit ? '#FF4E6A' : theme.border,
+        borderLeftColor: post.isExplicit ? '#FF4E6A' : theme.border,
         borderLeftWidth: post.isExplicit ? 3 : 0.5,
       }}
     >
@@ -545,7 +547,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
         </Pressable>
         <View style={{ marginLeft: 12, flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>
+            <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13 }}>
               {post.user.username ?? post.user.name}
             </Text>
             {post.isExplicit ? (
@@ -565,7 +567,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 {'• '}{timeAgo}
               </Text>
             ) : (
-              <Text style={{ color: '#4a6fa5', fontSize: 11 }}>
+              <Text style={{ color: theme.subtext, fontSize: 11 }}>
                 {timeAgo}
               </Text>
             )}
@@ -576,7 +578,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 paddingHorizontal: 7,
                 paddingVertical: 2,
               }}>
-                <Text style={{ color: '#4a6fa5', fontSize: 10, fontWeight: '600' }}>
+                <Text style={{ color: theme.subtext, fontSize: 10, fontWeight: '600' }}>
                   {'#'}{post.category}
                 </Text>
               </View>
@@ -591,8 +593,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 alignItems: 'center',
                 gap: 3,
               }}>
-                <Clock size={10} color="#4a6fa5" />
-                <Text style={{ color: '#4a6fa5', fontSize: 10, fontWeight: '500' }}>
+                <Clock size={10} color={theme.subtext} />
+                <Text style={{ color: theme.subtext, fontSize: 10, fontWeight: '500' }}>
                   {post.readTime} min read
                 </Text>
               </View>
@@ -605,20 +607,20 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           onPress={handleMenuOpen}
           style={{ padding: 4 }}
         >
-          <MoreHorizontal size={18} color="#4a6fa5" />
+          <MoreHorizontal size={18} color={theme.subtext} />
         </Pressable>
       </View>
 
       {/* Title */}
       {post.title ? (
-        <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 17, paddingHorizontal: 14, paddingBottom: 6, lineHeight: 22 }}>
+        <Text style={{ color: theme.text, fontWeight: '700', fontSize: 17, paddingHorizontal: 14, paddingBottom: 6, lineHeight: 22 }}>
           {post.title}
         </Text>
       ) : null}
 
       {/* Content */}
       {post.content ? (
-        <Text style={{ color: 'rgba(255,255,255,0.88)', paddingHorizontal: 14, paddingBottom: 10, fontSize: 14, lineHeight: 20 }}>
+        <Text style={{ color: theme.text, paddingHorizontal: 14, paddingBottom: 10, fontSize: 14, lineHeight: 20 }}>
           {post.content}
         </Text>
       ) : null}
@@ -626,7 +628,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       {/* Poll */}
       {post.poll != null ? (
         <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
-          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 14, marginBottom: 10, lineHeight: 20 }}>
+          <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, marginBottom: 10, lineHeight: 20 }}>
             {post.poll.question}
           </Text>
           <View style={{ gap: 8 }}>
@@ -667,7 +669,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                     justifyContent: 'space-between',
                     paddingHorizontal: 12,
                   }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '500', flex: 1 }} numberOfLines={1}>
+                    <Text style={{ color: theme.text, fontSize: 13, fontWeight: '500', flex: 1 }} numberOfLines={1}>
                       {option.text}
                     </Text>
                     <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600', marginLeft: 8 }}>
@@ -678,7 +680,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
               );
             })}
           </View>
-          <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 8 }}>
+          <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 8 }}>
             {formatCount(pollTotalVotes)} votes{' '}
             {post.poll.endsAt ? `· ends ${formatDistanceToNow(new Date(post.poll.endsAt), { addSuffix: true })}` : null}
           </Text>
@@ -720,8 +722,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.18)', alignItems: 'center', justifyContent: 'center' }}>
                   <ShieldAlert size={24} color="#FF4E6A" />
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
-                <Text style={{ fontSize: 11, color: '#a0b4c8', textAlign: 'center', paddingHorizontal: 24 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>Sensitive Content</Text>
+                <Text style={{ fontSize: 11, color: theme.subtext, textAlign: 'center', paddingHorizontal: 24 }}>
                   This post may contain explicit material.
                 </Text>
                 <Pressable
@@ -731,9 +733,9 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setRevealed(true);
                   }}
-                  style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
+                  style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: theme.border, borderColor: theme.border, borderWidth: 1 }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Tap to reveal</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: theme.subtext }}>Tap to reveal</Text>
                 </Pressable>
               </View>
             </View>
@@ -791,7 +793,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
             </ScrollView>
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, paddingVertical: 6 }}>
               {images.map((_, i) => (
-                <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#4a6fa5' }} />
+                <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: theme.subtext }} />
               ))}
             </View>
           </View>
@@ -801,11 +803,11 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       {/* Video - full width inline */}
       {post.type === 'video' && post.videoUrl ? (
         !showContent ? (
-          <View style={{ height: videoHeight, backgroundColor: '#071d35', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <View style={{ height: videoHeight, backgroundColor: theme.cardAlt, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,78,106,0.12)', alignItems: 'center', justifyContent: 'center' }}>
               <ShieldAlert size={24} color="#FF4E6A" />
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Sensitive Content</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>Sensitive Content</Text>
             <Pressable
               testID={`reveal-video-button-${post.id}`}
               onPress={(e) => {
@@ -813,9 +815,9 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setRevealed(true);
               }}
-              style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a3a5c', borderColor: '#2a4a6a', borderWidth: 1 }}
+              style={{ marginTop: 4, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, backgroundColor: theme.border, borderColor: theme.border, borderWidth: 1 }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#a0b4c8' }}>Tap to reveal</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.subtext }}>Tap to reveal</Text>
             </Pressable>
           </View>
         ) : (
@@ -963,7 +965,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           paddingHorizontal: 14,
           paddingVertical: 12,
           borderTopWidth: 0.5,
-          borderTopColor: '#1a3a5c',
+          borderTopColor: theme.border,
           borderBottomLeftRadius: 16,
           borderBottomRightRadius: 16,
         }}>
@@ -984,13 +986,13 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           ]}>
             <Heart
               size={20}
-              color={localIsLiked ? '#FF4E6A' : '#4a6fa5'}
+              color={localIsLiked ? '#FF4E6A' : theme.subtext}
               fill={localIsLiked ? '#FF4E6A' : 'transparent'}
             />
           </Animated.View>
           {localLikeCount > 0 ? (
             <Text style={[
-              { marginLeft: 6, fontSize: 12, color: localIsLiked ? '#FF4E6A' : '#4a6fa5' },
+              { marginLeft: 6, fontSize: 12, color: localIsLiked ? '#FF4E6A' : theme.subtext },
               localIsLiked ? {
                 shadowColor: '#FF4E6A',
                 shadowOpacity: 0.2,
@@ -1009,7 +1011,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           onPress={(e) => { e.stopPropagation(); reblogMutation.mutate(); }}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
-          <Repeat2 size={20} color={repostActive ? '#00CF35' : '#4a6fa5'} />
+          <Repeat2 size={20} color={repostActive ? '#00CF35' : theme.subtext} />
           {repostTotal > 0 ? (
             <Text style={{ marginLeft: 6, fontSize: 12, color: '#00CF35' }}>
               {repostTotal}
@@ -1028,9 +1030,9 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           }}
           style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
         >
-          <MessageCircle size={20} color={post.commentCount > 0 ? 'rgba(255,255,255,0.5)' : '#4a6fa5'} />
+          <MessageCircle size={20} color={post.commentCount > 0 ? theme.subtext : theme.subtext} />
           {post.commentCount > 0 ? (
-            <Text style={{ marginLeft: 6, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+            <Text style={{ marginLeft: 6, fontSize: 12, color: theme.subtext }}>
               {post.commentCount}
             </Text>
           ) : null}
@@ -1044,7 +1046,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
         >
           <Bookmark
             size={18}
-            color={post.isBookmarked ? '#00CF35' : '#4a6fa5'}
+            color={post.isBookmarked ? '#00CF35' : theme.subtext}
             fill={post.isBookmarked ? '#00CF35' : 'transparent'}
           />
           {post.bookmarkCount != null && post.bookmarkCount > 0 ? (
@@ -1056,7 +1058,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
 
         {/* View count */}
         {post.viewCount != null && post.viewCount > 0 ? (
-          <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginRight: 14 }}>
+          <Text style={{ color: theme.subtext, fontSize: 11, marginRight: 14, opacity: 0.6 }}>
             {formatCount(post.viewCount)} views
           </Text>
         ) : null}
@@ -1080,13 +1082,13 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
             <TouchableWithoutFeedback>
               <View style={{
-                backgroundColor: '#0a2d50',
+                backgroundColor: theme.card,
                 borderTopLeftRadius: 20,
                 borderTopRightRadius: 20,
                 paddingBottom: 32,
                 paddingTop: 8,
               }}>
-                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: theme.border, alignSelf: 'center', marginBottom: 16 }} />
                 {isOwnPost ? (
                   <>
                     <Pressable
@@ -1100,7 +1102,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                       style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
                     >
                       <Pencil size={18} color="#00CF35" />
-                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Edit Post</Text>
+                      <Text style={{ color: theme.text, fontSize: 15, fontWeight: '500' }}>Edit Post</Text>
                     </Pressable>
                     <Pressable
                       testID="menu-delete-button"
@@ -1125,15 +1127,15 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                       style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
                     >
                       <Flag size={18} color="#FF4E6A" />
-                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Report</Text>
+                      <Text style={{ color: theme.text, fontSize: 15, fontWeight: '500' }}>Report</Text>
                     </Pressable>
                     <Pressable
                       testID="menu-not-interested-button"
                       onPress={() => setMenuVisible(false)}
                       style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
                     >
-                      <MoreHorizontal size={18} color="#4a6fa5" />
-                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500' }}>Not interested</Text>
+                      <MoreHorizontal size={18} color={theme.subtext} />
+                      <Text style={{ color: theme.text, fontSize: 15, fontWeight: '500' }}>Not interested</Text>
                     </Pressable>
                   </>
                 )}
@@ -1150,59 +1152,59 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
             <TouchableWithoutFeedback>
               <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <View style={{
-                  backgroundColor: '#0a2d50',
+                  backgroundColor: theme.card,
                   borderTopLeftRadius: 20,
                   borderTopRightRadius: 20,
                   paddingBottom: 32,
                   paddingTop: 8,
                   paddingHorizontal: 24,
                 }}>
-                  <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                  <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: theme.border, alignSelf: 'center', marginBottom: 16 }} />
                   {/* Header row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', flex: 1 }}>Edit Post</Text>
+                    <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700', flex: 1 }}>Edit Post</Text>
                     <Pressable testID="edit-modal-close" onPress={() => setEditVisible(false)}>
-                      <X size={20} color="#4a6fa5" />
+                      <X size={20} color={theme.subtext} />
                     </Pressable>
                   </View>
                   {/* Title input */}
-                  <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Title</Text>
+                  <Text style={{ color: theme.subtext, fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Title</Text>
                   <TextInput
                     testID="edit-title-input"
                     value={editTitle}
                     onChangeText={setEditTitle}
                     placeholder="Post title (optional)"
-                    placeholderTextColor="#2a4a6a"
+                    placeholderTextColor={theme.subtext}
                     style={{
-                      color: '#FFFFFF',
+                      color: theme.text,
                       fontSize: 15,
                       borderRadius: 12,
                       paddingHorizontal: 14,
                       paddingVertical: 12,
-                      backgroundColor: '#001935',
-                      borderColor: '#1a3a5c',
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
                       borderWidth: 1,
                       marginBottom: 16,
                     }}
                   />
                   {/* Content input */}
-                  <Text style={{ color: '#4a6fa5', fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Content</Text>
+                  <Text style={{ color: theme.subtext, fontSize: 12, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Content</Text>
                   <TextInput
                     testID="edit-content-input"
                     value={editContent}
                     onChangeText={setEditContent}
                     placeholder="What's on your mind?"
-                    placeholderTextColor="#2a4a6a"
+                    placeholderTextColor={theme.subtext}
                     multiline
                     numberOfLines={5}
                     style={{
-                      color: '#FFFFFF',
+                      color: theme.text,
                       fontSize: 14,
                       borderRadius: 12,
                       paddingHorizontal: 14,
                       paddingVertical: 12,
-                      backgroundColor: '#001935',
-                      borderColor: '#1a3a5c',
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
                       borderWidth: 1,
                       marginBottom: 20,
                       minHeight: 110,
@@ -1255,22 +1257,22 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
             <TouchableWithoutFeedback>
               <View style={{
-                backgroundColor: '#0a2d50',
+                backgroundColor: theme.card,
                 borderTopLeftRadius: 20,
                 borderTopRightRadius: 20,
                 paddingBottom: 32,
                 paddingTop: 8,
                 paddingHorizontal: 24,
               }}>
-                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: theme.border, alignSelf: 'center', marginBottom: 16 }} />
 
                 {reportSubmitted ? (
                   <View style={{ alignItems: 'center', paddingVertical: 24, gap: 12 }}>
                     <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,207,53,0.15)', alignItems: 'center', justifyContent: 'center' }}>
                       <Flag size={26} color="#00CF35" />
                     </View>
-                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700' }}>Post reported</Text>
-                    <Text style={{ color: '#4a6fa5', fontSize: 13, textAlign: 'center' }}>
+                    <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700' }}>Post reported</Text>
+                    <Text style={{ color: theme.subtext, fontSize: 13, textAlign: 'center' }}>
                       Thanks for letting us know. We'll review this post.
                     </Text>
                     <Pressable
@@ -1294,8 +1296,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                   </View>
                 ) : (
                   <>
-                    <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700', marginBottom: 16 }}>Report Post</Text>
-                    <Text style={{ color: '#4a6fa5', fontSize: 13, marginBottom: 14 }}>Select a reason:</Text>
+                    <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700', marginBottom: 16 }}>Report Post</Text>
+                    <Text style={{ color: theme.subtext, fontSize: 13, marginBottom: 14 }}>Select a reason:</Text>
                     <View style={{ gap: 10, marginBottom: 20 }}>
                       {REPORT_REASONS.map((item) => (
                         <Pressable
@@ -1307,11 +1309,11 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                             paddingHorizontal: 16,
                             borderRadius: 12,
                             borderWidth: 1.5,
-                            borderColor: selectedCategory === item.category ? '#00CF35' : '#1a3a5c',
+                            borderColor: selectedCategory === item.category ? '#00CF35' : theme.border,
                             backgroundColor: selectedCategory === item.category ? 'rgba(0,207,53,0.08)' : 'transparent',
                           }}
                         >
-                          <Text style={{ color: selectedCategory === item.category ? '#00CF35' : '#FFFFFF', fontWeight: '500' }}>{item.label}</Text>
+                          <Text style={{ color: selectedCategory === item.category ? '#00CF35' : theme.text, fontWeight: '500' }}>{item.label}</Text>
                         </Pressable>
                       ))}
                     </View>
@@ -1325,13 +1327,13 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                       onPress={() => selectedCategory && reportMutation.mutate(selectedCategory)}
                       disabled={!selectedCategory || reportMutation.isPending}
                       style={{
-                        backgroundColor: selectedCategory ? '#00CF35' : '#1a3a5c',
+                        backgroundColor: selectedCategory ? '#00CF35' : theme.border,
                         borderRadius: 14,
                         paddingVertical: 14,
                         alignItems: 'center',
                       }}
                     >
-                      <Text style={{ color: selectedCategory ? '#001935' : '#4a6fa5', fontWeight: '700', fontSize: 15 }}>
+                      <Text style={{ color: selectedCategory ? '#001935' : theme.subtext, fontWeight: '700', fontSize: 15 }}>
                         {reportMutation.isPending ? 'Submitting...' : 'Submit Report'}
                       </Text>
                     </Pressable>
@@ -1354,14 +1356,14 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
             <TouchableWithoutFeedback>
               <View style={{
-                backgroundColor: '#0a2d50',
+                backgroundColor: theme.card,
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
                 paddingBottom: 36,
                 paddingTop: 8,
               }}>
                 {/* Drag handle */}
-                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#1a3a5c', alignSelf: 'center', marginBottom: 16 }} />
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: theme.border, alignSelf: 'center', marginBottom: 16 }} />
 
                 {/* Post preview */}
                 {(() => {
@@ -1377,8 +1379,8 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                       padding: 10,
                       borderRadius: 14,
                       borderWidth: 1,
-                      borderColor: '#1a3a5c',
-                      backgroundColor: '#001935',
+                      borderColor: theme.border,
+                      backgroundColor: theme.cardAlt,
                       gap: 10,
                     }}>
                       {thumbnail ? (
@@ -1389,12 +1391,12 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                           transition={0}
                         />
                       ) : post.type === 'video' ? (
-                        <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: theme.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
                           <Text style={{ fontSize: 24 }}>🎬</Text>
                         </View>
                       ) : (
-                        <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: '#0a2d50', alignItems: 'center', justifyContent: 'center' }}>
-                          <ShareIcon size={20} color="#4a6fa5" />
+                        <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: theme.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
+                          <ShareIcon size={20} color={theme.subtext} />
                         </View>
                       )}
                       <View style={{ flex: 1, gap: 4 }}>
@@ -1403,9 +1405,9 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                           <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '700' }}>{author}</Text>
                         </View>
                         {caption ? (
-                          <Text style={{ color: '#c8d8e8', fontSize: 12, lineHeight: 17 }} numberOfLines={2}>{caption}</Text>
+                          <Text style={{ color: theme.text, fontSize: 12, lineHeight: 17 }} numberOfLines={2}>{caption}</Text>
                         ) : null}
-                        <Text style={{ color: '#4a6fa5', fontSize: 10 }}>openlypal.com/post/{post.id}</Text>
+                        <Text style={{ color: theme.subtext, fontSize: 10 }}>openlypal.com/post/{post.id}</Text>
                       </View>
                     </View>
                   );
@@ -1414,7 +1416,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                 {/* Send to — contacts row */}
                 {relationships && relationships.length > 0 ? (
                   <View style={{ marginBottom: 20 }}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700', marginHorizontal: 16, marginBottom: 12 }}>Send to</Text>
+                    <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700', marginHorizontal: 16, marginBottom: 12 }}>Send to</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
@@ -1440,7 +1442,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                             style={{ alignItems: 'center', gap: 6, width: 60 }}
                           >
                             <UserAvatar uri={rel.user.image} name={rel.user.name} size={52} />
-                            <Text style={{ color: '#c8d8e8', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>
+                            <Text style={{ color: theme.subtext, fontSize: 11, textAlign: 'center' }} numberOfLines={2}>
                               {rel.user.name}
                             </Text>
                           </Pressable>
@@ -1583,7 +1585,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                                 <Text style={{ color: p.labelColor ?? '#FFFFFF', fontSize: p.iconText === 'f' ? 22 : 16, fontWeight: '800' }}>{p.iconText}</Text>
                               )}
                             </View>
-                            <Text style={{ color: '#c8d8e8', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>{p.label}</Text>
+                            <Text style={{ color: theme.subtext, fontSize: 11, textAlign: 'center' }} numberOfLines={2}>{p.label}</Text>
                           </Pressable>
                         ))}
                       </ScrollView>
@@ -1610,13 +1612,13 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                     gap: 8,
                     borderRadius: 14,
                     paddingVertical: 14,
-                    backgroundColor: captionCopied ? 'rgba(0,207,53,0.12)' : '#001935',
+                    backgroundColor: captionCopied ? 'rgba(0,207,53,0.12)' : theme.inputBg,
                     borderWidth: 1,
-                    borderColor: captionCopied ? '#00CF35' : '#1a3a5c',
+                    borderColor: captionCopied ? '#00CF35' : theme.border,
                   }}
                 >
-                  {captionCopied ? <Check size={16} color="#00CF35" /> : <Copy size={16} color="#4a6fa5" />}
-                  <Text style={{ color: captionCopied ? '#00CF35' : '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
+                  {captionCopied ? <Check size={16} color="#00CF35" /> : <Copy size={16} color={theme.subtext} />}
+                  <Text style={{ color: captionCopied ? '#00CF35' : theme.text, fontWeight: '600', fontSize: 15 }}>
                     {captionCopied ? 'Link Copied!' : 'Copy Link'}
                   </Text>
                 </Pressable>

@@ -24,16 +24,23 @@ import {
   FileText,
   Bell,
   ShieldAlert,
+  Sun,
+  Moon,
+  Smartphone,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { supabase } from '@/lib/supabase';
 import { useSession, useInvalidateSession } from '@/lib/auth/use-session';
 import type { User } from '@/lib/types';
+import { useTheme, useThemeMode, useSetThemeMode, type ThemeMode } from '@/lib/theme';
 
 const ADMIN_EMAIL = "your@email.com";
 
 export default function SettingsScreen() {
+  const theme = useTheme();
+  const themeMode = useThemeMode();
+  const setThemeMode = useSetThemeMode();
   const router = useRouter();
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -136,23 +143,23 @@ export default function SettingsScreen() {
     >
       <View
         className="w-9 h-9 rounded-xl items-center justify-center mr-3"
-        style={{ backgroundColor: danger ? 'rgba(255,78,106,0.15)' : '#112847' }}
+        style={{ backgroundColor: danger ? 'rgba(255,78,106,0.15)' : theme.border }}
       >
         {icon}
       </View>
       <View className="flex-1">
         <Text
           className="font-medium text-sm"
-          style={{ color: danger ? '#FF4E6A' : '#FFFFFF' }}
+          style={{ color: danger ? '#FF4E6A' : theme.text }}
         >
           {label}
         </Text>
         {sublabel ? (
-          <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>{sublabel}</Text>
+          <Text className="text-xs mt-0.5" style={{ color: theme.subtext }}>{sublabel}</Text>
         ) : null}
       </View>
       {rightElement ?? (
-        onPress ? <ChevronRight size={16} color="#4a6fa5" /> : null
+        onPress ? <ChevronRight size={16} color={theme.subtext} /> : null
       )}
     </Pressable>
   );
@@ -160,61 +167,86 @@ export default function SettingsScreen() {
   const SectionHeader = ({ title }: { title: string }) => (
     <Text
       className="text-xs font-semibold uppercase tracking-wider px-4 pt-5 pb-2"
-      style={{ color: '#4a6fa5' }}
+      style={{ color: theme.subtext }}
     >
       {title}
     </Text>
   );
 
   return (
-    <SafeAreaView testID="settings-screen" className="flex-1" style={{ backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="settings-screen" className="flex-1" style={{ backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View
         className="flex-row items-center px-4 py-3"
-        style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+        style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
       >
         <Pressable
           testID="back-button"
           onPress={handleBack}
           className="w-9 h-9 items-center justify-center rounded-full mr-3"
-          style={{ backgroundColor: '#0a2d50' }}
+          style={{ backgroundColor: theme.card }}
         >
-          <ArrowLeft size={18} color="#FFFFFF" />
+          <ArrowLeft size={18} color={theme.text} />
         </Pressable>
-        <Text className="text-white font-semibold text-base">Settings & Preferences</Text>
+        <Text className="font-semibold text-base" style={{ color: theme.text }}>Settings & Preferences</Text>
       </View>
 
       <ScrollView className="flex-1">
+        {/* Appearance */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 24, marginTop: 16 }}>
+          <Text style={{ color: theme.subtext, fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>Appearance</Text>
+          <View style={{ backgroundColor: theme.card, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+            {([
+              { mode: 'dark' as ThemeMode, label: 'Dark', Icon: Moon },
+              { mode: 'light' as ThemeMode, label: 'Light', Icon: Sun },
+              { mode: 'system' as ThemeMode, label: 'System', Icon: Smartphone },
+            ]).map(({ mode, label, Icon }, i) => (
+              <Pressable
+                key={mode}
+                testID={`theme-mode-${mode}`}
+                onPress={() => { setThemeMode(mode); Haptics.selectionAsync(); }}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: i < 2 ? 1 : 0, borderBottomColor: theme.border, backgroundColor: themeMode === mode ? `${theme.accent}12` : 'transparent' }}
+              >
+                <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: themeMode === mode ? `${theme.accent}22` : theme.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Icon size={16} color={themeMode === mode ? theme.accent : theme.subtext} />
+                </View>
+                <Text style={{ flex: 1, color: themeMode === mode ? theme.text : theme.subtext, fontSize: 15, fontWeight: themeMode === mode ? '600' : '400' }}>{label}</Text>
+                {themeMode === mode ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.accent }} /> : null}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* Content Preferences */}
         <SectionHeader title="Content" />
-        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}>
           <Pressable
             testID="interests-button"
             onPress={() => router.push('/(app)/interests' as any)}
             className="flex-row items-center px-4 py-4"
-            style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+            style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
           >
-            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
+            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: theme.border }}>
               <Tag size={18} color="#00CF35" />
             </View>
             <View className="flex-1">
-              <Text className="text-white font-medium text-sm">Interests</Text>
-              <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>
+              <Text className="font-medium text-sm" style={{ color: theme.text }}>Interests</Text>
+              <Text className="text-xs mt-0.5" style={{ color: theme.subtext }}>
                 {profile?.categories
                   ? `${profile.categories.split(',').filter(Boolean).length} selected`
                   : 'Choose topics you care about'}
               </Text>
             </View>
-            <ChevronRight size={16} color="#4a6fa5" />
+            <ChevronRight size={16} color={theme.subtext} />
           </Pressable>
 
           <View className="flex-row items-center px-4 py-4">
-            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
-              <Eye size={18} color="#4a6fa5" />
+            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: theme.border }}>
+              <Eye size={18} color={theme.subtext} />
             </View>
             <View className="flex-1">
-              <Text className="text-white font-medium text-sm">Show Explicit Content</Text>
-              <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>
+              <Text className="font-medium text-sm" style={{ color: theme.text }}>Show Explicit Content</Text>
+              <Text className="text-xs mt-0.5" style={{ color: theme.subtext }}>
                 Adult content marked 18+
               </Text>
             </View>
@@ -225,7 +257,7 @@ export default function SettingsScreen() {
                 width: 48,
                 height: 28,
                 borderRadius: 14,
-                backgroundColor: profile?.showExplicit ? '#00CF35' : '#1a3a5c',
+                backgroundColor: profile?.showExplicit ? '#00CF35' : theme.border,
                 justifyContent: 'center',
                 paddingHorizontal: 3,
               }}
@@ -247,7 +279,7 @@ export default function SettingsScreen() {
         {isAdmin ? (
           <>
             <SectionHeader title="Admin" />
-            <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+            <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}>
               <SettingRow
                 testId="admin-panel-button"
                 icon={<ShieldAlert size={18} color="#FF4E6A" />}
@@ -261,18 +293,18 @@ export default function SettingsScreen() {
 
         {/* Support */}
         <SectionHeader title="Support" />
-        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}>
           <Pressable
             testID="support-button"
             onPress={() => router.push('/(app)/support' as any)}
             className="flex-row items-center px-4 py-4"
-            style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+            style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
           >
-            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
-              <HelpCircle size={18} color="#4a6fa5" />
+            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: theme.border }}>
+              <HelpCircle size={18} color={theme.subtext} />
             </View>
-            <Text className="text-white font-medium text-sm flex-1">Help & FAQ</Text>
-            <ChevronRight size={16} color="#4a6fa5" />
+            <Text className="font-medium text-sm flex-1" style={{ color: theme.text }}>Help & FAQ</Text>
+            <ChevronRight size={16} color={theme.subtext} />
           </Pressable>
 
           <Pressable
@@ -280,52 +312,52 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/legal' as any)}
             className="flex-row items-center px-4 py-4"
           >
-            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
-              <Shield size={18} color="#4a6fa5" />
+            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: theme.border }}>
+              <Shield size={18} color={theme.subtext} />
             </View>
-            <Text className="text-white font-medium text-sm flex-1">Privacy Policy & Terms</Text>
-            <ChevronRight size={16} color="#4a6fa5" />
+            <Text className="font-medium text-sm flex-1" style={{ color: theme.text }}>Privacy Policy & Terms</Text>
+            <ChevronRight size={16} color={theme.subtext} />
           </Pressable>
         </View>
 
         {/* Legal & Compliance (App Store / GDPR) */}
         <SectionHeader title="Legal & Compliance" />
-        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
-          <View className="px-4 py-3" style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}>
-            <Text className="text-white font-medium text-sm">Your Data Rights</Text>
-            <Text className="text-xs mt-1 leading-5" style={{ color: '#4a6fa5' }}>
+        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}>
+          <View className="px-4 py-3" style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}>
+            <Text className="font-medium text-sm" style={{ color: theme.text }}>Your Data Rights</Text>
+            <Text className="text-xs mt-1 leading-5" style={{ color: theme.subtext }}>
               Under GDPR and applicable privacy laws, you have the right to access, rectify, export, and delete your personal data at any time. Contact us at info@clearstepsdigital.com.
             </Text>
           </View>
           <View className="px-4 py-3 flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <Globe size={14} color="#4a6fa5" />
-              <Text className="text-xs" style={{ color: '#4a6fa5' }}>Data controller: Clear Step Digital Ltd</Text>
+              <Globe size={14} color={theme.subtext} />
+              <Text className="text-xs" style={{ color: theme.subtext }}>Data controller: Clear Step Digital Ltd</Text>
             </View>
           </View>
         </View>
 
         {/* Notifications */}
         <SectionHeader title="Notifications" />
-        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}>
           {([
-            { key: 'notifyNewPosts' as const, label: 'New Posts', sublabel: 'Posts from people you follow', icon: <Bell size={18} color="#4a6fa5" /> },
-            { key: 'notifyLikes' as const, label: 'Likes', sublabel: 'When someone likes your post', icon: <Bell size={18} color="#4a6fa5" /> },
-            { key: 'notifyComments' as const, label: 'Comments', sublabel: 'When someone comments on your post', icon: <Bell size={18} color="#4a6fa5" /> },
-            { key: 'notifyFollows' as const, label: 'New Followers', sublabel: 'When someone follows you', icon: <Bell size={18} color="#4a6fa5" /> },
-            { key: 'notifyReblogs' as const, label: 'Reblogs', sublabel: 'When someone reblogs your post', icon: <Bell size={18} color="#4a6fa5" /> },
+            { key: 'notifyNewPosts' as const, label: 'New Posts', sublabel: 'Posts from people you follow' },
+            { key: 'notifyLikes' as const, label: 'Likes', sublabel: 'When someone likes your post' },
+            { key: 'notifyComments' as const, label: 'Comments', sublabel: 'When someone comments on your post' },
+            { key: 'notifyFollows' as const, label: 'New Followers', sublabel: 'When someone follows you' },
+            { key: 'notifyReblogs' as const, label: 'Reblogs', sublabel: 'When someone reblogs your post' },
           ]).map((item, index, arr) => (
             <View
               key={item.key}
               className="flex-row items-center px-4 py-4"
-              style={index < arr.length - 1 ? { borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 } : undefined}
+              style={index < arr.length - 1 ? { borderBottomColor: theme.border, borderBottomWidth: 0.5 } : undefined}
             >
-              <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
-                {item.icon}
+              <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: theme.border }}>
+                <Bell size={18} color={theme.subtext} />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-medium text-sm">{item.label}</Text>
-                <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>{item.sublabel}</Text>
+                <Text className="font-medium text-sm" style={{ color: theme.text }}>{item.label}</Text>
+                <Text className="text-xs mt-0.5" style={{ color: theme.subtext }}>{item.sublabel}</Text>
               </View>
               <Pressable
                 testID={`notif-toggle-${item.key}`}
@@ -334,7 +366,7 @@ export default function SettingsScreen() {
                   width: 48,
                   height: 28,
                   borderRadius: 14,
-                  backgroundColor: notifPrefs[item.key] ? '#00CF35' : '#1a3a5c',
+                  backgroundColor: notifPrefs[item.key] ? '#00CF35' : theme.border,
                   justifyContent: 'center',
                   paddingHorizontal: 3,
                 }}
@@ -355,17 +387,17 @@ export default function SettingsScreen() {
 
         {/* Account */}
         <SectionHeader title="Account" />
-        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}>
+        <View className="mx-4 rounded-2xl overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}>
           <Pressable
             testID="sign-out-button"
             onPress={() => signOut.mutate()}
             className="flex-row items-center px-4 py-4"
-            style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+            style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
           >
-            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#112847' }}>
-              <LogOut size={18} color="#4a6fa5" />
+            <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: theme.border }}>
+              <LogOut size={18} color={theme.subtext} />
             </View>
-            <Text className="text-white font-medium text-sm flex-1">Sign Out</Text>
+            <Text className="font-medium text-sm flex-1" style={{ color: theme.text }}>Sign Out</Text>
           </Pressable>
 
           <Pressable
@@ -378,17 +410,17 @@ export default function SettingsScreen() {
             </View>
             <View className="flex-1">
               <Text className="font-medium text-sm" style={{ color: '#FF4E6A' }}>Delete Account</Text>
-              <Text className="text-xs mt-0.5" style={{ color: '#4a6fa5' }}>Permanently remove your account and data</Text>
+              <Text className="text-xs mt-0.5" style={{ color: theme.subtext }}>Permanently remove your account and data</Text>
             </View>
           </Pressable>
         </View>
 
         {/* App info */}
         <View className="items-center mt-8 mb-16">
-          <Text className="text-xs" style={{ color: '#1a3a5c' }}>
+          <Text className="text-xs" style={{ color: theme.border }}>
             Clear Step Digital Ltd · info@clearstepsdigital.com
           </Text>
-          <Text className="text-xs mt-1" style={{ color: '#1a3a5c' }}>Version 1.0.0</Text>
+          <Text className="text-xs mt-1" style={{ color: theme.border }}>Version 1.0.0</Text>
         </View>
       </ScrollView>
 
@@ -406,7 +438,7 @@ export default function SettingsScreen() {
           <Pressable className="flex-1" onPress={() => setShowDeleteModal(false)} />
           <View
             className="mx-4 mb-8 rounded-3xl overflow-hidden"
-            style={{ backgroundColor: '#071e38', borderColor: '#1a3a5c', borderWidth: 0.5 }}
+            style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 0.5 }}
           >
             <View className="items-center pt-8 pb-4 px-6">
               <View
@@ -415,19 +447,19 @@ export default function SettingsScreen() {
               >
                 <AlertTriangle size={28} color="#FF4E6A" />
               </View>
-              <Text className="text-white font-bold text-lg text-center">Delete Account?</Text>
-              <Text className="text-sm text-center mt-2 leading-5" style={{ color: '#4a6fa5' }}>
+              <Text className="font-bold text-lg text-center" style={{ color: theme.text }}>Delete Account?</Text>
+              <Text className="text-sm text-center mt-2 leading-5" style={{ color: theme.subtext }}>
                 This will permanently delete your account, all posts, messages, and data. This action cannot be undone.
               </Text>
             </View>
 
-            <View style={{ borderTopColor: '#1a3a5c', borderTopWidth: 0.5 }}>
+            <View style={{ borderTopColor: theme.border, borderTopWidth: 0.5 }}>
               <Pressable
                 testID="confirm-delete-button"
                 onPress={() => deleteAccount.mutate()}
                 disabled={deleteAccount.isPending}
                 className="items-center py-4"
-                style={{ borderBottomColor: '#1a3a5c', borderBottomWidth: 0.5 }}
+                style={{ borderBottomColor: theme.border, borderBottomWidth: 0.5 }}
               >
                 {deleteAccount.isPending ? (
                   <ActivityIndicator color="#FF4E6A" />
@@ -441,7 +473,7 @@ export default function SettingsScreen() {
                 onPress={() => setShowDeleteModal(false)}
                 className="items-center py-4"
               >
-                <Text className="font-medium text-base text-white">Cancel</Text>
+                <Text className="font-medium text-base" style={{ color: theme.text }}>Cancel</Text>
               </Pressable>
             </View>
           </View>

@@ -20,6 +20,7 @@ import { api } from '@/lib/api/api';
 import { useE2EInit } from '@/lib/use-e2e-init';
 import { fireHomeTabPress } from '@/lib/home-tab-press';
 import type { Conversation } from '@/lib/types';
+import { useTheme } from '@/lib/theme';
 
 type TabConfig = {
   route: string;
@@ -112,6 +113,7 @@ type ActionRowProps = {
 };
 
 function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
+  const theme = useTheme();
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -138,7 +140,7 @@ function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
             paddingVertical: 14,
             paddingHorizontal: 14,
             borderRadius: 14,
-            backgroundColor: 'rgba(255,255,255,0.04)',
+            backgroundColor: theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
             gap: 14,
           },
         ]}
@@ -193,6 +195,7 @@ function ActionRow({ testID, icon, label, sub, onPress }: ActionRowProps) {
 function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateModalProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -308,7 +311,7 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
               bottom: 0,
               left: 0,
               right: 0,
-              backgroundColor: '#001228',
+              backgroundColor: theme.isDark ? '#001228' : '#FFFFFF',
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               paddingBottom: Math.max(insets.bottom, 16),
@@ -327,7 +330,7 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
                 width: 36,
                 height: 4,
                 borderRadius: 2,
-                backgroundColor: 'rgba(255,255,255,0.25)',
+                backgroundColor: theme.isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)',
               }}
             />
           </View>
@@ -338,7 +341,7 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
               fontSize: 11,
               fontWeight: '600',
               letterSpacing: 1.5,
-              color: 'rgba(255,255,255,0.35)',
+              color: theme.isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,25,53,0.35)',
               textTransform: 'uppercase',
               textAlign: 'center',
               paddingTop: 8,
@@ -372,9 +375,9 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
               marginBottom: 4,
               height: 52,
               borderRadius: 14,
-              backgroundColor: 'rgba(255,255,255,0.06)',
+              backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
               borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.08)',
+              borderColor: theme.border,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -383,7 +386,7 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
               style={{
                 fontSize: 16,
                 fontWeight: '500',
-                color: 'rgba(255,255,255,0.5)',
+                color: theme.subtext,
               }}
             >
               Cancel
@@ -420,7 +423,8 @@ function TabButton({
     onPress();
   };
 
-  const iconColor = isActive ? '#00CF35' : 'rgba(255,255,255,0.38)';
+  const theme = useTheme();
+  const iconColor = isActive ? '#00CF35' : theme.isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,25,53,0.38)';
 
   return (
     <Pressable
@@ -461,6 +465,7 @@ type FloatingTabBarProps = {
 function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const theme = useTheme();
 
   const insets = useSafeAreaInsets();
 
@@ -565,7 +570,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
         {/* Blur layer */}
         <BlurView
           intensity={30}
-          tint="dark"
+          tint={theme.tabBarTint}
           style={{
             position: 'absolute',
             top: 0,
@@ -582,7 +587,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,12,28,0.78)',
+            backgroundColor: theme.tabBar,
           }}
         />
         {/* Top specular highlight */}
@@ -593,7 +598,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
             left: 0,
             right: 0,
             height: 1,
-            backgroundColor: 'rgba(255,255,255,0.18)',
+            backgroundColor: theme.isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.06)',
           }}
         />
         {/* Bottom edge highlight */}
@@ -604,7 +609,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
             left: 0,
             right: 0,
             height: 1,
-            backgroundColor: 'rgba(255,255,255,0.06)',
+            backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
           }}
         />
         {/* Sliding pill indicator */}

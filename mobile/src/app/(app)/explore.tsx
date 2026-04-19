@@ -18,6 +18,7 @@ import { api } from '@/lib/api/api';
 import type { Post, User, TrendingHashtag } from '@/lib/types';
 import { PostCard } from '@/components/PostCard';
 import { UserAvatar } from '@/components/UserAvatar';
+import { useTheme } from '@/lib/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -65,6 +66,7 @@ function accentColorForTrend(trend?: 'up' | 'down' | 'stable'): string {
 const SKELETON_HEIGHTS = [120, 80, 140];
 
 function SkeletonCard({ height }: { height: number }) {
+  const theme = useTheme();
   const opacity = useSharedValue(0.5);
 
   useEffect(() => {
@@ -85,7 +87,7 @@ function SkeletonCard({ height }: { height: number }) {
     <Animated.View
       style={[
         {
-          backgroundColor: '#0a2d50',
+          backgroundColor: theme.card,
           borderRadius: 16,
           height,
           marginHorizontal: 12,
@@ -98,6 +100,7 @@ function SkeletonCard({ height }: { height: number }) {
 }
 
 export default function ExploreScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,7 +173,7 @@ export default function ExploreScreen() {
     (userSearchResults ?? []).length === 0;
 
   return (
-    <SafeAreaView testID="explore-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="explore-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Header */}
       <View style={{
         flexDirection: 'row',
@@ -179,7 +182,7 @@ export default function ExploreScreen() {
         paddingTop: 4,
         paddingBottom: 10,
       }}>
-        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 26, flex: 1 }}>Explore</Text>
+        <Text style={{ color: theme.text, fontWeight: '700', fontSize: 26, flex: 1 }}>Explore</Text>
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -189,7 +192,7 @@ export default function ExploreScreen() {
           testID="explore-bell-button"
         >
           <View style={{ position: 'relative' }}>
-            <Bell size={22} color="#FFFFFF" />
+            <Bell size={22} color={theme.text} />
             <View style={{
               position: 'absolute',
               top: 0,
@@ -199,7 +202,7 @@ export default function ExploreScreen() {
               borderRadius: 4,
               backgroundColor: '#00CF35',
               borderWidth: 1.5,
-              borderColor: '#001935',
+              borderColor: theme.bg,
             }} />
           </View>
         </Pressable>
@@ -215,11 +218,11 @@ export default function ExploreScreen() {
           paddingHorizontal: 16,
           overflow: 'hidden',
           borderWidth: 1,
-          borderColor: focused ? 'rgba(0,207,53,0.4)' : '#1a3a5c',
+          borderColor: focused ? 'rgba(0,207,53,0.4)' : theme.border,
         }}>
           <BlurView
             intensity={20}
-            tint="dark"
+            tint={theme.tabBarTint}
             style={{
               position: 'absolute',
               top: 0,
@@ -228,7 +231,7 @@ export default function ExploreScreen() {
               bottom: 0,
             }}
           />
-          <Search size={18} color={focused ? '#00CF35' : '#4a6fa5'} />
+          <Search size={18} color={focused ? '#00CF35' : theme.subtext} />
           <TextInput
             testID="search-input"
             value={searchQuery}
@@ -236,8 +239,8 @@ export default function ExploreScreen() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder="Search Openly"
-            placeholderTextColor="#4a6fa5"
-            style={{ flex: 1, paddingVertical: 0, marginLeft: 10, color: '#FFFFFF', fontSize: 14 }}
+            placeholderTextColor={theme.subtext}
+            style={{ flex: 1, paddingVertical: 0, marginLeft: 10, color: theme.text, fontSize: 14 }}
           />
           {searchQuery.length > 0 ? (
             <Pressable
@@ -245,7 +248,7 @@ export default function ExploreScreen() {
               onPress={() => setSearchQuery('')}
               hitSlop={8}
             >
-              <X size={16} color="#4a6fa5" />
+              <X size={16} color={theme.subtext} />
             </Pressable>
           ) : null}
         </View>
@@ -266,7 +269,7 @@ export default function ExploreScreen() {
           <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
             <View style={{
               flexDirection: 'row',
-              backgroundColor: 'rgba(10,45,80,0.7)',
+              backgroundColor: theme.card,
               borderRadius: 22,
               padding: 4,
             }}>
@@ -285,7 +288,7 @@ export default function ExploreScreen() {
                 >
                   <Text style={{
                     fontSize: 12, fontWeight: '700',
-                    color: trendingType === tab.id ? '#001935' : '#4a6fa5',
+                    color: trendingType === tab.id ? '#001935' : theme.subtext,
                   }}>
                     {tab.label}
                   </Text>
@@ -314,9 +317,9 @@ export default function ExploreScreen() {
                     borderRadius: 20,
                     paddingHorizontal: 14,
                     paddingVertical: 7,
-                    backgroundColor: isSelected ? '#00CF35' : '#0a2d50',
+                    backgroundColor: isSelected ? '#00CF35' : theme.card,
                     borderWidth: 1,
-                    borderColor: isSelected ? '#00CF35' : '#1a3a5c',
+                    borderColor: isSelected ? '#00CF35' : theme.border,
                     shadowColor: isSelected ? '#00CF35' : 'transparent',
                     shadowOpacity: isSelected ? 0.2 : 0,
                     shadowRadius: isSelected ? 5 : 0,
@@ -326,7 +329,7 @@ export default function ExploreScreen() {
                   <Text style={{
                     fontSize: 12,
                     fontWeight: '700',
-                    color: isSelected ? '#001935' : '#7a9fc0',
+                    color: isSelected ? '#001935' : theme.subtext,
                   }}>
                     {CATEGORY_EMOJIS[cat] ?? ''} {cat}
                   </Text>
@@ -342,7 +345,7 @@ export default function ExploreScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: '#00CF35', marginRight: 8 }} />
               <TrendingUp size={16} color="#00CF35" style={{ marginRight: 6 }} />
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, flex: 1 }}>Trending Hashtags</Text>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16, flex: 1 }}>Trending Hashtags</Text>
               <Pressable testID="hashtags-see-all" onPress={() => router.push('/(app)/all-hashtags' as any)}>
                 <Text style={{ color: '#00CF35', fontSize: 12 }}>See all</Text>
               </Pressable>
@@ -363,8 +366,8 @@ export default function ExploreScreen() {
                       width: (SCREEN_WIDTH - 48) / 2,
                       height: 80,
                       borderRadius: 18,
-                      backgroundColor: '#0a2d50',
-                      borderColor: '#1a3a5c',
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
                       borderWidth: 1,
                       overflow: 'hidden',
                       flexDirection: 'row',
@@ -395,7 +398,7 @@ export default function ExploreScreen() {
 
                       {/* Count + trend icon */}
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                        <Text style={{ color: '#4a6fa5', fontSize: 10 }}>
+                        <Text style={{ color: theme.subtext, fontSize: 10 }}>
                           {item.count >= 1000 ? `${(item.count / 1000).toFixed(1)}k` : item.count} posts
                         </Text>
                         <TrendIcon trend={item.trend} />
@@ -426,7 +429,7 @@ export default function ExploreScreen() {
           <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: '#00CF35', marginRight: 8 }} />
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16, flex: 1 }}>Recommended Blogs</Text>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16, flex: 1 }}>Recommended Blogs</Text>
               <Pressable testID="recommended-see-all" onPress={() => router.push('/(app)/all-recommended' as any)}>
                 <Text style={{ color: '#00CF35', fontSize: 12 }}>See all</Text>
               </Pressable>
@@ -442,9 +445,9 @@ export default function ExploreScreen() {
                       borderRadius: 18,
                       width: 140,
                       height: 180,
-                      backgroundColor: 'rgba(10,45,80,0.8)',
+                      backgroundColor: theme.card,
                       borderWidth: 0.5,
-                      borderColor: 'rgba(255,255,255,0.06)',
+                      borderColor: theme.border,
                       borderTopWidth: 2,
                       borderTopColor: 'rgba(0,207,53,0.4)',
                       overflow: 'hidden',
@@ -465,11 +468,11 @@ export default function ExploreScreen() {
                     {/* Content */}
                     <View style={{ alignItems: 'center', paddingTop: 12, flex: 1 }}>
                       <UserAvatar uri={user.image} name={user.name} size={60} />
-                      <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13, marginTop: 8 }} numberOfLines={1}>
+                      <Text style={{ color: theme.text, fontWeight: '600', fontSize: 13, marginTop: 8 }} numberOfLines={1}>
                         {user.username ?? user.name}
                       </Text>
                       {user.followerCount !== undefined ? (
-                        <Text style={{ color: '#4a6fa5', fontSize: 11, marginTop: 2 }}>
+                        <Text style={{ color: theme.subtext, fontSize: 11, marginTop: 2 }}>
                           {user.followerCount >= 1000 ? `${(user.followerCount / 1000).toFixed(1)}k` : user.followerCount} followers
                         </Text>
                       ) : null}
@@ -511,7 +514,7 @@ export default function ExploreScreen() {
           <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: '#00CF35', marginRight: 8 }} />
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16 }}>
                 People
               </Text>
             </View>
@@ -525,20 +528,20 @@ export default function ExploreScreen() {
                   alignItems: 'center',
                   paddingVertical: 10,
                   paddingHorizontal: 12,
-                  backgroundColor: '#0a2d50',
+                  backgroundColor: theme.card,
                   borderRadius: 14,
                   marginBottom: 8,
                   borderWidth: 0.5,
-                  borderColor: '#1a3a5c',
+                  borderColor: theme.border,
                 }}
               >
                 <UserAvatar uri={user.image} name={user.name} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
+                  <Text style={{ color: theme.text, fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
                     {user.name}
                   </Text>
                   {user.username ? (
-                    <Text style={{ color: '#4a6fa5', fontSize: 12, marginTop: 1 }} numberOfLines={1}>
+                    <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 1 }} numberOfLines={1}>
                       @{user.username}
                     </Text>
                   ) : null}
@@ -576,9 +579,9 @@ export default function ExploreScreen() {
         {/* Empty search state */}
         {hasNoSearchResults ? (
           <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 }}>
-            <Search size={40} color="rgba(255,255,255,0.15)" />
+            <Search size={40} color={theme.subtext} />
             <Text style={{
-              color: 'rgba(255,255,255,0.4)',
+              color: theme.subtext,
               fontSize: 15,
               fontWeight: '600',
               marginTop: 16,
@@ -594,7 +597,7 @@ export default function ExploreScreen() {
           {!hasNoSearchResults ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
               <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: '#00CF35', marginRight: 8 }} />
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+              <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16 }}>
                 {isSearching
                   ? 'Posts'
                   : trendingType === 'trending'
@@ -619,7 +622,7 @@ export default function ExploreScreen() {
           )}
 
           {!loadingTrending && !loadingSearch && !isSearching && (displayPosts ?? []).length === 0 ? (
-            <Text style={{ color: '#4a6fa5', textAlign: 'center', marginTop: 32 }}>
+            <Text style={{ color: theme.subtext, textAlign: 'center', marginTop: 32 }}>
               No posts found
             </Text>
           ) : null}

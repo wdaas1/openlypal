@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useTheme } from '@/lib/theme';
 import { Stack, useRouter, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -27,20 +28,9 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const TumblrDark = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: '#001935',
-    card: '#001935',
-    primary: '#00CF35',
-    text: '#FFFFFF',
-    border: '#1a3a5c',
-  },
-};
-
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
+  const theme = useTheme();
   const router = useRouter();
   const navigationState = useRootNavigationState();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
@@ -218,8 +208,22 @@ function RootLayoutNav() {
     return () => { cancelled = true; };
   }, [session, isLoading, navigationState?.key, onboardingDone]);
 
+  const baseNavTheme = theme.isDark ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...baseNavTheme,
+    colors: {
+      ...baseNavTheme.colors,
+      primary: '#00CF35',
+      background: theme.bg,
+      card: theme.card,
+      text: theme.text,
+      border: theme.border,
+      notification: '#FF4E6A',
+    },
+  };
+
   return (
-    <ThemeProvider value={TumblrDark}>
+    <ThemeProvider value={navTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="welcome" />
@@ -233,11 +237,16 @@ function RootLayoutNav() {
   );
 }
 
+function ThemedStatusBar() {
+  const theme = useTheme();
+  return <StatusBar style={theme.isDark ? 'light' : 'dark'} />;
+}
+
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="light" />
+        <ThemedStatusBar />
         <RootLayoutNav />
       </GestureHandlerRootView>
     </QueryClientProvider>

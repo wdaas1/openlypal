@@ -21,6 +21,7 @@ import { useSession } from '@/lib/auth/use-session';
 import type { Post, User } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { profileModulesApi, type ProfileModule, type ModuleType } from '@/lib/api/profile-modules';
+import { useTheme } from '@/lib/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = 3;
@@ -40,6 +41,7 @@ const MODULE_TYPE_META: Record<ModuleType, { label: string; icon: React.ReactNod
 };
 
 function CompactModuleCard({ mod }: { mod: ProfileModule }) {
+  const theme = useTheme();
   let parsed: Record<string, string> = {};
   try { parsed = JSON.parse(mod.content) as Record<string, string>; } catch {}
   const meta = MODULE_TYPE_META[mod.type];
@@ -58,7 +60,7 @@ function CompactModuleCard({ mod }: { mod: ProfileModule }) {
   return (
     <View
       style={{
-        backgroundColor: 'rgba(10,45,80,0.7)',
+        backgroundColor: theme.card,
         borderRadius: 12,
         paddingHorizontal: 12,
         paddingVertical: 10,
@@ -84,20 +86,21 @@ function CompactModuleCard({ mod }: { mod: ProfileModule }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: '#00CF35', fontSize: 10, fontWeight: '700' }}>{meta.label.toUpperCase()}</Text>
-        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500', marginTop: 1 }} numberOfLines={1}>{summary}</Text>
+        <Text style={{ color: theme.text, fontSize: 13, fontWeight: '500', marginTop: 1 }} numberOfLines={1}>{summary}</Text>
       </View>
     </View>
   );
 }
 
 function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
+  const theme = useTheme();
   const hasMedia = !!(post.imageUrl || post.videoUrl);
 
   return (
     <Pressable
       testID={`gallery-cell-${post.id}`}
       onPress={onPress}
-      style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: '#0a2d50', borderRadius: 4, overflow: 'hidden' }}
+      style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: theme.card, borderRadius: 4, overflow: 'hidden' }}
     >
       {hasMedia ? (
         <>
@@ -117,13 +120,13 @@ function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
         </>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 8 }}>
-          <FileText size={18} color="#2a4a6a" />
+          <FileText size={18} color={theme.border} />
           {post.title ? (
-            <Text style={{ color: '#4a6fa5', fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }} numberOfLines={3}>
+            <Text style={{ color: theme.subtext, fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }} numberOfLines={3}>
               {post.title}
             </Text>
           ) : post.content ? (
-            <Text style={{ color: '#4a6fa5', fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }} numberOfLines={3}>
+            <Text style={{ color: theme.subtext, fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }} numberOfLines={3}>
               {post.content}
             </Text>
           ) : null}
@@ -134,6 +137,7 @@ function GalleryCell({ post, onPress }: { post: Post; onPress: () => void }) {
 }
 
 export default function ProfileScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
@@ -191,13 +195,13 @@ export default function ProfileScreen() {
   };
 
   const TABS: { id: ProfileTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'posts', label: tabLabel('posts', 'Posts'), icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
-    { id: 'media', label: tabLabel('media', 'Media'), icon: <Play size={15} color={activeTab === 'media' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
-    { id: 'liked', label: tabLabel('liked', 'Liked'), icon: <Heart size={15} color={activeTab === 'liked' ? '#001935' : 'rgba(255,255,255,0.4)'} /> },
+    { id: 'posts', label: tabLabel('posts', 'Posts'), icon: <Grid3X3 size={15} color={activeTab === 'posts' ? '#001935' : theme.subtext} /> },
+    { id: 'media', label: tabLabel('media', 'Media'), icon: <Play size={15} color={activeTab === 'media' ? '#001935' : theme.subtext} /> },
+    { id: 'liked', label: tabLabel('liked', 'Liked'), icon: <Heart size={15} color={activeTab === 'liked' ? '#001935' : theme.subtext} /> },
   ];
 
   const statNumberStyle = {
-    color: '#FFFFFF' as const,
+    color: theme.text as string,
     fontWeight: '900' as const,
     fontSize: 22,
     shadowColor: '#00CF35',
@@ -206,7 +210,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView testID="profile-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="profile-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
         refreshControl={
@@ -221,7 +225,7 @@ export default function ProfileScreen() {
         }
       >
         {/* Header Banner */}
-        <View style={{ height: 220, backgroundColor: '#0a2d50' }}>
+        <View style={{ height: 220, backgroundColor: theme.card }}>
           {profile?.headerImage ? (
             <Image
               source={{ uri: profile.headerImage }}
@@ -229,11 +233,11 @@ export default function ProfileScreen() {
               contentFit="cover"
             />
           ) : (
-            <View style={{ flex: 1, backgroundColor: '#0a2d50' }} />
+            <View style={{ flex: 1, backgroundColor: theme.card }} />
           )}
           {/* Linear gradient overlay fading into background */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,18,40,0.8)', '#001935']}
+            colors={['transparent', theme.bg] as [string, string]}
             style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
           />
           {/* Top-right action buttons */}
@@ -290,7 +294,7 @@ export default function ProfileScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
             {/* Avatar with premium ring and green glow */}
             <View style={{
-              borderColor: '#001935', borderWidth: 4, borderRadius: 50,
+              borderColor: theme.bg, borderWidth: 4, borderRadius: 50,
               shadowColor: '#00CF35', shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.2, shadowRadius: 5, elevation: 8,
             }}>
@@ -301,15 +305,15 @@ export default function ProfileScreen() {
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
               <View style={{
                 alignItems: 'center',
-                backgroundColor: 'rgba(10,45,80,0.6)',
+                backgroundColor: theme.card,
                 borderRadius: 14,
                 paddingHorizontal: 16,
                 paddingVertical: 10,
                 borderWidth: 0.5,
-                borderColor: 'rgba(255,255,255,0.07)',
+                borderColor: theme.border,
               }}>
                 <Text style={statNumberStyle}>{profile?.postCount ?? 0}</Text>
-                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Posts</Text>
+                <Text style={{ color: theme.subtext, fontSize: 11 }}>Posts</Text>
               </View>
               <Pressable
                 testID="followers-stat-button"
@@ -321,16 +325,16 @@ export default function ProfileScreen() {
                 }}
                 style={{
                   alignItems: 'center',
-                  backgroundColor: 'rgba(10,45,80,0.6)',
+                  backgroundColor: theme.card,
                   borderRadius: 14,
                   paddingHorizontal: 16,
                   paddingVertical: 10,
                   borderWidth: 0.5,
-                  borderColor: 'rgba(255,255,255,0.07)',
+                  borderColor: theme.border,
                 }}
               >
                 <Text style={statNumberStyle}>{profile?.followerCount ?? 0}</Text>
-                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Followers</Text>
+                <Text style={{ color: theme.subtext, fontSize: 11 }}>Followers</Text>
               </Pressable>
               <Pressable
                 testID="following-stat-button"
@@ -342,16 +346,16 @@ export default function ProfileScreen() {
                 }}
                 style={{
                   alignItems: 'center',
-                  backgroundColor: 'rgba(10,45,80,0.6)',
+                  backgroundColor: theme.card,
                   borderRadius: 14,
                   paddingHorizontal: 16,
                   paddingVertical: 10,
                   borderWidth: 0.5,
-                  borderColor: 'rgba(255,255,255,0.07)',
+                  borderColor: theme.border,
                 }}
               >
                 <Text style={statNumberStyle}>{profile?.followingCount ?? 0}</Text>
-                <Text style={{ color: '#4a6fa5', fontSize: 11 }}>Following</Text>
+                <Text style={{ color: theme.subtext, fontSize: 11 }}>Following</Text>
               </Pressable>
             </View>
           </View>
@@ -364,7 +368,7 @@ export default function ProfileScreen() {
               <>
                 {/* Display name + verified badge */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', lineHeight: 22 }}>
+                  <Text style={{ color: theme.text, fontSize: 18, fontWeight: '800', lineHeight: 22 }}>
                     {profile?.name ?? ''}
                   </Text>
                   {profile?.verified === true ? (

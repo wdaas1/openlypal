@@ -27,8 +27,10 @@ import { isAdmin } from '@/lib/auth/is-admin';
 import { localStore } from '@/lib/local-store';
 import { onHomeTabPress } from '@/lib/home-tab-press';
 import { videoVisibility } from '@/lib/videoVisibility';
+import { useTheme } from '@/lib/theme';
 
 function BellWithBadge({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
   const { data: activities } = useQuery({
     queryKey: ['activity'],
     queryFn: () => api.get<{ createdAt: string }[]>('/api/activity'),
@@ -45,7 +47,7 @@ function BellWithBadge({ onPress }: { onPress: () => void }) {
   return (
     <Pressable testID="notifications-button" onPress={onPress}>
       <View>
-        <Bell size={22} color="#FFFFFF" />
+        <Bell size={22} color={theme.text} />
         {unreadCount > 0 && (
           <View style={{
             position: 'absolute',
@@ -59,7 +61,7 @@ function BellWithBadge({ onPress }: { onPress: () => void }) {
             justifyContent: 'center',
             paddingHorizontal: 3,
             borderWidth: 1.5,
-            borderColor: '#001935',
+            borderColor: theme.bg,
           }}>
             <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800' }}>
               {unreadCount > 9 ? '9+' : String(unreadCount)}
@@ -123,13 +125,14 @@ function EmptyState({ message, sub, action, onAction }: {
   action?: string;
   onAction?: () => void;
 }) {
+  const theme = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 32 }}>
-      <Text style={{ color: '#4a6fa5', fontSize: 17, fontWeight: '600', textAlign: 'center' }}>
+      <Text style={{ color: theme.subtext, fontSize: 17, fontWeight: '600', textAlign: 'center' }}>
         {message}
       </Text>
       {sub ? (
-        <Text style={{ color: '#4a6fa5', fontSize: 13, marginTop: 8, textAlign: 'center', opacity: 0.75 }}>
+        <Text style={{ color: theme.subtext, fontSize: 13, marginTop: 8, textAlign: 'center', opacity: 0.75 }}>
           {sub}
         </Text>
       ) : null}
@@ -146,6 +149,7 @@ function EmptyState({ message, sub, action, onAction }: {
 }
 
 function SkeletonCard() {
+  const theme = useTheme();
   const { width } = useWindowDimensions();
   const translateX = useSharedValue(-width);
 
@@ -163,7 +167,7 @@ function SkeletonCard() {
 
   return (
     <View style={{
-      backgroundColor: '#0a2d50',
+      backgroundColor: theme.card,
       borderRadius: 16,
       marginHorizontal: 12,
       marginBottom: 10,
@@ -185,7 +189,7 @@ function SkeletonCard() {
         ]}
       >
         <LinearGradient
-          colors={['transparent', 'rgba(255,255,255,0.07)', 'transparent']}
+          colors={['transparent', theme.shimmer, 'transparent'] as [string, string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{ flex: 1 }}
@@ -193,19 +197,19 @@ function SkeletonCard() {
       </Animated.View>
       {/* Header row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#1a3a5c' }} />
+        <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.border }} />
         <View style={{ marginLeft: 12, flex: 1, gap: 6 }}>
-          <View style={{ height: 12, width: '45%', borderRadius: 6, backgroundColor: '#1a3a5c' }} />
-          <View style={{ height: 10, width: '30%', borderRadius: 5, backgroundColor: '#1a3a5c' }} />
+          <View style={{ height: 12, width: '45%', borderRadius: 6, backgroundColor: theme.border }} />
+          <View style={{ height: 10, width: '30%', borderRadius: 5, backgroundColor: theme.border }} />
         </View>
       </View>
       {/* Content area */}
-      <View style={{ height: 160, borderRadius: 10, backgroundColor: '#1a3a5c', marginBottom: 12 }} />
+      <View style={{ height: 160, borderRadius: 10, backgroundColor: theme.border, marginBottom: 12 }} />
       {/* Action buttons */}
       <View style={{ flexDirection: 'row', gap: 16 }}>
-        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
-        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
-        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: '#1a3a5c' }} />
+        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: theme.border }} />
+        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: theme.border }} />
+        <View style={{ height: 10, width: 44, borderRadius: 5, backgroundColor: theme.border }} />
       </View>
     </View>
   );
@@ -396,6 +400,7 @@ const COLLAPSE_TOTAL = HEADER_HEIGHT + TABBAR_HEIGHT;
 const TAB_INDICATOR_WIDTH = 40;
 
 export default function FeedScreen() {
+  const theme = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('foryou');
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -456,11 +461,11 @@ export default function FeedScreen() {
   };
 
   return (
-    <SafeAreaView testID="feed-screen" style={{ flex: 1, backgroundColor: '#001935' }} edges={['top']}>
+    <SafeAreaView testID="feed-screen" style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       {/* Collapsing header */}
       <Animated.View style={[{ overflow: 'hidden' }, headerStyle]}>
         <LinearGradient
-          colors={['rgba(0,25,53,0.98)', 'rgba(0,25,53,0.85)']}
+          colors={[theme.isDark ? 'rgba(0,25,53,0.98)' : 'rgba(240,244,248,0.98)', theme.isDark ? 'rgba(0,25,53,0.85)' : 'rgba(240,244,248,0.85)'] as [string, string]}
           style={{
             paddingHorizontal: 16,
             paddingTop: 8,
@@ -491,7 +496,7 @@ export default function FeedScreen() {
               </Pressable>
             ) : null}
             <Pressable testID="search-button" onPress={() => router.push('/(app)/explore' as any)}>
-              <Search size={22} color="#FFFFFF" />
+              <Search size={22} color={theme.text} />
             </Pressable>
             <BellWithBadge onPress={() => router.push('/(app)/activity' as any)} />
           </View>
@@ -501,9 +506,9 @@ export default function FeedScreen() {
       {/* Tab Bar */}
       <Animated.View style={[{
         overflow: 'hidden',
-        backgroundColor: 'rgba(0,25,53,0.98)',
+        backgroundColor: theme.isDark ? 'rgba(0,25,53,0.98)' : 'rgba(240,244,248,0.98)',
         borderBottomWidth: 1,
-        borderBottomColor: '#1a3a5c',
+        borderBottomColor: theme.border,
       }, tabBarStyle]}>
         <View style={{ flexDirection: 'row', paddingTop: 8 }}>
           {TABS.map((tab) => {
@@ -524,7 +529,7 @@ export default function FeedScreen() {
                   style={{
                     fontSize: 13,
                     fontWeight: isActive ? '800' : '600',
-                    color: isActive ? '#FFFFFF' : '#4a6fa5',
+                    color: isActive ? theme.text : theme.subtext,
                     letterSpacing: 0.1,
                   }}
                 >
