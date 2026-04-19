@@ -254,9 +254,8 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
-      estimatedItemSize={450}
-      drawDistance={500}
-      removeClippedSubviews={true}
+      estimatedItemSize={600}
+      drawDistance={1500}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
@@ -308,9 +307,8 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
-      estimatedItemSize={450}
-      drawDistance={500}
-      removeClippedSubviews={true}
+      estimatedItemSize={600}
+      drawDistance={1500}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
@@ -362,9 +360,8 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
-      estimatedItemSize={450}
-      drawDistance={500}
-      removeClippedSubviews={true}
+      estimatedItemSize={600}
+      drawDistance={1500}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
       scrollEventThrottle={16}
