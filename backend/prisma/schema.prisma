@@ -314,8 +314,10 @@ model Ad {
   cta        String
   theme      String        @default("green") // "green" | "purple" | "orange" | "blue"
   clickUrl   String?
-  active     Boolean       @default(true)
-  createdAt  DateTime      @default(now())
+  active      Boolean       @default(true)
+  impressions Int           @default(0)
+  clicks      Int           @default(0)
+  createdAt   DateTime      @default(now())
   dismissals AdDismissal[]
 }
 

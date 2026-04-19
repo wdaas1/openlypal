@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Flag, ShieldOff, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Flag, ShieldOff, ShieldCheck, Megaphone } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { api } from '@/lib/api/api';
 import { useSession } from '@/lib/auth/use-session';
@@ -137,8 +137,24 @@ export default function AdminScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
+        {/* Ads Manager link */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <Pressable
+            testID="admin-ads-link"
+            onPress={() => router.push('/(app)/admin-ads' as any)}
+            style={{ backgroundColor: '#0a2d50', borderRadius: 14, padding: 16, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          >
+            <Megaphone size={20} color="#00CF35" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>Ads Manager</Text>
+              <Text style={{ color: '#4a6fa5', fontSize: 12 }}>Create, manage, and track sponsored ads</Text>
+            </View>
+            <Text style={{ color: '#4a6fa5', fontSize: 18 }}>›</Text>
+          </Pressable>
+        </View>
+
         {/* Flagged Posts section */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 0, paddingBottom: 8 }}>
           <Text style={{ color: '#4a6fa5', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
             Flagged Posts
           </Text>

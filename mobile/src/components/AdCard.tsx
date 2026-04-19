@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X, Megaphone, Sparkles, TrendingUp, Star } from 'lucide-react-native';
 import type { Ad } from '@/lib/types';
@@ -42,6 +42,11 @@ export function AdCard({ ad, adIndex, onDismiss }: AdCardProps) {
   const theme = THEME_CONFIG[ad.theme] ?? THEME_CONFIG.green;
   const Icon = theme.icon;
 
+  React.useEffect(() => {
+    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+    fetch(`${baseUrl}/api/ads/${ad.id}/impression`, { method: 'POST', credentials: 'include' }).catch(() => null);
+  }, [ad.id]);
+
   return (
     <View testID={`ad-card-${adIndex}`} style={{ width, marginBottom: 12 }}>
       <LinearGradient
@@ -79,6 +84,13 @@ export function AdCard({ ad, adIndex, onDismiss }: AdCardProps) {
         {/* CTA */}
         <Pressable
           testID={`ad-cta-${adIndex}`}
+          onPress={async () => {
+            const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+            fetch(`${baseUrl}/api/ads/${ad.id}/click`, { method: 'POST', credentials: 'include' }).catch(() => null);
+            if (ad.clickUrl) {
+              await Linking.openURL(ad.clickUrl);
+            }
+          }}
           style={{ marginTop: 14, alignSelf: 'flex-start', backgroundColor: theme.accentColor, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 }}
         >
           <Text style={{ color: '#000000', fontWeight: '700', fontSize: 13 }}>{ad.cta}</Text>
