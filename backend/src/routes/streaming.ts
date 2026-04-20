@@ -3,6 +3,21 @@ import { AccessToken } from "livekit-server-sdk";
 import { TrackSource } from "@livekit/protocol";
 import { env } from "../env";
 import { prisma } from "../prisma";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Read livekit-client UMD bundle once at startup and cache it
+let livekitBundle: string | null = null;
+function getLiveKitBundle(): string {
+  if (!livekitBundle) {
+    const bundlePath = join(
+      import.meta.dir,
+      "../../node_modules/livekit-client/dist/livekit-client.umd.js"
+    );
+    livekitBundle = readFileSync(bundlePath, "utf-8");
+  }
+  return livekitBundle;
+}
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -195,225 +210,382 @@ streamingRouter.get("/api/stream/live-moments/:id/viewer-token", async (c) => {
   });
 });
 
+// ─── GET /livekit-client.js ────────────────────────────────────────────────
+// Serves the bundled LiveKit browser client with long-lived cache
+streamingRouter.get("/livekit-client.js", (c) => {
+  const bundle = getLiveKitBundle();
+  c.header("Content-Type", "application/javascript");
+  c.header("Cache-Control", "public, max-age=86400, immutable");
+  return c.body(bundle);
+});
+
 // ─── GET /stream/:momentId ─────────────────────────────────────────────────
 // Serves the LiveKit streaming HTML page (embedded in WebView)
 streamingRouter.get("/stream/:momentId", async (c) => {
+  // Derive base URL so the self-hosted livekit-client.js can be referenced
+  const reqUrl = new URL(c.req.url);
+  const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Live Stream</title>
+  <!-- Self-hosted LiveKit client — loaded before body, cached for 24h -->
+  <script src="${baseUrl}/livekit-client.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
-    #container { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; }
-    #container video { width: 100%; height: 100%; object-fit: cover; }
-    #status { position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-               background: rgba(0,0,0,0.6); color: #fff; padding: 5px 14px;
-               border-radius: 20px; font-size: 12px; z-index: 10; white-space: nowrap; }
-    #placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center;
-                   gap: 12px; color: rgba(255,255,255,0.4); font-size: 14px; }
-    #controls { position: fixed; bottom: 16px; right: 16px; display: flex; gap: 10px; z-index: 10; }
-    .btn { width: 44px; height: 44px; border-radius: 22px; border: none;
-           background: rgba(255,255,255,0.15); color: #fff; font-size: 18px;
-           cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .btn.off { background: rgba(255,59,48,0.6); }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+    #root {
+      width: 100%; height: 100%;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      background: #000;
+    }
+    video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      background: #000;
+    }
+    #placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      text-align: center;
+      padding: 20px;
+      pointer-events: none;
+    }
+    #placeholder .icon { font-size: 36px; margin-bottom: 4px; }
+    #status-bar {
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      z-index: 20;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: opacity 0.3s;
+    }
+    #controls {
+      position: fixed; bottom: 20px; right: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 20;
+    }
+    .ctrl-btn {
+      width: 42px; height: 42px;
+      border-radius: 21px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 17px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .ctrl-btn:active { transform: scale(0.92); }
+    .ctrl-btn.off {
+      background: rgba(255,59,48,0.55);
+      border-color: rgba(255,59,48,0.4);
+    }
+    /* Tap-to-unmute overlay for viewer */
+    #tap-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      align-items: center; justify-content: center;
+      z-index: 30;
+      background: rgba(0,0,0,0.4);
+    }
+    #tap-overlay.visible { display: flex; }
+    #tap-overlay button {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 30px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
 <body>
-  <div id="container">
+  <div id="root">
     <div id="placeholder">
-      <span style="font-size:40px">&#128225;</span>
-      <span id="placeholderText">Connecting...</span>
+      <div class="icon">&#128225;</div>
+      <span id="placeholder-text">Connecting...</span>
     </div>
   </div>
-  <div id="status">Connecting...</div>
-  <div id="controls" style="display:none">
-    <button class="btn" id="muteBtn">&#127908;</button>
-    <button class="btn" id="vidBtn">&#128249;</button>
+  <div id="status-bar">Connecting...</div>
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-mic" title="Toggle mic">&#127908;</button>
+    <button class="ctrl-btn" id="btn-cam" title="Toggle camera">&#128249;</button>
   </div>
-  <script>
-    var p = new URLSearchParams(location.search);
-    var token = p.get('token');
-    var wsUrl = p.get('url');
-    var isPublisher = p.get('role') === 'publisher';
+  <!-- Viewer tap-to-unmute overlay -->
+  <div id="tap-overlay">
+    <button id="tap-btn">Tap to hear audio &#128266;</button>
+  </div>
 
-    function log(msg) {
-      console.log('[LiveKit HTML] ' + msg);
-    }
+  <script>
+    var params = new URLSearchParams(location.search);
+    var TOKEN  = params.get('token');
+    var WS_URL = params.get('url');
+    var IS_PUB = params.get('role') === 'publisher';
+
+    var remoteVideoEl = null;   // viewer's remote video element
+    var remoteAudioMuted = true;
+
+    function log(msg) { console.log('[LiveKit] ' + msg); }
 
     function setStatus(msg) {
       log('Status: ' + msg);
-      document.getElementById('status').textContent = msg;
+      var el = document.getElementById('status-bar');
+      if (el) el.textContent = msg;
     }
 
-    function showVideo(track, isLocal) {
-      log('Showing video track, isLocal=' + isLocal);
+    function hidePlaceholder() {
+      var ph = document.getElementById('placeholder');
+      if (ph) ph.style.display = 'none';
+    }
+
+    // Attach a LiveKit video track to the DOM, replacing any previous video
+    function attachVideo(track, isLocal) {
+      log('Attaching video track, isLocal=' + isLocal);
+
+      // Remove previous video element if any
+      var existing = document.getElementById('lk-video');
+      if (existing) existing.remove();
+
       var el = track.attach();
-      el.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
-      if (isLocal) el.muted = true;
-      el.playsInline = true;
+      el.id = 'lk-video';
+      el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
+      el.muted = true;          // always mute — unmute handled separately for remote
       el.autoplay = true;
-      var container = document.getElementById('container');
-      var placeholder = document.getElementById('placeholder');
-      if (placeholder) placeholder.style.display = 'none';
-      container.appendChild(el);
-      log('Video element attached to DOM');
+      el.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;';
+
+      document.getElementById('root').appendChild(el);
+      hidePlaceholder();
+      log('Video element attached, attempting play...');
+
+      var playPromise = el.play();
+      if (playPromise !== undefined) {
+        playPromise.then(function() {
+          log('Video playing');
+          if (!isLocal) {
+            remoteVideoEl = el;
+            // Try to unmute immediately; fall back to tap overlay
+            el.muted = false;
+            var unmuteTest = el.play();
+            if (unmuteTest !== undefined) {
+              unmuteTest.then(function() {
+                remoteAudioMuted = false;
+                log('Remote audio unmuted automatically');
+              }).catch(function() {
+                // Autoplay with audio blocked — show tap overlay
+                el.muted = true;
+                log('Remote audio blocked by autoplay policy — showing tap overlay');
+                document.getElementById('tap-overlay').classList.add('visible');
+              });
+            }
+          }
+        }).catch(function(e) {
+          log('play() failed: ' + e.message + ' — showing tap overlay');
+          document.getElementById('tap-overlay').classList.add('visible');
+        });
+      }
     }
 
-    function loadLiveKit(callback) {
-      log('Loading LiveKit client from CDN...');
-      var script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/livekit-client@2.9.3/dist/livekit-client.umd.min.js';
-      script.onload = function() {
-        log('LiveKit client loaded successfully');
-        callback();
+    // Tap overlay: user taps to unmute + force play
+    document.getElementById('tap-btn').onclick = function() {
+      document.getElementById('tap-overlay').classList.remove('visible');
+      if (remoteVideoEl) {
+        remoteVideoEl.muted = false;
+        remoteVideoEl.play().catch(function(e) { log('play() after tap failed: ' + e.message); });
+        remoteAudioMuted = false;
+        log('Remote audio unmuted via tap');
+      }
+    };
+
+    async function startPublisher(room) {
+      var Track = LivekitClient.Track;
+      var RoomEvent = LivekitClient.RoomEvent;
+
+      setStatus('&#128308; LIVE');
+      document.getElementById('controls').style.display = 'flex';
+
+      room.on(RoomEvent.LocalTrackPublished, function(pub) {
+        log('Local track published: ' + pub.kind);
+        if (pub.kind === Track.Kind.Video && pub.videoTrack) {
+          attachVideo(pub.videoTrack, true);
+        }
+      });
+
+      try {
+        log('Requesting getUserMedia to trigger permission dialog...');
+        var rawStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        log('getUserMedia OK — video:' + rawStream.getVideoTracks().length + ' audio:' + rawStream.getAudioTracks().length);
+        rawStream.getTracks().forEach(function(t) { t.stop(); });
+
+        log('Publishing camera...');
+        var camPub = await room.localParticipant.setCameraEnabled(true);
+        log('Camera published: ' + (camPub ? (camPub.videoTrack ? 'track present' : 'no track') : 'null'));
+        if (camPub && camPub.videoTrack) attachVideo(camPub.videoTrack, true);
+
+        log('Publishing microphone...');
+        await room.localParticipant.setMicrophoneEnabled(true);
+        log('Microphone published');
+      } catch (e) {
+        var msg = e instanceof Error ? e.message : String(e);
+        log('Camera/mic error: ' + msg);
+        setStatus('&#128308; LIVE (cam error: ' + msg + ')');
+      }
+
+      // Toggle buttons
+      var Track2 = LivekitClient.Track;
+      document.getElementById('btn-mic').onclick = async function() {
+        var on = room.localParticipant.isMicrophoneEnabled;
+        await room.localParticipant.setMicrophoneEnabled(!on);
+        document.getElementById('btn-mic').classList.toggle('off', on);
+        log('Mic ' + (on ? 'off' : 'on'));
       };
-      script.onerror = function() {
-        log('ERROR: failed to load LiveKit client from CDN');
-        setStatus('Error: failed to load streaming library');
-        document.getElementById('placeholderText').textContent = 'Check your connection and reload';
+      document.getElementById('btn-cam').onclick = async function() {
+        var on = room.localParticipant.isCameraEnabled;
+        await room.localParticipant.setCameraEnabled(!on);
+        document.getElementById('btn-cam').classList.toggle('off', on);
+        log('Cam ' + (on ? 'off' : 'on'));
       };
-      document.head.appendChild(script);
     }
 
-    async function toggleAudio(room) {
-      var enabled = room.localParticipant.isMicrophoneEnabled;
-      await room.localParticipant.setMicrophoneEnabled(!enabled);
-      document.getElementById('muteBtn').className = 'btn' + (enabled ? ' off' : '');
-      log('Microphone ' + (!enabled ? 'enabled' : 'disabled'));
-    }
+    async function startViewer(room) {
+      var Track = LivekitClient.Track;
+      var RoomEvent = LivekitClient.RoomEvent;
 
-    async function toggleVideo(room) {
-      var enabled = room.localParticipant.isCameraEnabled;
-      await room.localParticipant.setCameraEnabled(!enabled);
-      document.getElementById('vidBtn').className = 'btn' + (enabled ? ' off' : '');
-      log('Camera ' + (!enabled ? 'enabled' : 'disabled'));
+      setStatus('Waiting for host...');
+      document.getElementById('placeholder-text').textContent = 'Waiting for host to start...';
+
+      room.on(RoomEvent.TrackSubscribed, function(track, pub, participant) {
+        log('Track subscribed: kind=' + track.kind + ' from ' + participant.identity);
+        if (track.kind === Track.Kind.Video) {
+          attachVideo(track, false);
+          setStatus('&#128308; LIVE');
+        }
+        if (track.kind === Track.Kind.Audio) {
+          log('Audio track subscribed from ' + participant.identity);
+          // Audio attach is handled by LiveKit internally; video mute workaround covers playback
+        }
+      });
+
+      // Check if publisher is already in the room
+      room.remoteParticipants.forEach(function(participant) {
+        participant.trackPublications.forEach(function(pub) {
+          if (pub.isSubscribed && pub.track && pub.kind === Track.Kind.Video) {
+            log('Found existing video track from ' + participant.identity);
+            attachVideo(pub.track, false);
+            setStatus('&#128308; LIVE');
+          }
+        });
+      });
     }
 
     async function main() {
-      log('Starting LiveKit session, isPublisher=' + isPublisher + ', wsUrl=' + wsUrl);
-      if (!token || !wsUrl) {
+      if (!TOKEN || !WS_URL) {
         setStatus('Error: missing credentials');
-        log('ERROR: token or wsUrl missing');
+        log('ERROR: token or wsUrl missing from URL params');
         return;
       }
 
+      if (typeof LivekitClient === 'undefined') {
+        setStatus('Error: streaming library failed to load');
+        log('ERROR: LivekitClient not defined — script load failed');
+        return;
+      }
+
+      log('Starting session — publisher=' + IS_PUB + ' wsUrl=' + WS_URL);
+
       var Room = LivekitClient.Room;
       var RoomEvent = LivekitClient.RoomEvent;
-      var Track = LivekitClient.Track;
 
       var room = new Room({
         adaptiveStream: true,
         dynacast: true,
-        videoCaptureDefaults: {
-          facingMode: 'user',
-        },
-      });
-
-      document.getElementById('muteBtn').onclick = function() { toggleAudio(room); };
-      document.getElementById('vidBtn').onclick = function() { toggleVideo(room); };
-
-      room.on(RoomEvent.TrackSubscribed, function(track, pub, participant) {
-        log('Track subscribed: kind=' + track.kind + ' from participant=' + participant.identity);
-        if (track.kind === Track.Kind.Video) {
-          showVideo(track, false);
-          setStatus('&#128308; LIVE');
-        }
-      });
-
-      room.on(RoomEvent.LocalTrackPublished, function(pub) {
-        log('Local track published: kind=' + pub.kind);
-        if (pub.kind === Track.Kind.Video && pub.videoTrack) {
-          log('Showing local video track');
-          showVideo(pub.videoTrack, true);
-        }
-      });
-
-      room.on(RoomEvent.LocalTrackUnpublished, function(pub) {
-        log('Local track unpublished: kind=' + pub.kind);
-      });
-
-      room.on(RoomEvent.ParticipantDisconnected, function(participant) {
-        log('Participant disconnected: ' + participant.identity);
-        if (!isPublisher) setStatus('Host disconnected');
+        videoCaptureDefaults: { facingMode: 'user' },
+        audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true },
       });
 
       room.on(RoomEvent.Disconnected, function(reason) {
-        log('Room disconnected, reason=' + reason);
+        log('Room disconnected: ' + reason);
         setStatus('Disconnected');
       });
 
       room.on(RoomEvent.MediaDevicesError, function(e) {
-        log('MediaDevicesError: ' + (e && e.message ? e.message : String(e)));
-        setStatus('Camera/mic error: ' + (e && e.message ? e.message : 'check permissions'));
+        var msg = e && e.message ? e.message : String(e);
+        log('MediaDevicesError: ' + msg);
+        if (IS_PUB) setStatus('&#128308; LIVE (device error)');
+      });
+
+      room.on(RoomEvent.ParticipantDisconnected, function(p) {
+        log('Participant left: ' + p.identity);
+        if (!IS_PUB) setStatus('Host disconnected');
       });
 
       try {
         setStatus('Connecting...');
-        log('Connecting to room at ' + wsUrl);
-
-        var connectTimeout = setTimeout(function() {
-          log('ERROR: connection timed out after 20s');
-          setStatus('Error: connection timed out');
-          document.getElementById('placeholderText').textContent = 'Could not connect to the stream';
+        var timeout = setTimeout(function() {
+          log('ERROR: connect timed out after 20s');
+          setStatus('Connection timed out');
+          document.getElementById('placeholder-text').textContent = 'Could not reach the stream server';
         }, 20000);
 
-        await room.connect(wsUrl, token);
-        clearTimeout(connectTimeout);
+        await room.connect(WS_URL, TOKEN);
+        clearTimeout(timeout);
         log('Connected to room: ' + room.name);
 
-        if (isPublisher) {
-          setStatus('&#128308; LIVE');
-          document.getElementById('controls').style.display = 'flex';
-
-          log('Publisher: enabling camera...');
-          try {
-            // Request camera access explicitly via getUserMedia first to trigger permission dialog
-            var stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            log('getUserMedia granted — video tracks: ' + stream.getVideoTracks().length + ', audio tracks: ' + stream.getAudioTracks().length);
-            // Stop tracks from getUserMedia since LiveKit will create its own
-            stream.getTracks().forEach(function(t) { t.stop(); });
-
-            log('Publishing camera track...');
-            var camPub = await room.localParticipant.setCameraEnabled(true);
-            log('Camera enabled: ' + (camPub ? 'yes, track=' + (camPub.videoTrack ? 'present' : 'absent') : 'no publication returned'));
-
-            log('Publishing microphone track...');
-            await room.localParticipant.setMicrophoneEnabled(true);
-            log('Microphone enabled');
-
-            if (camPub && camPub.videoTrack) {
-              showVideo(camPub.videoTrack, true);
-            }
-          } catch(camErr) {
-            log('Camera/mic error: ' + (camErr instanceof Error ? camErr.message : String(camErr)));
-            setStatus('&#128308; LIVE (camera error: ' + (camErr instanceof Error ? camErr.message : 'permission denied') + ')');
-          }
+        if (IS_PUB) {
+          await startPublisher(room);
         } else {
-          setStatus('Waiting for host...');
-          document.getElementById('placeholderText').textContent = 'Waiting for host to go live...';
-          log('Viewer: checking existing remote participants...');
-          room.remoteParticipants.forEach(function(participant) {
-            participant.trackPublications.forEach(function(pub) {
-              if (pub.isSubscribed && pub.track && pub.kind === Track.Kind.Video) {
-                log('Found existing video track from ' + participant.identity);
-                showVideo(pub.track, false);
-                setStatus('&#128308; LIVE');
-              }
-            });
-          });
+          await startViewer(room);
         }
-      } catch(e) {
+      } catch (e) {
         var errMsg = e instanceof Error ? e.message : String(e);
-        log('Connection error: ' + errMsg);
+        log('Connect error: ' + errMsg);
         setStatus('Error: ' + errMsg);
-        document.getElementById('placeholderText').textContent = errMsg || 'Failed to connect';
+        document.getElementById('placeholder-text').textContent = errMsg;
       }
     }
 
-    loadLiveKit(main);
+    // Run after DOM is ready (script in head so need DOMContentLoaded)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', main);
+    } else {
+      main();
+    }
   </script>
 </body>
 </html>`;
