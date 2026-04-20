@@ -279,6 +279,12 @@ streamingRouter.get("/stream/:momentId", async (c) => {
 
     room.on(RoomEvent.Disconnected, () => setStatus('Disconnected'));
 
+    room.on(RoomEvent.LocalTrackPublished, (pub) => {
+      if (pub.kind === Track.Kind.Video && pub.videoTrack) {
+        showVideo(pub.videoTrack, true);
+      }
+    });
+
     async function main() {
       if (!token || !wsUrl) { setStatus('Error: missing credentials'); return; }
       try {
@@ -287,14 +293,12 @@ streamingRouter.get("/stream/:momentId", async (c) => {
         if (isPublisher) {
           setStatus('🔴 LIVE');
           document.getElementById('controls').style.display = 'flex';
-          await room.localParticipant.setCameraEnabled(true);
+          const camPub = await room.localParticipant.setCameraEnabled(true);
           await room.localParticipant.setMicrophoneEnabled(true);
-          const camPub = room.localParticipant.getTrackPublication(Track.Source.Camera);
           if (camPub && camPub.videoTrack) showVideo(camPub.videoTrack, true);
         } else {
           setStatus('Waiting for host...');
           document.getElementById('placeholderText').textContent = 'Waiting for host to go live...';
-          // Show any existing tracks
           for (const participant of room.remoteParticipants.values()) {
             for (const pub of participant.trackPublications.values()) {
               if (pub.isSubscribed && pub.track && pub.kind === Track.Kind.Video) {
