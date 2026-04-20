@@ -488,10 +488,14 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     imageLastTapRef.current = now;
   };
 
-  const reblogMutation = useMutation({    mutationFn: async () => {
+  const [hasReposted, setHasReposted] = useState(false);
+
+  const reblogMutation = useMutation({
+    mutationFn: async () => {
       await api.post(`/api/posts/${post.id}/reblog`);
     },
     onSuccess: () => {
+      setHasReposted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -502,7 +506,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
 
   // Repost/reblog combined count and active state
   const repostTotal = (post.reblogCount ?? 0) + (post.repostCount ?? 0);
-  const repostActive = post.isReposted ?? repostTotal > 0;
+  const repostActive = (post.isReposted ?? false) || hasReposted;
 
   // Poll helpers
   const pollTotalVotes = post.poll
@@ -1034,8 +1038,14 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
         {/* Repost / Reblog */}
         <Pressable
           testID={`reblog-button-${post.id}`}
-          onPress={(e) => { e.stopPropagation(); reblogMutation.mutate(); }}
-          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
+          onPress={(e) => {
+            e.stopPropagation();
+            if (!repostActive && !reblogMutation.isPending) {
+              reblogMutation.mutate();
+            }
+          }}
+          disabled={repostActive || reblogMutation.isPending}
+          style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20, opacity: repostActive ? 0.6 : 1 }}
         >
           <Repeat2 size={20} color={repostActive ? '#00CF35' : theme.subtext} />
           {repostTotal > 0 ? (

@@ -1213,6 +1213,8 @@ export default function LiveMomentScreen() {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             allowsFullscreenVideo={false}
+            mediaCapturePermissionGrantType="grant"
+            allowsAirPlayForMediaPlayback={true}
           />
         ) : (
           <View
@@ -1355,6 +1357,8 @@ export default function LiveMomentScreen() {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             allowsFullscreenVideo={false}
+            mediaCapturePermissionGrantType="grant"
+            allowsAirPlayForMediaPlayback={true}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}

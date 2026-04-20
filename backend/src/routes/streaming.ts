@@ -230,18 +230,14 @@ streamingRouter.get("/stream/:momentId", async (c) => {
   </div>
   <div id="status">Connecting...</div>
   <div id="controls" style="display:none">
-    <button class="btn" id="muteBtn" onclick="toggleAudio()">🎤</button>
-    <button class="btn" id="vidBtn" onclick="toggleVideo()">📹</button>
+    <button class="btn" id="muteBtn">🎤</button>
+    <button class="btn" id="vidBtn">📹</button>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
   <script>
     const p = new URLSearchParams(location.search);
     const token = p.get('token');
     const wsUrl = p.get('url');
     const isPublisher = p.get('role') === 'publisher';
-    const { Room, RoomEvent, Track } = LivekitClient;
-    const room = new Room({ adaptiveStream: true, dynacast: true });
-    let audioEnabled = true, videoEnabled = true;
 
     function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
@@ -256,48 +252,76 @@ streamingRouter.get("/stream/:momentId", async (c) => {
       container.appendChild(el);
     }
 
-    async function toggleAudio() {
-      audioEnabled = !audioEnabled;
-      await room.localParticipant.setMicrophoneEnabled(audioEnabled);
-      document.getElementById('muteBtn').className = 'btn' + (audioEnabled ? '' : ' off');
+    function loadLiveKit(callback) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js';
+      script.onload = callback;
+      script.onerror = function() {
+        setStatus('Error: failed to load streaming library');
+        document.getElementById('placeholderText').textContent = 'Check your connection and reload';
+      };
+      document.head.appendChild(script);
     }
 
-    async function toggleVideo() {
-      videoEnabled = !videoEnabled;
-      await room.localParticipant.setCameraEnabled(videoEnabled);
-      document.getElementById('vidBtn').className = 'btn' + (videoEnabled ? '' : ' off');
+    async function toggleAudio(room) {
+      const enabled = room.localParticipant.isMicrophoneEnabled;
+      await room.localParticipant.setMicrophoneEnabled(!enabled);
+      document.getElementById('muteBtn').className = 'btn' + (enabled ? ' off' : '');
     }
 
-    room.on(RoomEvent.TrackSubscribed, (track) => {
-      if (track.kind === Track.Kind.Video) {
-        showVideo(track, false);
-        setStatus('🔴 LIVE');
-      }
-    });
-
-    room.on(RoomEvent.ParticipantDisconnected, () => {
-      if (!isPublisher) setStatus('Host disconnected');
-    });
-
-    room.on(RoomEvent.Disconnected, () => setStatus('Disconnected'));
-
-    room.on(RoomEvent.LocalTrackPublished, (pub) => {
-      if (pub.kind === Track.Kind.Video && pub.videoTrack) {
-        showVideo(pub.videoTrack, true);
-      }
-    });
+    async function toggleVideo(room) {
+      const enabled = room.localParticipant.isCameraEnabled;
+      await room.localParticipant.setCameraEnabled(!enabled);
+      document.getElementById('vidBtn').className = 'btn' + (enabled ? ' off' : '');
+    }
 
     async function main() {
       if (!token || !wsUrl) { setStatus('Error: missing credentials'); return; }
+      const { Room, RoomEvent, Track } = LivekitClient;
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+
+      document.getElementById('muteBtn').onclick = function() { toggleAudio(room); };
+      document.getElementById('vidBtn').onclick = function() { toggleVideo(room); };
+
+      room.on(RoomEvent.TrackSubscribed, function(track) {
+        if (track.kind === Track.Kind.Video) {
+          showVideo(track, false);
+          setStatus('🔴 LIVE');
+        }
+      });
+
+      room.on(RoomEvent.ParticipantDisconnected, function() {
+        if (!isPublisher) setStatus('Host disconnected');
+      });
+
+      room.on(RoomEvent.Disconnected, function() { setStatus('Disconnected'); });
+
+      room.on(RoomEvent.LocalTrackPublished, function(pub) {
+        if (pub.kind === Track.Kind.Video && pub.videoTrack) {
+          showVideo(pub.videoTrack, true);
+        }
+      });
+
       try {
         setStatus('Connecting...');
+        const connectTimeout = setTimeout(function() {
+          setStatus('Error: connection timed out');
+          document.getElementById('placeholderText').textContent = 'Could not connect to the stream';
+        }, 15000);
+
         await room.connect(wsUrl, token);
+        clearTimeout(connectTimeout);
+
         if (isPublisher) {
           setStatus('🔴 LIVE');
           document.getElementById('controls').style.display = 'flex';
-          const camPub = await room.localParticipant.setCameraEnabled(true);
-          await room.localParticipant.setMicrophoneEnabled(true);
-          if (camPub && camPub.videoTrack) showVideo(camPub.videoTrack, true);
+          try {
+            const camPub = await room.localParticipant.setCameraEnabled(true);
+            await room.localParticipant.setMicrophoneEnabled(true);
+            if (camPub && camPub.videoTrack) showVideo(camPub.videoTrack, true);
+          } catch(camErr) {
+            setStatus('🔴 LIVE (camera unavailable)');
+          }
         } else {
           setStatus('Waiting for host...');
           document.getElementById('placeholderText').textContent = 'Waiting for host to go live...';
@@ -316,7 +340,7 @@ streamingRouter.get("/stream/:momentId", async (c) => {
       }
     }
 
-    main();
+    loadLiveKit(main);
   </script>
 </body>
 </html>`;

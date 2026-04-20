@@ -840,6 +840,8 @@ export default function LiveMomentRoomScreen() {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             allowsFullscreenVideo={false}
+            mediaCapturePermissionGrantType="grant"
+            allowsAirPlayForMediaPlayback={true}
           />
         </View>
       ) : null}
@@ -1165,6 +1167,8 @@ export default function LiveMomentRoomScreen() {
               javaScriptEnabled={true}
               domStorageEnabled={true}
               allowsFullscreenVideo={false}
+              mediaCapturePermissionGrantType="grant"
+              allowsAirPlayForMediaPlayback={true}
             />
             <View
               style={{
