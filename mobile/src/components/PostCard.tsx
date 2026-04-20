@@ -822,103 +822,105 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
           </View>
         ) : (
           <Pressable onPress={(e) => e.stopPropagation()}>
-          <GestureDetector gesture={videoGesture}>
-            <View
-              testID={`video-tap-fullscreen-${post.id}`}
-              style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}
-            >
-              <VideoView
-                testID={`post-video-${post.id}`}
-                player={player}
-                style={{ width: '100%', height: videoHeight }}
-                contentFit="cover"
-                allowsFullscreen={false}
-                allowsPictureInPicture={false}
-              />
+          <View
+            testID={`video-tap-fullscreen-${post.id}`}
+            style={{ height: videoHeight, backgroundColor: '#000000', position: 'relative' }}
+          >
+            <GestureDetector gesture={videoGesture}>
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                <VideoView
+                  testID={`post-video-${post.id}`}
+                  player={player}
+                  style={{ width: '100%', height: videoHeight }}
+                  contentFit="cover"
+                  allowsFullscreen={false}
+                  allowsPictureInPicture={false}
+                />
 
-              {/* Scrub dim overlay */}
-              <Animated.View
-                style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, scrubDimStyle]}
-                pointerEvents="none"
-              />
+                {/* Scrub dim overlay */}
+                <Animated.View
+                  style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, scrubDimStyle]}
+                  pointerEvents="none"
+                />
 
-              {/* Thin progress bar — fades in on scrub/tap, auto-hides after 2s */}
-              <Animated.View
-                pointerEvents="none"
-                style={[progressBarStyle, { position: 'absolute', bottom: 0, left: 0, right: 0 }]}
-              >
-                <View style={{ height: 3, flexDirection: 'row' }}>
-                  <Animated.View style={[{ height: 3, backgroundColor: '#00CF35' }, fillFlexStyle]}>
-                    <Animated.View style={[thumbAnimStyle, {
-                      position: 'absolute', right: -5, top: -3.5,
-                      width: 10, height: 10, borderRadius: 5,
-                      backgroundColor: '#ffffff',
-                    }]} />
-                  </Animated.View>
-                  <Animated.View style={[{ height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }, remainingFlexStyle]} />
-                </View>
-              </Animated.View>
-
-              <Pressable
-                testID={`mute-button-${post.id}`}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setMuted(!muted);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                style={{
-                  position: 'absolute', bottom: 10, left: 12,
-                  backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
-                  flexDirection: 'row', alignItems: 'center',
-                  paddingHorizontal: 10, paddingVertical: 5, gap: 5,
-                }}
-              >
-                {muted ? <VolumeX size={14} color="#ffffff" /> : <Volume2 size={14} color="#ffffff" />}
-                <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
-                  {muted ? 'Tap to unmute' : 'Muted off'}
-                </Text>
-              </Pressable>
-              <Pressable
-                testID={`fullscreen-button-${post.id}`}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl!, post });
-                }}
-                style={{
-                  position: 'absolute', bottom: 10, right: 12,
-                  backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
-                  alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
-                }}
-              >
-                <Maximize size={15} color="#ffffff" />
-              </Pressable>
-
-              {/* Play Again overlay */}
-              {videoEnded ? (
-                <Pressable
-                  testID={`play-again-button-${post.id}`}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    setVideoEnded(false);
-                    player?.seekBy(-(player.currentTime));
-                    player?.play();
-                  }}
-                  style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.55)',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
+                {/* Thin progress bar — fades in on scrub/tap, auto-hides after 2s */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[progressBarStyle, { position: 'absolute', bottom: 0, left: 0, right: 0 }]}
                 >
-                  <View style={{ alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' }}>
-                      <Repeat2 size={26} color="#ffffff" />
-                    </View>
-                    <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>Play Again</Text>
+                  <View style={{ height: 3, flexDirection: 'row' }}>
+                    <Animated.View style={[{ height: 3, backgroundColor: '#00CF35' }, fillFlexStyle]}>
+                      <Animated.View style={[thumbAnimStyle, {
+                        position: 'absolute', right: -5, top: -3.5,
+                        width: 10, height: 10, borderRadius: 5,
+                        backgroundColor: '#ffffff',
+                      }]} />
+                    </Animated.View>
+                    <Animated.View style={[{ height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }, remainingFlexStyle]} />
                   </View>
-                </Pressable>
-              ) : null}
-            </View>
-          </GestureDetector>
+                </Animated.View>
+              </View>
+            </GestureDetector>
+
+            <Pressable
+              testID={`mute-button-${post.id}`}
+              onPress={(e) => {
+                e.stopPropagation();
+                setMuted(!muted);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={{
+                position: 'absolute', bottom: 10, left: 12,
+                backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
+                flexDirection: 'row', alignItems: 'center',
+                paddingHorizontal: 10, paddingVertical: 5, gap: 5,
+              }}
+            >
+              {muted ? <VolumeX size={14} color="#ffffff" /> : <Volume2 size={14} color="#ffffff" />}
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
+                {muted ? 'Tap to unmute' : 'Muted off'}
+              </Text>
+            </Pressable>
+            <Pressable
+              testID={`fullscreen-button-${post.id}`}
+              onPress={(e) => {
+                e.stopPropagation();
+                setMediaViewer({ visible: true, type: 'video', uri: post.videoUrl!, post });
+              }}
+              style={{
+                position: 'absolute', bottom: 10, right: 12,
+                backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16,
+                alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
+              }}
+            >
+              <Maximize size={15} color="#ffffff" />
+            </Pressable>
+
+            {/* Play Again overlay */}
+            {videoEnded ? (
+              <Pressable
+                testID={`play-again-button-${post.id}`}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setVideoEnded(false);
+                  player?.seekBy(-(player.currentTime));
+                  player?.play();
+                }}
+                style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.55)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' }}>
+                    <Repeat2 size={26} color="#ffffff" />
+                  </View>
+                  <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>Play Again</Text>
+                </View>
+              </Pressable>
+            ) : null}
+          </View>
           </Pressable>
         )
       ) : null}
