@@ -200,24 +200,32 @@ liveMomentsRouter.post(
       include: momentInclude,
     });
 
-    // Send push notifications to all invited users
-    if (invitedUserIds.length > 0) {
-      const invitedUsers = await prisma.user.findMany({
-        where: { id: { in: invitedUserIds } },
+    // Send push notifications to invited users AND all followers
+    const creatorName = user.name || "Someone";
+    const notifyPayload = { type: "live_moment", momentId: moment.id };
+
+    // Collect all user IDs to notify (invited + followers), deduplicated
+    const followers = await prisma.follow.findMany({
+      where: { followingId: user.id },
+      select: { followerId: true },
+    });
+    const followerIds = followers.map((f) => f.followerId);
+    const allNotifyIds = Array.from(new Set([...invitedUserIds, ...followerIds]));
+
+    if (allNotifyIds.length > 0) {
+      const usersToNotify = await prisma.user.findMany({
+        where: { id: { in: allNotifyIds }, pushToken: { not: null } },
         select: { pushToken: true },
       });
-      const creatorName = user.name || "Someone";
       await Promise.allSettled(
-        invitedUsers
-          .filter((u) => u.pushToken)
-          .map((u) =>
-            sendPushNotification(
-              u.pushToken!,
-              "🔴 Live Now",
-              `${creatorName} just started a live moment: "${title}"`,
-              { type: "live_moment", momentId: moment.id }
-            )
+        usersToNotify.map((u) =>
+          sendPushNotification(
+            u.pushToken!,
+            "🔴 Live Now",
+            `${creatorName} just started a live moment: "${title}"`,
+            notifyPayload
           )
+        )
       );
     }
 
@@ -225,6 +233,40 @@ liveMomentsRouter.post(
     return c.json({ data: formatted }, 201);
   }
 );
+
+// ─── GET /api/live-moments/following ──────────────────────────────────────
+// Returns active moments created by users the current user follows
+liveMomentsRouter.get("/following", async (c) => {
+  const user = requireAuth(c);
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  const now = new Date();
+
+  // Auto-expire
+  await prisma.liveMoment.updateMany({
+    where: { status: "active", expiresAt: { lt: now } },
+    data: { status: "ended" },
+  });
+
+  const following = await prisma.follow.findMany({
+    where: { followerId: user.id },
+    select: { followingId: true },
+  });
+  const followingIds = following.map((f) => f.followingId);
+
+  if (followingIds.length === 0) return c.json({ data: [] });
+
+  const moments = await prisma.liveMoment.findMany({
+    where: { status: "active", creatorId: { in: followingIds } },
+    include: momentInclude,
+    orderBy: { createdAt: "desc" },
+  });
+
+  const formatted = await Promise.all(moments.map(formatMoment));
+  return c.json({ data: formatted });
+});
 
 // ─── GET /api/live-moments/archive ────────────────────────────────────────
 // Returns all ENDED moments where current user was creator or was invited

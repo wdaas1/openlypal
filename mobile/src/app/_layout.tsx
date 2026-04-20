@@ -182,6 +182,96 @@ function RootLayoutNav() {
     };
   }, [session?.user?.id]);
 
+  // Poll for new live sessions from followed users
+  const seenLiveMomentsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const checkLiveSessions = async () => {
+      try {
+        const moments = await api.get<{ id: string; title: string; creator: { name: string; username: string | null } }[]>('/api/live-moments/following');
+        if (!moments) return;
+
+        const currentIds = new Set(moments.map((m) => m.id));
+
+        if (seenLiveMomentsRef.current !== null) {
+          for (const m of moments) {
+            if (!seenLiveMomentsRef.current.has(m.id)) {
+              // New live session from someone we follow
+              const creatorName = m.creator.name ?? m.creator.username ?? 'Someone you follow';
+              if (Platform.OS !== 'web') {
+                await Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: '🔴 Live Now',
+                    body: `${creatorName} just started a live session: "${m.title}"`,
+                    sound: true,
+                  },
+                  trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
+                });
+              }
+            }
+          }
+        }
+
+        seenLiveMomentsRef.current = currentIds;
+      } catch {
+        // Non-fatal
+      }
+    };
+
+    checkLiveSessions();
+    const interval = setInterval(checkLiveSessions, 10000);
+    return () => {
+      clearInterval(interval);
+      seenLiveMomentsRef.current = null;
+    };
+  }, [session?.user?.id]);
+
+  // Poll for new posts from followed users
+  const seenPostIdsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const checkFollowingPosts = async () => {
+      try {
+        const feed = await api.get<{ id: string; _type?: string; user?: { name: string; username: string | null }; rebloggedBy?: { name: string; username: string | null } }[]>('/api/posts/feed/following');
+        if (!feed) return;
+
+        const currentIds = new Set(feed.map((item) => item.id));
+
+        if (seenPostIdsRef.current !== null) {
+          for (const item of feed) {
+            if (!seenPostIdsRef.current.has(item.id)) {
+              const authorName = item.rebloggedBy?.name ?? item.user?.name ?? item.rebloggedBy?.username ?? item.user?.username ?? 'Someone you follow';
+              const isReblog = item._type === 'reblog';
+              if (Platform.OS !== 'web') {
+                await Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: isReblog ? 'New Reblog' : 'New Post',
+                    body: isReblog ? `${authorName} reblogged a post` : `${authorName} just posted`,
+                    sound: true,
+                  },
+                  trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
+                });
+              }
+            }
+          }
+        }
+
+        seenPostIdsRef.current = currentIds;
+      } catch {
+        // Non-fatal
+      }
+    };
+
+    checkFollowingPosts();
+    const interval = setInterval(checkFollowingPosts, 30000);
+    return () => {
+      clearInterval(interval);
+      seenPostIdsRef.current = null;
+    };
+  }, [session?.user?.id]);
+
   useEffect(() => {
     if (isLoading || !navigationState?.key) return;
 
