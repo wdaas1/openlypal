@@ -488,7 +488,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     imageLastTapRef.current = now;
   };
 
-  const [hasReposted, setHasReposted] = useState(false);
+  const [hasReposted, setHasReposted] = useState(post.isReposted ?? false);
 
   const reblogMutation = useMutation({
     mutationFn: async () => {
@@ -496,7 +496,14 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     },
     onSuccess: () => {
       setHasReposted(true);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: (error: Error) => {
+      if (error.message === 'Already reposted') {
+        setHasReposted(true);
+      }
     },
   });
 

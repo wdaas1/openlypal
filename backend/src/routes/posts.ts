@@ -42,6 +42,9 @@ function mapPost(
   const bookmarksArr = currentUserId
     ? (post.bookmarks as { id: string }[] | undefined) ?? []
     : [];
+  const reblogsArr = currentUserId
+    ? (post.reblogs as { id: string }[] | undefined) ?? []
+    : [];
   return {
     id: post.id,
     type: post.type,
@@ -63,6 +66,7 @@ function mapPost(
     bookmarkCount: (post._count as Record<string, number>).bookmarks ?? 0,
     isLiked: currentUserId ? likesArr.length > 0 : false,
     isBookmarked: currentUserId ? bookmarksArr.length > 0 : false,
+    isReposted: currentUserId ? reblogsArr.length > 0 : false,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
   };
@@ -77,6 +81,7 @@ function postInclude(userId?: string | null) {
       ? {
           likes: { where: { userId }, select: { id: true } },
           bookmarks: { where: { userId }, select: { id: true } },
+          reblogs: { where: { userId }, select: { id: true } },
         }
       : {}),
   };
@@ -549,6 +554,11 @@ postsRouter.post("/:id/reblog", zValidator("json", reblogSchema), async (c) => {
   const post = await prisma.post.findUnique({ where: { id: postId } });
   if (!post) {
     return c.json({ error: { message: "Post not found", code: "NOT_FOUND" } }, 404);
+  }
+
+  const existing = await prisma.reblog.findFirst({ where: { userId: user.id, postId } });
+  if (existing) {
+    return c.json({ error: { message: "Already reposted", code: "ALREADY_REPOSTED" } }, 409);
   }
 
   const body = c.req.valid("json");
