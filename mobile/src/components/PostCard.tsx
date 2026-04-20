@@ -113,6 +113,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   const progressOpacity = useSharedValue(0);
   const progressFraction = useSharedValue(0);
   const thumbOpacity = useSharedValue(0);
+  const progressBarHeight = useSharedValue(3);
   const scrubStartTimeRef = useRef(0);
   const targetTimeRef = useRef(0);
   const currentTimeRef = useRef(0);
@@ -174,15 +175,25 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   };
 
   const startLerpLoop = (duration: number) => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     const tick = () => {
       const target = targetTimeRef.current;
       const prev = currentTimeRef.current;
-      const next = prev + (target - prev) * 0.25;
-      const snapped = Math.abs(next - target) < 0.02 ? target : next;
-      currentTimeRef.current = snapped;
-      if (player) {
-        player.currentTime = snapped;
-        if (duration > 0) progressFraction.value = snapped / duration;
+      const factor = isScrubbingRef.current ? 0.12 : 0.22;
+      const diff = target - prev;
+      const next = Math.abs(diff) < 0.01 ? target : prev + diff * factor;
+      currentTimeRef.current = next;
+      const p = playerRef.current;
+      if (p) {
+        p.currentTime = next;
+        if (duration > 0) progressFraction.value = next / duration;
+      }
+      if (!isScrubbingRef.current && Math.abs(next - target) < 0.01) {
+        rafRef.current = null;
+        return;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -218,45 +229,58 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       : 0,
   }));
 
+  const progressBarHeightStyle = useAnimatedStyle(() => ({
+    height: progressBarHeight.value,
+  }));
+
   const videoScrubGesture = Gesture.Pan()
     .runOnJS(true)
     .activeOffsetX([-8, 8])
     .failOffsetY([-15, 15])
     .onStart(() => {
-      const start = player?.currentTime ?? 0;
-      const duration = player?.duration || 0;
+      const start = playerRef.current?.currentTime ?? 0;
+      const duration = playerRef.current?.duration || 0;
       scrubStartTimeRef.current = start;
       currentTimeRef.current = start;
       targetTimeRef.current = start;
       lastScrubDirectionRef.current = 0;
       isScrubbingRef.current = true;
+      playerRef.current?.pause();
       if (duration > 0) progressFraction.value = start / duration;
-      scrubDimOpacity.value = withTiming(0.3, { duration: 150 });
+      scrubDimOpacity.value = withTiming(0.28, { duration: 150 });
       thumbOpacity.value = withTiming(1, { duration: 150 });
+      progressBarHeight.value = withSpring(5, { damping: 12, stiffness: 180 });
       showBar();
       startLerpLoop(duration);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     })
     .onUpdate((e) => {
-      if (!player) return;
-      const duration = player.duration || 0;
+      const p = playerRef.current;
+      if (!p) return;
+      const duration = p.duration || 0;
       if (duration <= 0) return;
-      let raw = scrubStartTimeRef.current + e.translationX * 0.05 + e.velocityX * 0.01;
-      if (raw < 0) raw = raw * 0.3;
-      else if (raw > duration) raw = duration + (raw - duration) * 0.3;
+      let raw = scrubStartTimeRef.current + e.translationX * 0.04 + e.velocityX * 0.007;
+      if (raw < 0) raw = raw * 0.18;
+      else if (raw > duration) raw = duration + (raw - duration) * 0.18;
       targetTimeRef.current = Math.max(0, Math.min(duration, raw));
       const dir = e.translationX >= 0 ? 1 : -1;
       if (lastScrubDirectionRef.current !== 0 && dir !== lastScrubDirectionRef.current) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        scrubStartTimeRef.current = currentTimeRef.current;
       }
       lastScrubDirectionRef.current = dir;
     })
     .onEnd(() => {
       isScrubbingRef.current = false;
-      stopLerpLoop();
-      if (player) player.currentTime = targetTimeRef.current;
-      scrubDimOpacity.value = withTiming(0, { duration: 300 });
+      scrubDimOpacity.value = withTiming(0, { duration: 350 });
+      progressBarHeight.value = withSpring(3, { damping: 12, stiffness: 180 });
       scheduleBarHide();
       lastScrubDirectionRef.current = 0;
+      setTimeout(() => {
+        if (!isScrubbingRef.current) {
+          playerRef.current?.play();
+        }
+      }, 220);
     });
 
   const tapToFullscreenGesture = Gesture.Tap()
@@ -848,16 +872,16 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                   pointerEvents="none"
                   style={[progressBarStyle, { position: 'absolute', bottom: 0, left: 0, right: 0 }]}
                 >
-                  <View style={{ height: 3, flexDirection: 'row' }}>
-                    <Animated.View style={[{ height: 3, backgroundColor: '#00CF35' }, fillFlexStyle]}>
+                  <Animated.View style={[{ flexDirection: 'row' }, progressBarHeightStyle]}>
+                    <Animated.View style={[{ backgroundColor: '#00CF35' }, fillFlexStyle, progressBarHeightStyle]}>
                       <Animated.View style={[thumbAnimStyle, {
-                        position: 'absolute', right: -5, top: -3.5,
+                        position: 'absolute', right: -5, top: -2,
                         width: 10, height: 10, borderRadius: 5,
                         backgroundColor: '#ffffff',
                       }]} />
                     </Animated.View>
-                    <Animated.View style={[{ height: 3, backgroundColor: 'rgba(255,255,255,0.2)' }, remainingFlexStyle]} />
-                  </View>
+                    <Animated.View style={[{ backgroundColor: 'rgba(255,255,255,0.2)' }, remainingFlexStyle, progressBarHeightStyle]} />
+                  </Animated.View>
                 </Animated.View>
               </View>
             </GestureDetector>
