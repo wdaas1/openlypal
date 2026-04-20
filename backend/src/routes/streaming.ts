@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { AccessToken } from "livekit-server-sdk";
+import { TrackSource } from "@livekit/protocol";
 import { env } from "../env";
 import { prisma } from "../prisma";
 
@@ -39,6 +40,7 @@ async function generateToken(
     room: roomName,
     canPublish,
     canSubscribe: true,
+    ...(canPublish && { canPublishSources: [TrackSource.CAMERA, TrackSource.MICROPHONE] }),
   });
   return await at.toJwt();
 }
