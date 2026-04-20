@@ -29,7 +29,7 @@ import * as Haptics from 'expo-haptics';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
-import { getAuthToken } from '@/lib/auth/auth-client';
+import { getAccessToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
 import { showMediaPicker } from '@/lib/file-picker';
 
@@ -408,7 +408,7 @@ export default function LiveMomentRoomScreen() {
     let ws: WebSocket | null = null;
 
     const connect = async () => {
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       if (!token) return;
 
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
@@ -576,7 +576,7 @@ export default function LiveMomentRoomScreen() {
     setIsStartingStream(true);
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       const res = await fetch(`${backendUrl}/api/livekit/token`, {
         method: 'POST',
         headers: {
@@ -601,7 +601,7 @@ export default function LiveMomentRoomScreen() {
   const handleJoinStream = useCallback(async () => {
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAuthToken();
+      const token = await getAccessToken();
       const res = await fetch(`${backendUrl}/api/livekit/token`, {
         method: 'POST',
         headers: {
@@ -632,7 +632,7 @@ export default function LiveMomentRoomScreen() {
 
         try {
           const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-          const token = await getAuthToken();
+          const token = await getAccessToken();
 
           const formData = new FormData();
           formData.append('file', {
