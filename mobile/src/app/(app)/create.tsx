@@ -47,7 +47,8 @@ export default function CreateScreen() {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [linkUrl, setLinkUrl] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [category, setCategory] = useState<string>('');
   const [isExplicit, setIsExplicit] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
@@ -109,12 +110,36 @@ export default function CreateScreen() {
     onError: () => setVideoUploadProgress(0),
   });
 
+  const handleTagInputChange = (text: string) => {
+    const delimiter = text.endsWith(',') || text.endsWith(' ');
+    if (delimiter) {
+      const newTag = text.replace(/[, ]+$/, '').trim().toLowerCase().replace(/^#+/, '');
+      if (newTag && !tags.includes(newTag)) {
+        setTags((prev) => [...prev, newTag]);
+      }
+      setTagInput('');
+    } else {
+      setTagInput(text);
+    }
+  };
+
+  const handleTagInputSubmit = () => {
+    const newTag = tagInput.trim().toLowerCase().replace(/^#+/, '');
+    if (newTag && !tags.includes(newTag)) {
+      setTags((prev) => [...prev, newTag]);
+    }
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((prev) => prev.filter((t) => t !== tag));
+  };
+
   const createPost = useMutation({
     mutationFn: async () => {
-      const tags = tagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
+      const allTags = tagInput.trim()
+        ? [...tags, tagInput.trim().toLowerCase().replace(/^#+/, '')].filter(Boolean)
+        : tags;
 
       return api.post('/api/posts', {
         type: postType,
@@ -123,7 +148,7 @@ export default function CreateScreen() {
         imageUrls: postType === 'photo' ? (imageUrls.length > 0 ? imageUrls : undefined) : undefined,
         videoUrl: postType === 'video' ? videoUrl || undefined : undefined,
         linkUrl: postType === 'link' ? linkUrl || undefined : undefined,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: allTags.length > 0 ? allTags : undefined,
         category: category || undefined,
         isExplicit,
         roomId: selectedRoomId || undefined,
@@ -138,18 +163,14 @@ export default function CreateScreen() {
       setImageUrls([]);
       setVideoUrl('');
       setLinkUrl('');
-      setTagsInput('');
+      setTags([]);
+      setTagInput('');
       setCategory('');
       setIsExplicit(false);
       setSelectedRoomId(null);
       router.back();
     },
   });
-
-  const tagChips = tagsInput
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
 
   const canPost = content.trim().length > 0 || imageUrls.length > 0 || videoUrl.trim().length > 0;
   const isUploading = uploadMutation.isPending || takePictureMutation.isPending;
@@ -443,24 +464,31 @@ export default function CreateScreen() {
         ) : null}
 
         {/* Tags */}
-        <TextInput
-          testID="tags-input"
-          value={tagsInput}
-          onChangeText={setTagsInput}
-          placeholder="Tags (comma separated)"
-          placeholderTextColor={theme.subtext}
-          style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: theme.text, fontSize: 14, marginBottom: 12 }}
-        />
-
-        {tagChips.length > 0 ? (
-          <View className="flex-row flex-wrap gap-2 mb-4">
-            {tagChips.map((tag) => (
-              <View key={tag} className="rounded-full px-3 py-1" style={{ backgroundColor: theme.card }}>
-                <Text style={{ color: '#00CF35' }} className="text-xs">#{tag}</Text>
-              </View>
+        {tags.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+            {tags.map((tag) => (
+              <Pressable
+                key={tag}
+                onPress={() => removeTag(tag)}
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,207,53,0.1)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 4, borderWidth: 0.5, borderColor: 'rgba(0,207,53,0.3)' }}
+              >
+                <Text style={{ color: '#00CF35', fontSize: 13, fontWeight: '600' }}>#{tag}</Text>
+                <X size={12} color="#00CF35" />
+              </Pressable>
             ))}
           </View>
         ) : null}
+        <TextInput
+          testID="tags-input"
+          value={tagInput}
+          onChangeText={handleTagInputChange}
+          onSubmitEditing={handleTagInputSubmit}
+          placeholder="Add tags (type + space or comma)"
+          placeholderTextColor={theme.subtext}
+          returnKeyType="done"
+          blurOnSubmit={false}
+          style={{ backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: theme.text, fontSize: 14, marginBottom: 12 }}
+        />
 
         {/* Categories */}
         <Text style={{ color: theme.text }} className="font-semibold text-sm mb-2">Category</Text>

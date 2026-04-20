@@ -974,8 +974,9 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       {tags.length > 0 ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingBottom: 6, gap: 6 }}>
           {tags.map((tag: string) => (
-            <View
+            <Pressable
               key={tag}
+              onPress={() => router.push(`/(app)/tag/${encodeURIComponent(tag)}` as any)}
               style={{
                 backgroundColor: 'rgba(0,207,53,0.08)',
                 borderRadius: 10,
@@ -988,7 +989,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
               <Text style={{ color: '#00CF35', fontSize: 12 }}>
                 {'#'}{tag}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : null}

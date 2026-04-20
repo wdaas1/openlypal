@@ -777,6 +777,7 @@ export default function AppLayout() {
             <Stack.Screen name="admin-ads" />
             <Stack.Screen name="relationships/index" />
             <Stack.Screen name="profile-modules/index" />
+            <Stack.Screen name="tag/[tag]" />
           </Stack>
         </Animated.View>
 
