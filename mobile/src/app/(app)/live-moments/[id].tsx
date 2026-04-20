@@ -10,6 +10,7 @@ import {
   Platform,
   Image,
   Dimensions,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,14 +27,43 @@ import Animated, {
   FadeIn,
 } from 'react-native-reanimated';
 import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin } from 'lucide-react-native';
-import WebView from 'react-native-webview';
+import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
 import { getAccessToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
 import { showMediaPicker } from '@/lib/file-picker';
+
+async function requestStreamPermissions(): Promise<boolean> {
+  console.log('[LiveKit] Requesting camera and microphone permissions...');
+  try {
+    const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
+    console.log('[LiveKit] Camera permission status:', cameraResult.status);
+
+    if (Platform.OS === 'android') {
+      const micResult = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        {
+          title: 'Microphone Permission',
+          message: 'This app needs access to your microphone for live streaming.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
+        }
+      );
+      console.log('[LiveKit] Microphone permission status (Android):', micResult);
+      return cameraResult.status === 'granted' && micResult === 'granted';
+    }
+
+    console.log('[LiveKit] iOS microphone permission will be requested by WebView.');
+    return cameraResult.status === 'granted';
+  } catch (e) {
+    console.warn('[LiveKit] Permission request error:', e);
+    return false;
+  }
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CONTENT_AREA_HEIGHT = 230;
@@ -834,8 +864,12 @@ export default function LiveMomentScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsStartingStream(true);
     try {
+      console.log('[LiveKit] handleGoLive: requesting permissions...');
+      await requestStreamPermissions();
+
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
+      console.log('[LiveKit] Fetching publisher token for moment:', momentId);
       const res = await fetch(`${backendUrl}/api/livekit/token`, {
         method: 'POST',
         headers: {
@@ -846,11 +880,15 @@ export default function LiveMomentScreen() {
       });
       if (res.ok) {
         const json = await res.json() as { data: { token: string; wsUrl: string } };
+        console.log('[LiveKit] Token received, wsUrl:', json.data.wsUrl);
         setStreamToken(json.data.token);
         setStreamWsUrl(json.data.wsUrl);
+      } else {
+        console.warn('[LiveKit] Token fetch failed:', res.status);
       }
       goLive();
-    } catch {
+    } catch (e) {
+      console.warn('[LiveKit] handleGoLive error:', e);
       goLive();
     } finally {
       setIsStartingStream(false);
@@ -1215,6 +1253,34 @@ export default function LiveMomentScreen() {
             allowsFullscreenVideo={false}
             mediaCapturePermissionGrantType="grant"
             allowsAirPlayForMediaPlayback={true}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+            onMessage={(event: WebViewMessageEvent) => {
+              console.log('[LiveKit WebView]', event.nativeEvent.data);
+            }}
+            injectedJavaScript={`
+              (function() {
+                var origLog = console.log;
+                var origWarn = console.warn;
+                var origError = console.error;
+                console.log = function() {
+                  window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
+                  origLog.apply(console, arguments);
+                };
+                console.warn = function() {
+                  window.ReactNativeWebView.postMessage('[WARN] ' + Array.from(arguments).join(' '));
+                  origWarn.apply(console, arguments);
+                };
+                console.error = function() {
+                  window.ReactNativeWebView.postMessage('[ERROR] ' + Array.from(arguments).join(' '));
+                  origError.apply(console, arguments);
+                };
+                window.onerror = function(msg, src, line) {
+                  window.ReactNativeWebView.postMessage('[JSERROR] ' + msg + ' at ' + src + ':' + line);
+                };
+              })();
+              true;
+            `}
           />
         ) : (
           <View
@@ -1359,6 +1425,21 @@ export default function LiveMomentScreen() {
             allowsFullscreenVideo={false}
             mediaCapturePermissionGrantType="grant"
             allowsAirPlayForMediaPlayback={true}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+            onMessage={(event: WebViewMessageEvent) => {
+              console.log('[LiveKit WebView viewer]', event.nativeEvent.data);
+            }}
+            injectedJavaScript={`
+              (function() {
+                var origLog = console.log;
+                console.log = function() {
+                  window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
+                  origLog.apply(console, arguments);
+                };
+              })();
+              true;
+            `}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}

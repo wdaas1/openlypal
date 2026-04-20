@@ -224,39 +224,54 @@ streamingRouter.get("/stream/:momentId", async (c) => {
 <body>
   <div id="container">
     <div id="placeholder">
-      <span style="font-size:40px">📡</span>
+      <span style="font-size:40px">&#128225;</span>
       <span id="placeholderText">Connecting...</span>
     </div>
   </div>
   <div id="status">Connecting...</div>
   <div id="controls" style="display:none">
-    <button class="btn" id="muteBtn">🎤</button>
-    <button class="btn" id="vidBtn">📹</button>
+    <button class="btn" id="muteBtn">&#127908;</button>
+    <button class="btn" id="vidBtn">&#128249;</button>
   </div>
   <script>
-    const p = new URLSearchParams(location.search);
-    const token = p.get('token');
-    const wsUrl = p.get('url');
-    const isPublisher = p.get('role') === 'publisher';
+    var p = new URLSearchParams(location.search);
+    var token = p.get('token');
+    var wsUrl = p.get('url');
+    var isPublisher = p.get('role') === 'publisher';
 
-    function setStatus(msg) { document.getElementById('status').textContent = msg; }
+    function log(msg) {
+      console.log('[LiveKit HTML] ' + msg);
+    }
+
+    function setStatus(msg) {
+      log('Status: ' + msg);
+      document.getElementById('status').textContent = msg;
+    }
 
     function showVideo(track, isLocal) {
-      const el = track.attach();
-      el.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      log('Showing video track, isLocal=' + isLocal);
+      var el = track.attach();
+      el.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
       if (isLocal) el.muted = true;
       el.playsInline = true;
-      const container = document.getElementById('container');
-      const placeholder = document.getElementById('placeholder');
-      if (placeholder) placeholder.remove();
+      el.autoplay = true;
+      var container = document.getElementById('container');
+      var placeholder = document.getElementById('placeholder');
+      if (placeholder) placeholder.style.display = 'none';
       container.appendChild(el);
+      log('Video element attached to DOM');
     }
 
     function loadLiveKit(callback) {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js';
-      script.onload = callback;
+      log('Loading LiveKit client from CDN...');
+      var script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/livekit-client@2.9.3/dist/livekit-client.umd.min.js';
+      script.onload = function() {
+        log('LiveKit client loaded successfully');
+        callback();
+      };
       script.onerror = function() {
+        log('ERROR: failed to load LiveKit client from CDN');
         setStatus('Error: failed to load streaming library');
         document.getElementById('placeholderText').textContent = 'Check your connection and reload';
       };
@@ -264,79 +279,137 @@ streamingRouter.get("/stream/:momentId", async (c) => {
     }
 
     async function toggleAudio(room) {
-      const enabled = room.localParticipant.isMicrophoneEnabled;
+      var enabled = room.localParticipant.isMicrophoneEnabled;
       await room.localParticipant.setMicrophoneEnabled(!enabled);
       document.getElementById('muteBtn').className = 'btn' + (enabled ? ' off' : '');
+      log('Microphone ' + (!enabled ? 'enabled' : 'disabled'));
     }
 
     async function toggleVideo(room) {
-      const enabled = room.localParticipant.isCameraEnabled;
+      var enabled = room.localParticipant.isCameraEnabled;
       await room.localParticipant.setCameraEnabled(!enabled);
       document.getElementById('vidBtn').className = 'btn' + (enabled ? ' off' : '');
+      log('Camera ' + (!enabled ? 'enabled' : 'disabled'));
     }
 
     async function main() {
-      if (!token || !wsUrl) { setStatus('Error: missing credentials'); return; }
-      const { Room, RoomEvent, Track } = LivekitClient;
-      const room = new Room({ adaptiveStream: true, dynacast: true });
+      log('Starting LiveKit session, isPublisher=' + isPublisher + ', wsUrl=' + wsUrl);
+      if (!token || !wsUrl) {
+        setStatus('Error: missing credentials');
+        log('ERROR: token or wsUrl missing');
+        return;
+      }
+
+      var Room = LivekitClient.Room;
+      var RoomEvent = LivekitClient.RoomEvent;
+      var Track = LivekitClient.Track;
+
+      var room = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        videoCaptureDefaults: {
+          facingMode: 'user',
+        },
+      });
 
       document.getElementById('muteBtn').onclick = function() { toggleAudio(room); };
       document.getElementById('vidBtn').onclick = function() { toggleVideo(room); };
 
-      room.on(RoomEvent.TrackSubscribed, function(track) {
+      room.on(RoomEvent.TrackSubscribed, function(track, pub, participant) {
+        log('Track subscribed: kind=' + track.kind + ' from participant=' + participant.identity);
         if (track.kind === Track.Kind.Video) {
           showVideo(track, false);
-          setStatus('🔴 LIVE');
+          setStatus('&#128308; LIVE');
         }
       });
 
-      room.on(RoomEvent.ParticipantDisconnected, function() {
-        if (!isPublisher) setStatus('Host disconnected');
-      });
-
-      room.on(RoomEvent.Disconnected, function() { setStatus('Disconnected'); });
-
       room.on(RoomEvent.LocalTrackPublished, function(pub) {
+        log('Local track published: kind=' + pub.kind);
         if (pub.kind === Track.Kind.Video && pub.videoTrack) {
+          log('Showing local video track');
           showVideo(pub.videoTrack, true);
         }
       });
 
+      room.on(RoomEvent.LocalTrackUnpublished, function(pub) {
+        log('Local track unpublished: kind=' + pub.kind);
+      });
+
+      room.on(RoomEvent.ParticipantDisconnected, function(participant) {
+        log('Participant disconnected: ' + participant.identity);
+        if (!isPublisher) setStatus('Host disconnected');
+      });
+
+      room.on(RoomEvent.Disconnected, function(reason) {
+        log('Room disconnected, reason=' + reason);
+        setStatus('Disconnected');
+      });
+
+      room.on(RoomEvent.MediaDevicesError, function(e) {
+        log('MediaDevicesError: ' + (e && e.message ? e.message : String(e)));
+        setStatus('Camera/mic error: ' + (e && e.message ? e.message : 'check permissions'));
+      });
+
       try {
         setStatus('Connecting...');
-        const connectTimeout = setTimeout(function() {
+        log('Connecting to room at ' + wsUrl);
+
+        var connectTimeout = setTimeout(function() {
+          log('ERROR: connection timed out after 20s');
           setStatus('Error: connection timed out');
           document.getElementById('placeholderText').textContent = 'Could not connect to the stream';
-        }, 15000);
+        }, 20000);
 
         await room.connect(wsUrl, token);
         clearTimeout(connectTimeout);
+        log('Connected to room: ' + room.name);
 
         if (isPublisher) {
-          setStatus('🔴 LIVE');
+          setStatus('&#128308; LIVE');
           document.getElementById('controls').style.display = 'flex';
+
+          log('Publisher: enabling camera...');
           try {
-            const camPub = await room.localParticipant.setCameraEnabled(true);
+            // Request camera access explicitly via getUserMedia first to trigger permission dialog
+            var stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            log('getUserMedia granted — video tracks: ' + stream.getVideoTracks().length + ', audio tracks: ' + stream.getAudioTracks().length);
+            // Stop tracks from getUserMedia since LiveKit will create its own
+            stream.getTracks().forEach(function(t) { t.stop(); });
+
+            log('Publishing camera track...');
+            var camPub = await room.localParticipant.setCameraEnabled(true);
+            log('Camera enabled: ' + (camPub ? 'yes, track=' + (camPub.videoTrack ? 'present' : 'absent') : 'no publication returned'));
+
+            log('Publishing microphone track...');
             await room.localParticipant.setMicrophoneEnabled(true);
-            if (camPub && camPub.videoTrack) showVideo(camPub.videoTrack, true);
+            log('Microphone enabled');
+
+            if (camPub && camPub.videoTrack) {
+              showVideo(camPub.videoTrack, true);
+            }
           } catch(camErr) {
-            setStatus('🔴 LIVE (camera unavailable)');
+            log('Camera/mic error: ' + (camErr instanceof Error ? camErr.message : String(camErr)));
+            setStatus('&#128308; LIVE (camera error: ' + (camErr instanceof Error ? camErr.message : 'permission denied') + ')');
           }
         } else {
           setStatus('Waiting for host...');
           document.getElementById('placeholderText').textContent = 'Waiting for host to go live...';
-          for (const participant of room.remoteParticipants.values()) {
-            for (const pub of participant.trackPublications.values()) {
+          log('Viewer: checking existing remote participants...');
+          room.remoteParticipants.forEach(function(participant) {
+            participant.trackPublications.forEach(function(pub) {
               if (pub.isSubscribed && pub.track && pub.kind === Track.Kind.Video) {
+                log('Found existing video track from ' + participant.identity);
                 showVideo(pub.track, false);
-                setStatus('🔴 LIVE');
+                setStatus('&#128308; LIVE');
               }
-            }
-          }
+            });
+          });
         }
       } catch(e) {
-        setStatus('Error: ' + (e.message || 'connection failed'));
-        document.getElementById('placeholderText').textContent = e.message || 'Failed to connect';
+        var errMsg = e instanceof Error ? e.message : String(e);
+        log('Connection error: ' + errMsg);
+        setStatus('Error: ' + errMsg);
+        document.getElementById('placeholderText').textContent = errMsg || 'Failed to connect';
       }
     }
 
