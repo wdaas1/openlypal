@@ -738,7 +738,7 @@ export default function AppLayout() {
     flex: 1,
     transform: [{ scale: contentScale.value }],
     borderRadius: contentScale.value < 1 ? 16 : 0,
-    overflow: 'hidden',
+    overflow: contentScale.value < 1 ? 'hidden' : 'visible',
   }));
 
   return (
