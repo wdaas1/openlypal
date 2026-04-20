@@ -38,15 +38,28 @@ export default function UserProfileScreen() {
   });
 
   const followMutation = useMutation({
-    mutationFn: async () => {
-      await api.post(`/api/users/${id}/follow`);
+    mutationFn: () => api.post(`/api/users/${id}/follow`),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['user', id] });
+      const previousUser = queryClient.getQueryData<User>(['user', id]);
+      if (previousUser) {
+        queryClient.setQueryData<User>(['user', id], {
+          ...previousUser,
+          isFollowing: !previousUser.isFollowing,
+          followerCount: (previousUser.followerCount ?? 0) + (previousUser.isFollowing ? -1 : 1),
+        });
+      }
+      return { previousUser };
     },
-    onSuccess: () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onError: (_err, _vars, context) => {
+      if (context?.previousUser) {
+        queryClient.setQueryData(['user', id], context.previousUser);
+      }
+      console.error('Follow/unfollow failed:', _err);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['user', id] });
-    },
-    onError: (error) => {
-      console.error('Follow/unfollow failed:', error);
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });
 

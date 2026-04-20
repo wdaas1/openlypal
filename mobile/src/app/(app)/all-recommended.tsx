@@ -35,6 +35,7 @@ export default function AllRecommendedScreen() {
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       queryClient.invalidateQueries({ queryKey: ['explore', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
     onError: (error) => {
       console.error('Follow/unfollow failed:', error);
