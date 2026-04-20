@@ -128,7 +128,10 @@ function RootLayoutNav() {
 
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
+        console.log('[notifications] Sending push token to backend');
         sendPushTokenToBackend(token);
+      } else {
+        console.log('[notifications] No push token — push notifications unavailable');
       }
     });
 

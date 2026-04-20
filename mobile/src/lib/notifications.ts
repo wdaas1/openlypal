@@ -58,13 +58,25 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       ? await Notifications.getExpoPushTokenAsync({ projectId })
       : await Notifications.getExpoPushTokenAsync();
     const token = tokenData.data;
+    console.log('[notifications] Got Expo push token:', token?.slice(0, 30) + '...');
 
     // Cache token locally
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
 
     return token;
-  } catch {
-    return null;
+  } catch (err) {
+    console.log('[notifications] getExpoPushTokenAsync failed:', err);
+    // Fallback: try native device push token (APNs/FCM)
+    try {
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      const token = deviceToken.data as string;
+      console.log('[notifications] Got device push token:', token?.slice(0, 30) + '...');
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+      return token;
+    } catch (err2) {
+      console.log('[notifications] getDevicePushTokenAsync also failed:', err2);
+      return null;
+    }
   }
 }
 
