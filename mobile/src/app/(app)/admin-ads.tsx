@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
 import { useTheme } from '@/lib/theme';
+import { api } from '@/lib/api/api';
 
 type AdminAd = {
   id: string;
@@ -44,12 +45,8 @@ const THEME_COLORS: Record<string, string> = {
 
 const THEMES = ['green', 'purple', 'orange', 'blue'] as const;
 
-const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
-
 function fetchAdminAds(): Promise<AdminAd[]> {
-  return fetch(`${baseUrl}/api/ads/admin`, { credentials: 'include' })
-    .then(r => r.json())
-    .then(d => d.data ?? []);
+  return api.get<AdminAd[]>('/api/ads/admin').then(d => d ?? []);
 }
 
 function BudgetBar({ spent, budget, accent, theme }: { spent: number; budget: number; accent: string; theme: { border: string; subtext: string; text: string } }) {
@@ -98,12 +95,7 @@ export default function AdminAdsScreen() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      await fetch(`${baseUrl}/api/ads/admin/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ active }),
-      });
+      await api.patch(`/api/ads/admin/${id}`, { active });
     },
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -114,10 +106,7 @@ export default function AdminAdsScreen() {
 
   const deleteAd = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`${baseUrl}/api/ads/admin/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      await api.delete(`/api/ads/admin/${id}`);
     },
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -131,20 +120,15 @@ export default function AdminAdsScreen() {
       const budgetVal = budget.trim() ? parseFloat(budget) : null;
       const cpmVal = cpm.trim() ? parseFloat(cpm) : null;
       const ratePerImpression = cpmVal != null ? cpmVal / 1000 : null;
-      await fetch(`${baseUrl}/api/ads/admin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          headline,
-          subtext,
-          cta,
-          theme: adTheme,
-          clickUrl: clickUrl.trim() || null,
-          active: true,
-          budget: budgetVal,
-          ratePerImpression,
-        }),
+      await api.post('/api/ads/admin', {
+        headline,
+        subtext,
+        cta,
+        theme: adTheme,
+        clickUrl: clickUrl.trim() || null,
+        active: true,
+        budget: budgetVal,
+        ratePerImpression,
       });
     },
     onSuccess: () => {
