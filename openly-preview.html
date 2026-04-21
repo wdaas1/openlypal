@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Openly — Share without filters</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a0a;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #fff;
+    }
+
+    /* ── OG Card (1200×630) ── */
+    .og-card {
+      width: 100%;
+      max-width: 1200px;
+      aspect-ratio: 1200 / 630;
+      background: linear-gradient(135deg, #0d0d0d 0%, #111 50%, #0d0d0d 100%);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 80px 100px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,207,53,0.08);
+    }
+
+    /* background glow blobs */
+    .og-card::before {
+      content: '';
+      position: absolute;
+      top: -120px; left: -80px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,207,53,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .og-card::after {
+      content: '';
+      position: absolute;
+      bottom: -100px; right: -60px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(255,78,106,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* grid texture */
+    .grid-bg {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    .og-left {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .og-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .og-logo-icon {
+      width: 72px;
+      height: 72px;
+      background: #111;
+      border-radius: 18px;
+      border: 1px solid rgba(0,207,53,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 24px rgba(0,207,53,0.2);
+    }
+
+    .og-app-name {
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.7) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .og-tagline {
+      font-size: 26px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: -0.5px;
+      line-height: 1.4;
+      max-width: 480px;
+    }
+
+    .og-tagline span {
+      color: #00CF35;
+      font-weight: 600;
+    }
+
+    .og-pills {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      padding: 8px 18px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .pill-green {
+      background: rgba(0,207,53,0.12);
+      color: #00CF35;
+      border: 1px solid rgba(0,207,53,0.25);
+    }
+
+    .pill-red {
+      background: rgba(255,78,106,0.1);
+      color: #FF4E6A;
+      border: 1px solid rgba(255,78,106,0.2);
+    }
+
+    .pill-gray {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Phone mockup */
+    .og-right {
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+
+    .phone {
+      width: 200px;
+      height: 360px;
+      background: #161616;
+      border-radius: 36px;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      box-shadow:
+        0 40px 80px rgba(0,0,0,0.6),
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        0 0 0 1px rgba(0,0,0,0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .phone-notch {
+      width: 80px; height: 22px;
+      background: #0a0a0a;
+      border-radius: 0 0 14px 14px;
+      margin: 0 auto 12px;
+    }
+
+    .phone-status {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 18px 8px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+    }
+
+    .post-card {
+      margin: 0 10px 8px;
+      background: #1a1a1a;
+      border-radius: 14px;
+      border: 0.5px solid rgba(255,255,255,0.06);
+      padding: 12px;
+    }
+
+    .post-user {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 8px;
+    }
+
+    .avatar {
+      width: 22px; height: 22px;
+      border-radius: 11px;
+    }
+
+    .post-username {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .post-time {
+      font-size: 9px;
+      color: rgba(255,255,255,0.25);
+      margin-left: auto;
+    }
+
+    .post-text {
+      font-size: 10px;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .post-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .action-btn {
+      font-size: 9px;
+      color: rgba(255,255,255,0.25);
+      font-weight: 600;
+    }
+
+    .action-btn.green { color: #00CF35; }
+    .action-btn.red { color: #FF4E6A; }
+
+    .phone-tab-bar {
+      margin-top: auto;
+      height: 48px;
+      background: rgba(0,0,0,0.6);
+      border-top: 0.5px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 8px;
+    }
+
+    .tab-dot {
+      width: 6px; height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.2);
+    }
+
+    .tab-dot.active {
+      background: #00CF35;
+      width: 18px;
+    }
+
+    /* ── App Icon ── */
+    .icon-section {
+      margin-top: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .icon-label {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+      font-weight: 700;
+    }
+
+    .icons-row {
+      display: flex;
+      gap: 24px;
+      align-items: flex-end;
+    }
+
+    .app-icon {
+      background: linear-gradient(135deg, #0d0d0d, #111);
+      border: 1px solid rgba(0,207,53,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(0,207,53,0.15), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .app-icon-1024 { width: 120px; height: 120px; border-radius: 27px; }
+    .app-icon-512  { width: 80px;  height: 80px;  border-radius: 18px; }
+    .app-icon-256  { width: 56px;  height: 56px;  border-radius: 13px; }
+    .app-icon-64   { width: 32px;  height: 32px;  border-radius: 8px;  }
+
+    .size-label {
+      text-align: center;
+      font-size: 10px;
+      color: rgba(255,255,255,0.2);
+      margin-top: 8px;
+    }
+
+    .icon-wrapper { display: flex; flex-direction: column; align-items: center; }
+  </style>
+</head>
+<body>
+
+  <!-- ── OG / Social Preview Card ── -->
+  <p class="icon-label" style="margin-bottom:16px">Social Preview Card (1200×630)</p>
+  <div class="og-card">
+    <div class="grid-bg"></div>
+
+    <div class="og-left">
+      <div class="og-logo-row">
+        <div class="og-logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="44" height="44">
+            <defs>
+              <filter id="g2"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <path d="M30 6 A24 24 0 1 1 48 40" fill="none" stroke="#00CF35" stroke-width="4.5" stroke-linecap="round" filter="url(#g2)"/>
+            <circle cx="30" cy="30" r="7" fill="#00CF35" filter="url(#g2)"/>
+            <circle cx="50" cy="42" r="3" fill="#FF4E6A"/>
+          </svg>
+        </div>
+        <span class="og-app-name">Openly</span>
+      </div>
+
+      <p class="og-tagline">
+        The social platform built for<br/>
+        <span>authentic expression</span> — no filters, no algorithms.
+      </p>
+
+      <div class="og-pills">
+        <span class="pill pill-green">Posts &amp; Reblogs</span>
+        <span class="pill pill-green">Live Moments</span>
+        <span class="pill pill-red">Direct Messages</span>
+        <span class="pill pill-gray">Rooms</span>
+        <span class="pill pill-gray">Explore</span>
+      </div>
+    </div>
+
+    <!-- Phone mockup -->
+    <div class="og-right">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-status"><span>9:41</span><span>●●●</span></div>
+
+        <div class="post-card">
+          <div class="post-user">
+            <div class="avatar" style="background:linear-gradient(135deg,#00CF35,#007a1f)"></div>
+            <span class="post-username">alex_doe</span>
+            <span class="post-time">2m ago</span>
+          </div>
+          <p class="post-text">Just shipped something I've been working on for months. Feels surreal to finally see it live ✨</p>
+          <div class="post-actions">
+            <span class="action-btn red">♥ 142</span>
+            <span class="action-btn">💬 38</span>
+            <span class="action-btn green">⟳ 21</span>
+          </div>
+        </div>
+
+        <div class="post-card">
+          <div class="post-user">
+            <div class="avatar" style="background:linear-gradient(135deg,#FF4E6A,#c0003a)"></div>
+            <span class="post-username">maya.k</span>
+            <span class="post-time">11m ago</span>
+          </div>
+          <p class="post-text">Morning run done. The city is something else at 6am when no one's watching.</p>
+          <div class="post-actions">
+            <span class="action-btn red">♥ 87</span>
+            <span class="action-btn">💬 12</span>
+            <span class="action-btn green">⟳ 9</span>
+          </div>
+        </div>
+
+        <div class="post-card">
+          <div class="post-user">
+            <div class="avatar" style="background:linear-gradient(135deg,#7C6AF7,#4a3ec9)"></div>
+            <span class="post-username">theo_s</span>
+            <span class="post-time">34m ago</span>
+          </div>
+          <p class="post-text">unpopular opinion: dark mode is the only mode</p>
+          <div class="post-actions">
+            <span class="action-btn red">♥ 2.1k</span>
+            <span class="action-btn">💬 204</span>
+            <span class="action-btn green">⟳ 318</span>
+          </div>
+        </div>
+
+        <div class="phone-tab-bar">
+          <div class="tab-dot active"></div>
+          <div class="tab-dot"></div>
+          <div class="tab-dot"></div>
+          <div class="tab-dot"></div>
+          <div class="tab-dot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── App Icon Sizes ── -->
+  <div class="icon-section">
+    <p class="icon-label">App Icon — All Sizes</p>
+    <div class="icons-row">
+
+      <div class="icon-wrapper">
+        <div class="app-icon app-icon-1024">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="72" height="72">
+            <defs><filter id="g3"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <path d="M30 6 A24 24 0 1 1 48 40" fill="none" stroke="#00CF35" stroke-width="4.5" stroke-linecap="round" filter="url(#g3)"/>
+            <circle cx="30" cy="30" r="7" fill="#00CF35" filter="url(#g3)"/>
+            <circle cx="50" cy="42" r="3" fill="#FF4E6A"/>
+          </svg>
+        </div>
+        <p class="size-label">1024px</p>
+      </div>
+
+      <div class="icon-wrapper">
+        <div class="app-icon app-icon-512">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="48" height="48">
+            <defs><filter id="g4"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <path d="M30 6 A24 24 0 1 1 48 40" fill="none" stroke="#00CF35" stroke-width="4.5" stroke-linecap="round" filter="url(#g4)"/>
+            <circle cx="30" cy="30" r="7" fill="#00CF35" filter="url(#g4)"/>
+            <circle cx="50" cy="42" r="3" fill="#FF4E6A"/>
+          </svg>
+        </div>
+        <p class="size-label">512px</p>
+      </div>
+
+      <div class="icon-wrapper">
+        <div class="app-icon app-icon-256">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="34" height="34">
+            <path d="M30 6 A24 24 0 1 1 48 40" fill="none" stroke="#00CF35" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="30" cy="30" r="7" fill="#00CF35"/>
+            <circle cx="50" cy="42" r="3" fill="#FF4E6A"/>
+          </svg>
+        </div>
+        <p class="size-label">256px</p>
+      </div>
+
+      <div class="icon-wrapper">
+        <div class="app-icon app-icon-64">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="20" height="20">
+            <path d="M30 6 A24 24 0 1 1 48 40" fill="none" stroke="#00CF35" stroke-width="5.5" stroke-linecap="round"/>
+            <circle cx="30" cy="30" r="7.5" fill="#00CF35"/>
+            <circle cx="50" cy="42" r="3.5" fill="#FF4E6A"/>
+          </svg>
+        </div>
+        <p class="size-label">64px</p>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

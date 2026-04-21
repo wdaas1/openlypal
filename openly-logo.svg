@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0a"/>
+      <stop offset="100%" style="stop-color:#111111"/>
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00CF35"/>
+      <stop offset="100%" style="stop-color:#00a82b"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="120" height="120" rx="26" fill="url(#bgGrad)"/>
+
+  <!-- Outer ring arc (open at bottom-right, representing "openly") -->
+  <path d="M60 18
+    A42 42 0 1 1 92 74"
+    fill="none"
+    stroke="url(#ringGrad)"
+    stroke-width="7"
+    stroke-linecap="round"
+    filter="url(#glow)"
+  />
+
+  <!-- Inner dot — the "eye" / pupil of openness -->
+  <circle cx="60" cy="60" r="10" fill="#00CF35" filter="url(#glow)"/>
+
+  <!-- Small accent dot at the open end -->
+  <circle cx="94" cy="76" r="4.5" fill="#FF4E6A"/>
+</svg>
