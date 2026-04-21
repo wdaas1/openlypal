@@ -26,7 +26,9 @@ import Animated, {
   FadeInDown,
   FadeIn,
 } from 'react-native-reanimated';
-import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin } from 'lucide-react-native';
+import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin, Megaphone } from 'lucide-react-native';
+import Purchases from 'react-native-purchases';
+import * as Burnt from 'burnt';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -642,6 +644,7 @@ export default function LiveMomentScreen() {
   const [isStartingStream, setIsStartingStream] = useState(false);
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
+  const [showBoostModal, setShowBoostModal] = useState(false);
 
   const { data: moment, isLoading } = useQuery({
     queryKey: ['live-moment', momentId],
@@ -800,6 +803,39 @@ export default function LiveMomentScreen() {
     },
   });
   const endMoment = endMomentMutation.mutate;
+
+  const boostMutation = useMutation({
+    mutationFn: async () => {
+      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+      if (!apiKey) throw new Error('Boost not available yet. Please try again later.');
+      Purchases.configure({ apiKey, appUserID: session?.user?.id });
+      const offerings = await Purchases.getOfferings();
+      const pkg = offerings.current?.availablePackages.find(
+        (p) => p.product.identifier === 'boost_live_999'
+      );
+      if (!pkg) throw new Error('Boost not available yet. Please try again later.');
+      const result = await Purchases.purchasePackage(pkg);
+      const transactionId = (result as any).transaction?.transactionIdentifier ?? pkg.product.identifier;
+      const token = await getAccessToken();
+      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+      await fetch(`${backendUrl}/api/boosts/live/${momentId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ transactionId }),
+      });
+    },
+    onSuccess: () => {
+      setShowBoostModal(false);
+      Burnt.toast({ title: 'Boosted! 🚀', preset: 'done' });
+    },
+    onError: (err: Error) => {
+      setShowBoostModal(false);
+      Burnt.toast({ title: err.message ?? 'Boost failed. Please try again.', preset: 'error' });
+    },
+  });
 
   const { mutate: goLive, isPending: isGoingLive } = useMutation({
     mutationFn: () => liveMomentsApi.goLive(momentId),
@@ -1040,13 +1076,36 @@ export default function LiveMomentScreen() {
               </Pressable>
             ))}
 
+            {isCreator && !isEnded && moment?.isLive ? (
+              <Pressable
+                testID="promote-live-button"
+                onPress={() => setShowBoostModal(true)}
+                style={{
+                  marginLeft: 'auto',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  backgroundColor: 'rgba(245,158,11,0.15)',
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(245,158,11,0.35)',
+                }}
+              >
+                <Megaphone size={13} color="#f59e0b" />
+                <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
+                  PROMOTE
+                </Text>
+              </Pressable>
+            ) : null}
             {isCreator ? (
               <Pressable
                 testID="end-moment-button"
                 onPress={handleEnd}
                 disabled={endMomentMutation.isPending}
                 style={{
-                  marginLeft: 'auto',
+                  marginLeft: isCreator && !isEnded && moment?.isLive ? 6 : 'auto',
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 6,
@@ -1390,6 +1449,71 @@ export default function LiveMomentScreen() {
 
         {floatingReactionsOverlay}
         {endedOverlay}
+
+        {/* Boost Modal */}
+        {showBoostModal ? (
+          <View
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: '#0a0a12',
+                borderRadius: 24,
+                padding: 28,
+                marginHorizontal: 28,
+                borderWidth: 1,
+                borderColor: 'rgba(245,158,11,0.25)',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 32, marginBottom: 8 }}>🔥</Text>
+              <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' }}>
+                Boost Your Live
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+                Promote your live to more viewers for £9.99
+              </Text>
+              <Pressable
+                testID="boost-confirm-button"
+                onPress={() => boostMutation.mutate()}
+                disabled={boostMutation.isPending}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#f59e0b',
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  marginBottom: 10,
+                }}
+              >
+                {boostMutation.isPending ? (
+                  <ActivityIndicator color="#000000" />
+                ) : (
+                  <Text style={{ color: '#000000', fontSize: 15, fontWeight: '800' }}>Boost for £9.99</Text>
+                )}
+              </Pressable>
+              <Pressable
+                testID="boost-cancel-button"
+                onPress={() => setShowBoostModal(false)}
+                style={{
+                  width: '100%',
+                  borderRadius: 16,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.07)',
+                }}
+              >
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, fontWeight: '600' }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
     );
   }

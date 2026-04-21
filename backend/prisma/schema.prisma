@@ -62,6 +62,7 @@ model User {
   profileModules       ProfileModule[]
   ownedRooms           Room[]       @relation("RoomOwner")
   roomMembers          RoomMember[]
+  advertiserApplication AdvertiserApplication?
 }
 
 model Session {
@@ -258,6 +259,7 @@ model LiveMoment {
   invitedUserIds String   @default("[]") // JSON array of user IDs
   viewerIds      String   @default("[]") // JSON array of currently joined user IDs
   createdAt      DateTime @default(now())
+  boosted        Boolean  @default(false)
   messages       LiveMomentMessage[]
 }
 
@@ -352,4 +354,30 @@ model AppSettings {
   announcementActive Boolean  @default(false)
   featuresJson       String   @default("{}") // JSON object of feature flags
   updatedAt          DateTime @updatedAt
+}
+
+// ─── Advertiser ─────────────────────────────────────────────
+
+model AdvertiserApplication {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     String
+  website     String?
+  description String
+  status      String   @default("pending") // "pending" | "approved" | "rejected"
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LiveBoost {
+  id            String   @id @default(cuid())
+  momentId      String
+  userId        String
+  transactionId String?
+  productId     String   @default("boost_live_999")
+  amount        Float    @default(9.99)
+  currency      String   @default("GBP")
+  createdAt     DateTime @default(now())
 }

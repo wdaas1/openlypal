@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon, Check, MapPin, Pin, Puzzle, Rocket, Target, Smile, BookOpen, Circle } from 'lucide-react-native';
+import { Settings, Edit3, Grid3X3, Heart, Play, FileText, Globe, Link as LinkIcon, Check, MapPin, Pin, Puzzle, Rocket, Target, Smile, BookOpen, Circle, Megaphone } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -271,6 +271,21 @@ export default function ProfileScreen() {
             >
               <Puzzle size={13} color="#00CF35" />
               <Text style={{ color: '#00CF35', fontSize: 12, fontWeight: '600' }}>Modules</Text>
+            </Pressable>
+            <Pressable
+              testID="advertise-button"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(app)/advertiser-apply' as any);
+              }}
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6,
+                flexDirection: 'row', alignItems: 'center', gap: 4,
+              }}
+            >
+              <Megaphone size={13} color="#f59e0b" />
+              <Text style={{ color: '#f59e0b', fontSize: 12, fontWeight: '600' }}>Advertise</Text>
             </Pressable>
             <Pressable
               testID="settings-button"

@@ -865,6 +865,8 @@ export default function AppLayout() {
             <Stack.Screen name="admin-settings-panel" />
             <Stack.Screen name="admin-stats" />
             <Stack.Screen name="admin-revenue" />
+            <Stack.Screen name="admin-advertiser-applications" />
+            <Stack.Screen name="advertiser-apply" options={{ presentation: 'formSheet', sheetGrabberVisible: true, headerShown: false }} />
             <Stack.Screen name="relationships/index" />
             <Stack.Screen name="profile-modules/index" />
             <Stack.Screen name="tag/[tag]" />

@@ -154,6 +154,14 @@ export default function AdminScreen() {
       description: 'Maintenance & announcements',
       accentColor: '#fb923c',
     },
+    {
+      testID: 'admin-nav-advertiser-applications',
+      route: '/(app)/admin-advertiser-applications',
+      icon: <Megaphone size={20} color="#f59e0b" />,
+      title: 'Advertiser Applications',
+      description: 'Review & approve advertisers',
+      accentColor: '#f59e0b',
+    },
   ];
 
   return (
