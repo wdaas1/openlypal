@@ -299,7 +299,7 @@ function RootLayoutNav() {
       if (!cancelled) SplashScreen.hideAsync();
     })();
     return () => { cancelled = true; };
-  }, [session, isLoading, navigationState?.key, onboardingDone]);
+  }, [session?.user?.id, isLoading, navigationState?.key, onboardingDone]);
 
   const baseNavTheme = theme.isDark ? DarkTheme : DefaultTheme;
   const navTheme = {

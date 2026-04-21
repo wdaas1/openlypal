@@ -1,7 +1,7 @@
 import React from 'react';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { AppKeyboardProvider } from '@/lib/app-keyboard-provider';
 import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers, Camera, Video, Users, X, Wrench } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
@@ -821,7 +821,7 @@ export default function AppLayout() {
     appSettings.announcementText.length > 0;
 
   return (
-    <KeyboardProvider>
+    <AppKeyboardProvider>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
         <E2EInitializer />
         <Animated.View style={contentAnimStyle}>
@@ -889,6 +889,6 @@ export default function AppLayout() {
 
         {showMaintenance ? <MaintenanceOverlay /> : null}
       </View>
-    </KeyboardProvider>
+    </AppKeyboardProvider>
   );
 }

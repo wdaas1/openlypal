@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthApiError } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -24,14 +24,19 @@ export const useSession = () => {
   useEffect(() => {
     // On mount, check for a stored session. If the stored token is stale, clear
     // it immediately so the user is routed to the login screen.
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error && isInvalidTokenError(error)) {
-        supabase.auth.signOut();
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error && isInvalidTokenError(error)) {
+          supabase.auth.signOut();
+          setSession(null);
+          return;
+        }
+        setSession(session);
+      })
+      .catch(() => {
         setSession(null);
-        return;
-      }
-      setSession(session);
-    });
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -42,8 +47,13 @@ export const useSession = () => {
 
   const isLoading = session === undefined;
 
+  const data = useMemo(
+    () => (session ? { user: session.user } : null),
+    [session],
+  );
+
   return {
-    data: session ? { user: session.user } : null,
+    data,
     isLoading,
   };
 };
