@@ -12,6 +12,8 @@ import * as Clipboard from 'expo-clipboard';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api/api';
 import type { Post, Comment } from '@/lib/types';
+import { MentionTextInput } from '@/components/MentionTextInput';
+import { renderTextWithMentions } from '@/lib/renderMentions';
 import { UserAvatar } from '@/components/UserAvatar';
 import { MediaViewer } from '@/components/MediaViewer';
 import { useTheme } from '@/lib/theme';
@@ -46,12 +48,14 @@ function CommentItem({
   onReply,
   isNested,
   theme,
+  onMentionPress,
 }: {
   comment: Comment;
   postUserId: string;
   onReply: (id: string, username: string) => void;
   isNested?: boolean;
   theme: Theme;
+  onMentionPress: (username: string) => void;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -133,6 +137,7 @@ function CommentItem({
                 onReply={onReply}
                 isNested
                 theme={theme}
+                onMentionPress={onMentionPress}
               />
             ))}
           </View>
@@ -193,7 +198,11 @@ function CommentItem({
               </View>
             </View>
             <Text style={{ color: theme.text, fontSize: 13, lineHeight: 18 }}>
-              {comment.content}
+              {renderTextWithMentions(
+                comment.content,
+                onMentionPress,
+                { color: theme.text, fontSize: 13, lineHeight: 18 },
+              )}
             </Text>
           </View>
           {/* Vote + Reply row */}
@@ -254,6 +263,7 @@ function CommentItem({
                   onReply={onReply}
                   isNested
                   theme={theme}
+                  onMentionPress={onMentionPress}
                 />
               ))}
             </View>
@@ -603,6 +613,17 @@ export default function PostDetailScreen() {
     },
   });
 
+  const handleMentionPress = async (username: string) => {
+    try {
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+      const res = await fetch(`${baseUrl}/api/users/by-username/${encodeURIComponent(username)}`);
+      const json = await res.json();
+      if (json.data?.id) {
+        router.push(`/(app)/user/${json.data.id}` as any);
+      }
+    } catch {}
+  };
+
   if (loadingPost) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
@@ -807,6 +828,7 @@ export default function PostDetailScreen() {
                   postUserId={post.userId}
                   onReply={(commentId, username) => setReplyingTo({ id: commentId, username })}
                   theme={theme}
+                  onMentionPress={handleMentionPress}
                 />
               ))
             )}
@@ -860,7 +882,7 @@ export default function PostDetailScreen() {
           backgroundColor: theme.bg,
           borderTopColor: theme.border, borderTopWidth: 0.5,
         }}>
-          <TextInput
+          <MentionTextInput
             testID="comment-input"
             value={commentText}
             onChangeText={setCommentText}

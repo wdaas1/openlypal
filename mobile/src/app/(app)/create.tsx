@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 'react-native';
+import { MentionTextInput } from '@/components/MentionTextInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -250,14 +251,13 @@ export default function CreateScreen() {
         ) : null}
 
         {/* Content */}
-        <TextInput
+        <MentionTextInput
           testID="content-input"
           value={content}
           onChangeText={setContent}
           placeholder={postType === 'quote' ? 'Enter your quote...' : 'Go ahead, put anything.'}
           placeholderTextColor={theme.subtext}
           multiline
-          textAlignVertical="top"
           style={{ color: theme.text, fontSize: 16, marginBottom: 16, minHeight: 120, lineHeight: 22 }}
         />
 

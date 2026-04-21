@@ -374,6 +374,24 @@ usersRouter.get("/:id/public-key", async (c) => {
   return c.json({ data: { publicKey: profile.publicKey } });
 });
 
+// GET /by-username/:username - Get user profile by username
+usersRouter.get("/by-username/:username", async (c) => {
+  const { username } = c.req.param();
+  const user = await prisma.user.findFirst({
+    where: { username: { equals: username } },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      image: true,
+      bio: true,
+      _count: { select: { followers: true, posts: true } },
+    },
+  });
+  if (!user) return c.json({ error: { message: "User not found" } }, 404);
+  return c.json({ data: user });
+});
+
 // GET /:id - Get user profile by ID
 usersRouter.get("/:id", async (c) => {
   const user = c.get("user");

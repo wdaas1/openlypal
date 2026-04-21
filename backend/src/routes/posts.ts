@@ -5,6 +5,43 @@ import { prisma } from "../prisma";
 import { moderatePostContent } from "../lib/contentModeration";
 import { sendPushNotification } from "../lib/push-notifications";
 
+async function notifyMentions(content: string, authorId: string, postId: string) {
+  const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+  const usernames: string[] = [];
+  let match;
+  while ((match = mentionRegex.exec(content)) !== null) {
+    if (match[1]) usernames.push(match[1]);
+  }
+  if (usernames.length === 0) return;
+
+  const mentionedUsers = await prisma.user.findMany({
+    where: {
+      username: { in: usernames },
+      NOT: { id: authorId },
+    },
+    select: { id: true, pushToken: true },
+  });
+
+  const author = await prisma.user.findUnique({
+    where: { id: authorId },
+    select: { name: true, username: true },
+  });
+  const authorName = author?.name ?? author?.username ?? "Someone";
+
+  await Promise.all(
+    mentionedUsers
+      .filter((u) => u.pushToken)
+      .map((u) =>
+        sendPushNotification(
+          u.pushToken!,
+          "You were mentioned",
+          `${authorName} mentioned you in a post`,
+          { type: "mention", postId }
+        )
+      )
+  );
+}
+
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
   session: { id: string } | null;
@@ -409,6 +446,10 @@ postsRouter.post("/", zValidator("json", createPostSchema), async (c) => {
     } catch {}
   })();
 
+  if (body.content) {
+    await notifyMentions(body.content, user.id, post.id);
+  }
+
   return c.json({ data: mapPost(post as Parameters<typeof mapPost>[0], user.id) });
 });
 
@@ -758,6 +799,10 @@ postsRouter.post("/:id/comments", zValidator("json", commentSchema), async (c) =
       const commenterName = commenter?.name ?? commenter?.username ?? "Someone";
       await sendPushNotification(owner.pushToken, "New Comment", `${commenterName} commented on your post`, { type: "comment", postId });
     }
+  }
+
+  if (body.content) {
+    await notifyMentions(body.content, user.id, postId);
   }
 
   return c.json({

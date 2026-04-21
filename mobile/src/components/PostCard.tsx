@@ -46,6 +46,7 @@ import { useSession } from '@/lib/auth/use-session';
 import { videoVisibility } from '@/lib/videoVisibility';
 import { relationshipsApi } from '@/lib/api/relationships';
 import { useTheme } from '@/lib/theme';
+import { renderTextWithMentions } from '@/lib/renderMentions';
 
 const imageAspectRatioCache = new Map<string, number>();
 
@@ -425,6 +426,17 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     setMenuVisible(true);
   }, []);
 
+  const handleMentionPress = async (username: string) => {
+    try {
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+      const res = await fetch(`${baseUrl}/api/users/by-username/${encodeURIComponent(username)}`);
+      const json = await res.json();
+      if (json.data?.id) {
+        router.push(`/(app)/user/${json.data.id}` as any);
+      }
+    } catch {}
+  };
+
   const handleTap = () => {
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
@@ -656,7 +668,11 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
       {/* Content */}
       {post.content ? (
         <Text style={{ color: theme.text, paddingHorizontal: 14, paddingBottom: 10, fontSize: 14, lineHeight: 20 }}>
-          {post.content}
+          {renderTextWithMentions(
+            post.content,
+            handleMentionPress,
+            { color: theme.text, fontSize: 14, lineHeight: 20 },
+          )}
         </Text>
       ) : null}
 
