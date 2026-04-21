@@ -119,6 +119,8 @@ model Post {
   contentScore Float    @default(0)  // 0.0-1.0 sensitivity score
   hidden       Boolean  @default(false)
   reportCount  Int      @default(0)
+  featured     Boolean  @default(false)
+  featuredAt   DateTime?
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   roomId       String?
@@ -154,19 +156,21 @@ model Reblog {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  userId    String
-  postId    String
-  parentId  String?
-  upvotes   Int      @default(0)
-  downvotes Int      @default(0)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
-  votes     CommentVote[]
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  content     String
+  userId      String
+  postId      String
+  parentId    String?
+  upvotes     Int      @default(0)
+  downvotes   Int      @default(0)
+  hidden      Boolean  @default(false)
+  reportCount Int      @default(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
+  votes       CommentVote[]
+  createdAt   DateTime @default(now())
 }
 
 model CommentVote {
@@ -331,4 +335,21 @@ model AdDismissal {
   createdAt DateTime @default(now())
 
   @@unique([userId, adId])
+}
+
+// ─── Admin Controls ─────────────────────────────────────────
+
+model BannedWord {
+  id        String   @id @default(cuid())
+  word      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model AppSettings {
+  id                 String   @id @default("singleton")
+  maintenanceMode    Boolean  @default(false)
+  announcementText   String?
+  announcementActive Boolean  @default(false)
+  featuresJson       String   @default("{}") // JSON object of feature flags
+  updatedAt          DateTime @updatedAt
 }

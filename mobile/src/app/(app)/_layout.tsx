@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers, Camera, Video, Users } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers, Camera, Video, Users, X, Wrench } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,6 +21,8 @@ import { useE2EInit } from '@/lib/use-e2e-init';
 import { fireHomeTabPress } from '@/lib/home-tab-press';
 import type { Conversation } from '@/lib/types';
 import { useTheme } from '@/lib/theme';
+import { useSession } from '@/lib/auth/use-session';
+import { isAdmin } from '@/lib/auth/is-admin';
 
 type TabConfig = {
   route: string;
@@ -696,11 +698,81 @@ function E2EInitializer() {
   return null;
 }
 
+// ─── AppSettings types ────────────────────────────────────────────────────────
+
+type AppPublicSettings = {
+  maintenanceMode: boolean;
+  announcementText: string | null;
+  announcementActive: boolean;
+  featuresJson: string | null;
+};
+
+// ─── MaintenanceOverlay ───────────────────────────────────────────────────────
+
+function MaintenanceOverlay() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      testID="maintenance-overlay"
+      style={{
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: theme.bg,
+        alignItems: 'center', justifyContent: 'center',
+        paddingTop: insets.top, paddingBottom: insets.bottom,
+        zIndex: 9999,
+      }}
+    >
+      <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: 'rgba(251,146,60,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <Wrench size={32} color="#fb923c" />
+      </View>
+      <Text style={{ color: theme.text, fontSize: 22, fontWeight: '800', marginBottom: 8 }}>Under Maintenance</Text>
+      <Text style={{ color: theme.subtext, fontSize: 15, textAlign: 'center', paddingHorizontal: 40 }}>
+        We'll be back soon!
+      </Text>
+    </View>
+  );
+}
+
+// ─── AnnouncementBanner ───────────────────────────────────────────────────────
+
+function AnnouncementBanner({ text, onDismiss }: { text: string; onDismiss: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      testID="announcement-banner"
+      style={{
+        position: 'absolute', top: insets.top, left: 0, right: 0,
+        backgroundColor: '#fbbf24',
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 14, paddingVertical: 10,
+        zIndex: 1000,
+      }}
+    >
+      <Text style={{ color: '#001935', fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 18 }}>
+        {text}
+      </Text>
+      <Pressable testID="announcement-dismiss" onPress={onDismiss} style={{ marginLeft: 10, padding: 4 }}>
+        <X size={16} color="#001935" />
+      </Pressable>
+    </View>
+  );
+}
+
 // ─── AppLayout ────────────────────────────────────────────────────────────────
 
 export default function AppLayout() {
   const theme = useTheme();
   const [modalVisible, setModalVisible] = React.useState(false);
+  const [announcementDismissed, setAnnouncementDismissed] = React.useState(false);
+  const { data: session } = useSession();
+  const admin = isAdmin(session?.user);
+
+  const { data: appSettings } = useQuery({
+    queryKey: ['app-settings'],
+    queryFn: () => api.get<AppPublicSettings>('/api/app/settings'),
+    refetchInterval: 60000,
+  });
 
   // Animation shared values
   const sheetTranslateY = useSharedValue(600);
@@ -741,6 +813,13 @@ export default function AppLayout() {
     overflow: contentScale.value < 1 ? 'hidden' : 'visible',
   }));
 
+  const showMaintenance = appSettings?.maintenanceMode === true && !admin;
+  const showAnnouncement =
+    !announcementDismissed &&
+    appSettings?.announcementActive === true &&
+    appSettings.announcementText != null &&
+    appSettings.announcementText.length > 0;
+
   return (
     <KeyboardProvider>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -775,6 +854,17 @@ export default function AppLayout() {
             <Stack.Screen name="edit-profile" />
             <Stack.Screen name="admin" />
             <Stack.Screen name="admin-ads" />
+            <Stack.Screen name="admin-reports" />
+            <Stack.Screen name="admin-hidden" />
+            <Stack.Screen name="admin-users" />
+            <Stack.Screen name="admin-comments" />
+            <Stack.Screen name="admin-live-moments" />
+            <Stack.Screen name="admin-featured" />
+            <Stack.Screen name="admin-top-content" />
+            <Stack.Screen name="admin-keywords" />
+            <Stack.Screen name="admin-settings-panel" />
+            <Stack.Screen name="admin-stats" />
+            <Stack.Screen name="admin-revenue" />
             <Stack.Screen name="relationships/index" />
             <Stack.Screen name="profile-modules/index" />
             <Stack.Screen name="tag/[tag]" />
@@ -789,6 +879,15 @@ export default function AppLayout() {
           translateY={sheetTranslateY}
           backdropOpacity={backdropOpacity}
         />
+
+        {showAnnouncement ? (
+          <AnnouncementBanner
+            text={appSettings!.announcementText!}
+            onDismiss={() => setAnnouncementDismissed(true)}
+          />
+        ) : null}
+
+        {showMaintenance ? <MaintenanceOverlay /> : null}
       </View>
     </KeyboardProvider>
   );
