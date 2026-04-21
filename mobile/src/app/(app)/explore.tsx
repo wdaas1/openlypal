@@ -232,6 +232,7 @@ export default function ExploreScreen() {
               right: 0,
               bottom: 0,
             }}
+            pointerEvents="none"
           />
           <Search size={18} color={focused ? '#00CF35' : theme.subtext} />
           <TextInput

@@ -237,7 +237,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
   const videoScrubGesture = Gesture.Pan()
     .runOnJS(true)
     .activeOffsetX([-8, 8])
-    .failOffsetY([-15, 15])
+    .failOffsetY([-5, 5])
     .onStart(() => {
       const start = playerRef.current?.currentTime ?? 0;
       const duration = playerRef.current?.duration || 0;
