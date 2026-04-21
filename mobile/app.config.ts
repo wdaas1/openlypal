@@ -8,6 +8,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     ...(config.plugins ?? []),
 
+    // Wires up camera and microphone entitlements on iOS/Android.
+    // Required for CameraView, video recording, and live moments to work in
+    // production builds.
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'Openly uses the camera to capture photos and videos inside the app before you publish them.',
+        microphonePermission: 'Openly uses the microphone to record audio with your videos and live moments.',
+        recordAudioAndroid: true,
+      },
+    ],
+
     // Wires up camera and media-library entitlements on iOS/Android.
     // Required for launchCameraAsync and launchImageLibraryAsync to work in
     // production builds.
