@@ -799,6 +799,28 @@ export default function LiveMomentScreen() {
   });
   const endMoment = endMomentMutation.mutate;
 
+  // Calls the backend to record the boost and optimistically updates the UI
+  const activateBoost = useCallback(async (liveId: string, transactionId?: string) => {
+    const token = await getAccessToken();
+    const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+    await fetch(`${backendUrl}/api/boosts/live/${liveId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ transactionId }),
+    });
+
+    // Immediately update the cached moment so the UI reflects boosted state
+    const boostExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    queryClient.setQueryData(['live-moment', liveId], (old: any) =>
+      old ? { ...old, isBoosted: true, boostExpiresAt } : old
+    );
+    queryClient.invalidateQueries({ queryKey: ['live-moment', liveId] });
+    queryClient.invalidateQueries({ queryKey: ['live-moments'] });
+  }, [queryClient]);
+
   const boostMutation = useMutation({
     mutationFn: async () => {
       const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
@@ -811,20 +833,11 @@ export default function LiveMomentScreen() {
       if (!pkg) throw new Error('Boost not available yet. Please try again later.');
       const result = await Purchases.purchasePackage(pkg);
       const transactionId = (result as any).transaction?.transactionIdentifier ?? pkg.product.identifier;
-      const token = await getAccessToken();
-      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      await fetch(`${backendUrl}/api/boosts/live/${momentId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ transactionId }),
-      });
+      await activateBoost(momentId, transactionId);
     },
     onSuccess: () => {
       setShowBoostModal(false);
-      Burnt.toast({ title: 'Boosted! 🚀', preset: 'done' });
+      Burnt.toast({ title: '🔥 Your live is now boosted!', preset: 'done' });
     },
     onError: (err: Error) => {
       setShowBoostModal(false);
@@ -1582,11 +1595,21 @@ export default function LiveMomentScreen() {
                   setIsRestoringPurchases(true);
                   try {
                     const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
-                    if (apiKey) {
-                      Purchases.configure({ apiKey, appUserID: session?.user?.id });
-                      await Purchases.restorePurchases();
+                    if (!apiKey) throw new Error('Not available');
+                    Purchases.configure({ apiKey, appUserID: session?.user?.id });
+                    const customerInfo = await Purchases.restorePurchases();
+
+                    // Reapply boost if the product is in the restored purchase history
+                    const hadBoost =
+                      customerInfo.allPurchasedProductIdentifiers?.includes('boost_live_999') ?? false;
+
+                    if (hadBoost) {
+                      await activateBoost(momentId);
+                      setShowBoostModal(false);
+                      Burnt.toast({ title: '🔥 Your live is now boosted!', preset: 'done' });
+                    } else {
+                      Burnt.toast({ title: 'No boost to restore', preset: 'none' });
                     }
-                    Burnt.toast({ title: 'Purchases restored', preset: 'done' });
                   } catch {
                     Burnt.toast({ title: 'Nothing to restore', preset: 'error' });
                   } finally {
