@@ -664,6 +664,7 @@ export default function LiveMomentScreen() {
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
   const [showBoostModal, setShowBoostModal] = useState(false);
+  const boostPurchasedThisSession = useRef(false);
   const [boostPrice, setBoostPrice] = useState<string>('£9.99');
   const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -870,6 +871,8 @@ export default function LiveMomentScreen() {
 
   const boostMutation = useMutation({
     mutationFn: async () => {
+      if (moment?.isBoosted) throw new Error('Your live is already boosted.');
+      if (boostPurchasedThisSession.current) throw new Error('Boost already purchased this session.');
       const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
       if (!apiKey) throw new Error('Boost not available yet. Please try again later.');
       Purchases.configure({ apiKey, appUserID: session?.user?.id });
@@ -880,6 +883,7 @@ export default function LiveMomentScreen() {
       if (!pkg) throw new Error('Boost not available yet. Please try again later.');
       const result = await Purchases.purchasePackage(pkg);
       const transactionId = (result as any).transaction?.transactionIdentifier ?? pkg.product.identifier;
+      boostPurchasedThisSession.current = true;
       await activateBoost(momentId, transactionId);
     },
     onSuccess: () => {
@@ -1664,7 +1668,7 @@ export default function LiveMomentScreen() {
                 Boost Your Live
               </Text>
               <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
-                Promote your live to more viewers for {boostPrice}
+                Boost increases the visibility of your live stream for 30 minutes. Results may vary.
               </Text>
               <Pressable
                 testID="boost-confirm-button"
