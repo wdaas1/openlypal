@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -621,6 +622,7 @@ export default function LiveMomentScreen() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [cameraFailed, setCameraFailed] = useState(false);
   const cameraPermissionRequested = useRef(false);
+  const isFocused = useIsFocused();
 
   // Request camera + microphone permissions once on mount (creator only)
   useEffect(() => {
@@ -629,15 +631,15 @@ export default function LiveMomentScreen() {
 
     const requestPerms = async () => {
       console.log('Requesting camera permission');
-      const camResult = await ExpoCamera.requestCameraPermissionsAsync();
-      console.log('Requesting microphone permission');
-      const micResult = await ExpoCamera.requestMicrophonePermissionsAsync();
-      const granted = camResult.status === 'granted' && micResult.status === 'granted';
+      // Use hook updater so cameraPermission state syncs after grant/deny
+      const camResult = await requestCameraPermission();
+      await ExpoCamera.requestMicrophonePermissionsAsync();
+      const granted = camResult?.granted === true;
       console.log(granted ? 'Permission granted' : 'Permission denied');
     };
 
     requestPerms();
-  }, []);
+  }, [requestCameraPermission]);
 
   const { data: moment, isLoading } = useQuery({
     queryKey: ['live-moment', momentId],
@@ -1308,8 +1310,17 @@ export default function LiveMomentScreen() {
   if (isCreator) {
     const cameraGranted = cameraPermission?.granted === true;
 
+    // Still checking permissions — show loading to avoid blank camera
+    if (cameraPermission === null) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color="#00CF35" size="large" testID="camera-permission-loading" />
+        </View>
+      );
+    }
+
     // Permission denied screen
-    if (cameraPermission !== null && !cameraGranted) {
+    if (!cameraGranted) {
       return (
         <View
           testID="permission-denied-screen"
@@ -1326,11 +1337,10 @@ export default function LiveMomentScreen() {
             testID="enable-camera-button"
             onPress={async () => {
               console.log('Requesting camera permission');
-              const camResult = await ExpoCamera.requestCameraPermissionsAsync();
-              const micResult = await ExpoCamera.requestMicrophonePermissionsAsync();
-              const granted = camResult.status === 'granted' && micResult.status === 'granted';
+              const camResult = await requestCameraPermission();
+              await ExpoCamera.requestMicrophonePermissionsAsync();
+              const granted = camResult?.granted === true;
               console.log(granted ? 'Permission granted' : 'Permission denied');
-              requestCameraPermission();
             }}
             style={{
               backgroundColor: '#00CF35',
@@ -1393,7 +1403,7 @@ export default function LiveMomentScreen() {
               true;
             `}
           />
-        ) : cameraGranted ? (
+        ) : cameraGranted && isFocused ? (
           <CameraView
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             facing={facingFront ? 'front' : 'back'}
