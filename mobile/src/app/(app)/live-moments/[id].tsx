@@ -10,7 +10,6 @@ import {
   Platform,
   Image,
   Dimensions,
-  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -31,41 +30,13 @@ import Purchases from 'react-native-purchases';
 import * as Burnt from 'burnt';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
+import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
 import { getAccessToken } from '@/lib/auth/auth-client';
 import type { LiveMomentMessage } from '@/lib/types';
 import { showMediaPicker } from '@/lib/file-picker';
-
-async function requestStreamPermissions(): Promise<boolean> {
-  console.log('[LiveKit] Requesting camera and microphone permissions...');
-  try {
-    const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
-    console.log('[LiveKit] Camera permission status:', cameraResult.status);
-
-    if (Platform.OS === 'android') {
-      const micResult = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        {
-          title: 'Microphone Permission',
-          message: 'This app needs access to your microphone for live streaming.',
-          buttonPositive: 'Allow',
-          buttonNegative: 'Deny',
-        }
-      );
-      console.log('[LiveKit] Microphone permission status (Android):', micResult);
-      return cameraResult.status === 'granted' && micResult === 'granted';
-    }
-
-    console.log('[LiveKit] iOS microphone permission will be requested by WebView.');
-    return cameraResult.status === 'granted';
-  } catch (e) {
-    console.warn('[LiveKit] Permission request error:', e);
-    return false;
-  }
-}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CONTENT_AREA_HEIGHT = 230;
@@ -645,6 +616,26 @@ export default function LiveMomentScreen() {
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
   const [showBoostModal, setShowBoostModal] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [cameraFailed, setCameraFailed] = useState(false);
+  const cameraPermissionRequested = useRef(false);
+
+  // Request camera + microphone permissions once on mount (creator only)
+  useEffect(() => {
+    if (cameraPermissionRequested.current) return;
+    cameraPermissionRequested.current = true;
+
+    const requestPerms = async () => {
+      console.log('Requesting camera permission');
+      const camResult = await ExpoCamera.requestCameraPermissionsAsync();
+      console.log('Requesting microphone permission');
+      const micResult = await ExpoCamera.requestMicrophonePermissionsAsync();
+      const granted = camResult.status === 'granted' && micResult.status === 'granted';
+      console.log(granted ? 'Permission granted' : 'Permission denied');
+    };
+
+    requestPerms();
+  }, []);
 
   const { data: moment, isLoading } = useQuery({
     queryKey: ['live-moment', momentId],
@@ -900,8 +891,7 @@ export default function LiveMomentScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsStartingStream(true);
     try {
-      console.log('[LiveKit] handleGoLive: requesting permissions...');
-      await requestStreamPermissions();
+      console.log('[LiveKit] handleGoLive: permissions already requested on mount.');
 
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
@@ -1298,9 +1288,53 @@ export default function LiveMomentScreen() {
 
   // ─── CREATOR LAYOUT ──────────────────────────────────────────────────────
   if (isCreator) {
+    const cameraGranted = cameraPermission?.granted === true;
+
+    // Permission denied screen
+    if (cameraPermission !== null && !cameraGranted) {
+      return (
+        <View
+          testID="permission-denied-screen"
+          style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}
+        >
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>📷</Text>
+          <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '900', textAlign: 'center', marginBottom: 12 }}>
+            Camera access required to go live
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 32 }}>
+            Allow camera and microphone access so your viewers can see and hear you.
+          </Text>
+          <Pressable
+            testID="enable-camera-button"
+            onPress={async () => {
+              console.log('Requesting camera permission');
+              const camResult = await ExpoCamera.requestCameraPermissionsAsync();
+              const micResult = await ExpoCamera.requestMicrophonePermissionsAsync();
+              const granted = camResult.status === 'granted' && micResult.status === 'granted';
+              console.log(granted ? 'Permission granted' : 'Permission denied');
+              requestCameraPermission();
+            }}
+            style={{
+              backgroundColor: '#00CF35',
+              paddingHorizontal: 32,
+              paddingVertical: 14,
+              borderRadius: 30,
+              shadowColor: '#00CF35',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 10,
+            }}
+          >
+            <Text style={{ color: '#001935', fontSize: 16, fontWeight: '900' }}>Enable Camera</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {/* Full-screen stream or dark bg */}
+        {/* Full-screen stream or camera preview */}
         {streamUrl && !isNotLive ? (
           <WebView
             source={{ uri: streamUrl }}
@@ -1341,6 +1375,21 @@ export default function LiveMomentScreen() {
               true;
             `}
           />
+        ) : cameraGranted ? (
+          <CameraView
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            facing={facingFront ? 'front' : 'back'}
+            onCameraReady={() => console.log('Permission granted')}
+            onMountError={() => setCameraFailed(true)}
+          >
+            {cameraFailed ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' }}>
+                  Camera failed to initialize
+                </Text>
+              </View>
+            ) : null}
+          </CameraView>
         ) : (
           <View
             style={{
@@ -1349,7 +1398,7 @@ export default function LiveMomentScreen() {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: facingFront ? '#0a0a12' : '#0a120a',
+              backgroundColor: '#0a0a12',
             }}
           />
         )}
