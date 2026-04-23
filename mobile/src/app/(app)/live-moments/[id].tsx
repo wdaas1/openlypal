@@ -559,6 +559,27 @@ function LiveContentArea({
   );
 }
 
+function useBoostCountdown(boostExpiresAt: string | null | undefined): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!boostExpiresAt) { setLabel(null); return; }
+
+    const compute = () => {
+      const diff = new Date(boostExpiresAt).getTime() - Date.now();
+      if (diff <= 0) { setLabel(null); return; }
+      const mins = Math.ceil(diff / 60000);
+      setLabel(`Boost ends in ${mins}m`);
+    };
+
+    compute();
+    const id = setInterval(compute, 30000);
+    return () => clearInterval(id);
+  }, [boostExpiresAt]);
+
+  return label;
+}
+
 function useSimulatedViewerCount(realCount: number, isBoosted: boolean): number {
   const [offset, setOffset] = useState<number>(0);
   const prevBoosted = useRef(false);
@@ -863,7 +884,7 @@ export default function LiveMomentScreen() {
     },
     onSuccess: () => {
       setShowBoostModal(false);
-      Burnt.toast({ title: '🔥 Your live is now boosted!', preset: 'done' });
+      Burnt.toast({ title: '🔥 Boost activated for 30 minutes', preset: 'done' });
     },
     onError: (err: Error) => {
       setShowBoostModal(false);
@@ -1043,6 +1064,7 @@ export default function LiveMomentScreen() {
     moment?.viewerCount ?? 0,
     moment?.isBoosted === true && !isEnded
   );
+  const boostCountdown = useBoostCountdown(moment?.boostExpiresAt);
   const isNotLive = !moment?.isLive;
 
   if (isLoading || !moment) {
@@ -1114,43 +1136,68 @@ export default function LiveMomentScreen() {
             ))}
 
             {isCreator && !isEnded && moment?.isLive ? (
-              <Pressable
-                testID="promote-live-button"
-                onPress={async () => {
-                  setShowBoostModal(true);
-                  try {
-                    const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
-                    if (!apiKey) return;
-                    Purchases.configure({ apiKey, appUserID: session?.user?.id });
-                    const offerings = await Purchases.getOfferings();
-                    const pkg = offerings.current?.availablePackages.find(
-                      (p) => p.product.identifier === 'boost_live_999'
-                    );
-                    if (pkg?.product.priceString) {
-                      setBoostPrice(pkg.product.priceString);
+              moment?.isBoosted === true ? (
+                // Boost is active — show countdown, disable button
+                <View
+                  testID="boost-active-indicator"
+                  style={{
+                    marginLeft: 'auto',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 5,
+                    backgroundColor: 'rgba(245,158,11,0.1)',
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(245,158,11,0.25)',
+                  }}
+                >
+                  <Text style={{ fontSize: 11 }}>🔥</Text>
+                  <Text style={{ color: 'rgba(245,158,11,0.7)', fontSize: 11, fontWeight: '700' }}>
+                    {boostCountdown ?? 'Boosted'}
+                  </Text>
+                </View>
+              ) : (
+                // Not boosted — show PROMOTE button
+                <Pressable
+                  testID="promote-live-button"
+                  onPress={async () => {
+                    setShowBoostModal(true);
+                    try {
+                      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+                      if (!apiKey) return;
+                      Purchases.configure({ apiKey, appUserID: session?.user?.id });
+                      const offerings = await Purchases.getOfferings();
+                      const pkg = offerings.current?.availablePackages.find(
+                        (p) => p.product.identifier === 'boost_live_999'
+                      );
+                      if (pkg?.product.priceString) {
+                        setBoostPrice(pkg.product.priceString);
+                      }
+                    } catch {
+                      // Non-fatal — modal already open, price stays at fallback
                     }
-                  } catch {
-                    // Non-fatal — modal already open, price stays at fallback
-                  }
-                }}
-                style={{
-                  marginLeft: 'auto',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  backgroundColor: 'rgba(245,158,11,0.15)',
-                  paddingHorizontal: 10,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: 'rgba(245,158,11,0.35)',
-                }}
-              >
-                <Megaphone size={13} color="#f59e0b" />
-                <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
-                  PROMOTE
-                </Text>
-              </Pressable>
+                  }}
+                  style={{
+                    marginLeft: 'auto',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 5,
+                    backgroundColor: 'rgba(245,158,11,0.15)',
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(245,158,11,0.35)',
+                  }}
+                >
+                  <Megaphone size={13} color="#f59e0b" />
+                  <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
+                    PROMOTE
+                  </Text>
+                </Pressable>
+              )
             ) : null}
             {isCreator ? (
               <Pressable
