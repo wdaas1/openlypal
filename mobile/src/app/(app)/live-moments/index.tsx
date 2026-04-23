@@ -86,6 +86,7 @@ function LivePulse() {
 function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
   const router = useRouter();
   const glowOpacity = useSharedValue(0.4);
+  const boostGlow = useSharedValue(0.5);
 
   React.useEffect(() => {
     glowOpacity.value = withRepeat(
@@ -98,8 +99,24 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
     );
   }, [glowOpacity]);
 
+  React.useEffect(() => {
+    if (!moment.isBoosted) return;
+    boostGlow.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 900 }),
+        withTiming(0.35, { duration: 900 })
+      ),
+      -1,
+      false
+    );
+  }, [moment.isBoosted, boostGlow]);
+
   const glowStyle = useAnimatedStyle(() => ({
     opacity: glowOpacity.value,
+  }));
+
+  const boostGlowStyle = useAnimatedStyle(() => ({
+    opacity: boostGlow.value,
   }));
 
   const handlePress = () => {
@@ -116,21 +133,50 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
       onPress={handlePress}
       style={{ marginHorizontal: 16, marginBottom: 12 }}
     >
+      {/* Outer amber shadow for boosted */}
+      <View
+        style={moment.isBoosted && !isEnded ? {
+          borderRadius: 20,
+          shadowColor: '#f59e0b',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.55,
+          shadowRadius: 14,
+          elevation: 14,
+        } : undefined}
+      >
       <View
         style={{
           borderRadius: 20,
           overflow: 'hidden',
-          borderWidth: 1,
+          borderWidth: moment.isBoosted && !isEnded ? 1.5 : 1,
           borderColor: isEnded
             ? 'rgba(255,255,255,0.06)'
+            : moment.isBoosted
+            ? 'rgba(245,158,11,0.7)'
             : isOwn
             ? 'rgba(0,207,53,0.35)'
             : 'rgba(255,59,48,0.35)',
         }}
       >
         <BlurView intensity={15} tint="dark" style={{ padding: 18 }}>
-          {/* Glow overlay */}
-          {!isEnded && (
+          {/* Boost amber glow overlay */}
+          {moment.isBoosted === true && !isEnded ? (
+            <Animated.View
+              style={[
+                boostGlowStyle,
+                {
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(245,158,11,0.09)',
+                },
+              ]}
+            />
+          ) : null}
+          {/* Standard live glow overlay */}
+          {!isEnded && !moment.isBoosted ? (
             <Animated.View
               style={[
                 glowStyle,
@@ -146,7 +192,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
                 },
               ]}
             />
-          )}
+          ) : null}
 
           {/* Header row */}
           <View
@@ -336,6 +382,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
             </Text>
           </View>
         </BlurView>
+      </View>
       </View>
     </Pressable>
   );
