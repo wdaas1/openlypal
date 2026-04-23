@@ -69,18 +69,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Automatically sign out when a stale/invalid refresh token is detected.
-// This prevents the app from being stuck in a broken auth state after the
-// stored session expires or is revoked on the server.
-supabase.auth.onAuthStateChange((event, _session) => {
-  // The Supabase client emits a TOKEN_REFRESHED event on success, but when
-  // token refresh fails it fires SIGNED_OUT. However on some SDK versions the
-  // error surfaces before the sign-out is triggered, so we also listen at the
-  // client level to clear storage proactively.
-  if (event === 'SIGNED_OUT') return; // already handled by the client
-});
-
-// Intercept background token refresh failures
+// Intercept background token refresh failures and sign out locally.
 const originalRefreshSession = supabase.auth.refreshSession.bind(supabase.auth);
 supabase.auth.refreshSession = async (currentSession) => {
   const result = await originalRefreshSession(currentSession);
@@ -92,8 +81,43 @@ supabase.auth.refreshSession = async (currentSession) => {
       msg.includes('token has expired') ||
       msg.includes('refresh_token_not_found');
     if (isStaleToken) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
     }
   }
   return result;
 };
+
+// Derive the AsyncStorage key Supabase uses to persist the session.
+const _projectRef = supabaseUrl.replace(/^https?:\/\//, '').split('.')[0];
+export const SUPABASE_SESSION_STORAGE_KEY = `sb-${_projectRef}-auth-token`;
+
+/**
+ * Proactively removes a stored session whose access token expired long enough
+ * ago that the refresh token is certainly invalid too.  Call this before the
+ * first `getSession()` so the Supabase SDK never attempts a doomed HTTP
+ * refresh, which would otherwise log an AuthApiError to the console.
+ */
+export async function clearStaleSessionIfNeeded(): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(SUPABASE_SESSION_STORAGE_KEY);
+    if (!raw) return;
+    const stored = JSON.parse(raw);
+    const token: string | undefined =
+      stored?.access_token ?? stored?.currentSession?.access_token;
+    if (!token) return;
+    const parts = token.split('.');
+    if (parts.length !== 3) return;
+    // base64url → base64
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64));
+    const exp: number | undefined = payload?.exp;
+    // Supabase refresh tokens expire after ~1 week by default.
+    // If the access token expired more than 8 days ago the refresh token is
+    // certainly gone too — clear storage now to skip the failing HTTP call.
+    if (exp && Date.now() / 1000 > exp + 8 * 24 * 3600) {
+      await AsyncStorage.removeItem(SUPABASE_SESSION_STORAGE_KEY);
+    }
+  } catch {
+    // Non-critical — let the SDK handle edge cases normally.
+  }
+}

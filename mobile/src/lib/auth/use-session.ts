@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthApiError } from '@supabase/supabase-js';
-import { supabase } from '../supabase';
+import { supabase, clearStaleSessionIfNeeded } from '../supabase';
 
 export const SESSION_QUERY_KEY = ['auth-session'] as const;
 
@@ -22,27 +22,37 @@ export const useSession = () => {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
-    // On mount, check for a stored session. If the stored token is stale, clear
-    // it immediately so the user is routed to the login screen.
-    supabase.auth
-      .getSession()
-      .then(({ data: { session }, error }) => {
-        if (error && isInvalidTokenError(error)) {
-          supabase.auth.signOut();
-          setSession(null);
-          return;
-        }
-        setSession(session);
-      })
-      .catch(() => {
-        setSession(null);
-      });
+    let cancelled = false;
+
+    const init = async () => {
+      // Clear storage-backed stale sessions before calling getSession() so the
+      // SDK never makes a doomed refresh HTTP request (avoids the console error).
+      await clearStaleSessionIfNeeded();
+      if (cancelled) return;
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (error && isInvalidTokenError(error)) {
+        await supabase.auth.signOut({ scope: 'local' });
+        if (!cancelled) setSession(null);
+        return;
+      }
+      if (!cancelled) setSession(session ?? null);
+    };
+
+    init().catch(() => {
+      if (!cancelled) setSession(null);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const isLoading = session === undefined;
