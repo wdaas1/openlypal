@@ -559,6 +559,32 @@ function LiveContentArea({
   );
 }
 
+function useSimulatedViewerCount(realCount: number, isBoosted: boolean): number {
+  const [offset, setOffset] = useState<number>(0);
+  const prevBoosted = useRef(false);
+
+  useEffect(() => {
+    if (!isBoosted) {
+      setOffset(0);
+      prevBoosted.current = false;
+      return;
+    }
+    if (!prevBoosted.current) {
+      prevBoosted.current = true;
+      setOffset(Math.floor(Math.random() * 21) + 10);
+    }
+    const id = setInterval(() => {
+      setOffset((prev) => {
+        if (prev >= 50) return prev;
+        return prev + Math.floor(Math.random() * 3) + 1;
+      });
+    }, 10000);
+    return () => clearInterval(id);
+  }, [isBoosted]);
+
+  return realCount + offset;
+}
+
 function ViewerCountDisplay({ count }: { count: number }) {
   const scale = useSharedValue(1);
   const prevCount = useRef(count);
@@ -1013,6 +1039,10 @@ export default function LiveMomentScreen() {
 
   const isCreator = moment?.creatorId === session?.user?.id;
   const isEnded = moment?.status === 'ended' || timeRemaining === 'Ended';
+  const displayViewerCount = useSimulatedViewerCount(
+    moment?.viewerCount ?? 0,
+    moment?.isBoosted === true && !isEnded
+  );
   const isNotLive = !moment?.isLive;
 
   if (isLoading || !moment) {
@@ -1474,7 +1504,27 @@ export default function LiveMomentScreen() {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <ViewerCountDisplay count={moment.viewerCount ?? 0} />
+              <ViewerCountDisplay count={displayViewerCount} />
+              {moment.isBoosted === true && !isEnded ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: 'rgba(245,158,11,0.18)',
+                    paddingHorizontal: 9,
+                    paddingVertical: 4,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(245,158,11,0.4)',
+                  }}
+                >
+                  <Text style={{ fontSize: 10 }}>🔥</Text>
+                  <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>
+                    Boosted
+                  </Text>
+                </View>
+              ) : null}
               {isEnded ? (
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
                   <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '800' }}>ENDED</Text>
@@ -1750,7 +1800,27 @@ export default function LiveMomentScreen() {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <ViewerCountDisplay count={moment.viewerCount ?? 0} />
+            <ViewerCountDisplay count={displayViewerCount} />
+            {moment.isBoosted === true && !isEnded ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: 'rgba(245,158,11,0.18)',
+                  paddingHorizontal: 9,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(245,158,11,0.4)',
+                }}
+              >
+                <Text style={{ fontSize: 10 }}>🔥</Text>
+                <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>
+                  Boosted
+                </Text>
+              </View>
+            ) : null}
             {isEnded ? (
               <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
                 <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '800' }}>ENDED</Text>

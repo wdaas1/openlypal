@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -83,6 +83,34 @@ function LivePulse() {
   );
 }
 
+function useSimulatedViewerCount(realCount: number, isBoosted: boolean): number {
+  const [offset, setOffset] = useState<number>(0);
+  const prevBoosted = useRef(false);
+
+  useEffect(() => {
+    if (!isBoosted) {
+      setOffset(0);
+      prevBoosted.current = false;
+      return;
+    }
+    if (!prevBoosted.current) {
+      prevBoosted.current = true;
+      // Immediately add random 10–30 viewers on boost activation
+      setOffset(Math.floor(Math.random() * 21) + 10);
+    }
+    // Gradually trickle up toward +50 every ~10s
+    const id = setInterval(() => {
+      setOffset((prev) => {
+        if (prev >= 50) return prev;
+        return prev + Math.floor(Math.random() * 3) + 1;
+      });
+    }, 10000);
+    return () => clearInterval(id);
+  }, [isBoosted]);
+
+  return realCount + offset;
+}
+
 function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
   const router = useRouter();
   const glowOpacity = useSharedValue(0.4);
@@ -126,6 +154,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
 
   const timeRemaining = getTimeRemaining(moment.expiresAt);
   const isEnded = timeRemaining === 'Ended' || moment.status === 'ended';
+  const displayViewerCount = useSimulatedViewerCount(moment.viewerCount ?? 0, moment.isBoosted === true && !isEnded);
 
   return (
     <Pressable
@@ -363,7 +392,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Eye size={14} color="rgba(255,255,255,0.45)" />
               <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: '600' }}>
-                {moment.viewerCount ?? 0}
+                {displayViewerCount}
               </Text>
             </View>
 
