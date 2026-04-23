@@ -49,10 +49,11 @@ boostsRouter.post(
       },
     });
 
-    // Mark the moment as boosted
+    // Mark the moment as boosted with a 30-minute expiry
+    const boostExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
     await prisma.liveMoment.update({
       where: { id: momentId },
-      data: { boosted: true },
+      data: { boosted: true, boostExpiresAt },
     });
 
     return c.json({ data: { success: true } });

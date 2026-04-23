@@ -61,12 +61,17 @@ async function formatMoment(
     invitedUserIds: string;
     viewerIds: string;
     createdAt: Date;
+    boosted: boolean;
+    boostExpiresAt: Date | null;
     _count: { messages: number };
   }
 ) {
   const invitedUserIds = parseJsonArray(moment.invitedUserIds);
   const viewerIds = parseJsonArray(moment.viewerIds);
   const invitedUsers = await fetchInvitedUsers(invitedUserIds);
+
+  const now = new Date();
+  const isBoosted = moment.boosted && moment.boostExpiresAt != null && moment.boostExpiresAt > now;
 
   return {
     id: moment.id,
@@ -84,7 +89,21 @@ async function formatMoment(
     viewerCount: viewerIds.length,
     messageCount: moment._count.messages,
     createdAt: moment.createdAt,
+    isBoosted,
+    boostExpiresAt: moment.boostExpiresAt,
   };
+}
+
+// Clear boosted flag on any moments whose boost window has passed
+async function expireStaleBoosts() {
+  const now = new Date();
+  await prisma.liveMoment.updateMany({
+    where: {
+      boosted: true,
+      boostExpiresAt: { lt: now },
+    },
+    data: { boosted: false },
+  });
 }
 
 // Auto-expire a moment if past its expiresAt and still active
@@ -117,14 +136,14 @@ liveMomentsRouter.get("/", async (c) => {
 
   const now = new Date();
 
-  // Auto-expire any moments that have passed their expiry time
-  await prisma.liveMoment.updateMany({
-    where: {
-      status: "active",
-      expiresAt: { lt: now },
-    },
-    data: { status: "ended" },
-  });
+  // Auto-expire moments and stale boosts
+  await Promise.all([
+    prisma.liveMoment.updateMany({
+      where: { status: "active", expiresAt: { lt: now } },
+      data: { status: "ended" },
+    }),
+    expireStaleBoosts(),
+  ]);
 
   // Fetch all active moments - we'll filter by creator/invited in-app
   // since invitedUserIds is stored as a JSON string
@@ -244,11 +263,14 @@ liveMomentsRouter.get("/following", async (c) => {
 
   const now = new Date();
 
-  // Auto-expire
-  await prisma.liveMoment.updateMany({
-    where: { status: "active", expiresAt: { lt: now } },
-    data: { status: "ended" },
-  });
+  // Auto-expire moments and stale boosts
+  await Promise.all([
+    prisma.liveMoment.updateMany({
+      where: { status: "active", expiresAt: { lt: now } },
+      data: { status: "ended" },
+    }),
+    expireStaleBoosts(),
+  ]);
 
   const following = await prisma.follow.findMany({
     where: { followerId: user.id },
@@ -322,8 +344,11 @@ liveMomentsRouter.get("/:id", async (c) => {
     return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
   }
 
-  // Auto-expire if needed
-  const expired = await autoExpireIfNeeded(moment.id, moment.expiresAt, moment.status);
+  // Auto-expire moment and stale boosts
+  const [expired] = await Promise.all([
+    autoExpireIfNeeded(moment.id, moment.expiresAt, moment.status),
+    expireStaleBoosts(),
+  ]);
   if (expired) {
     moment = expired;
   }

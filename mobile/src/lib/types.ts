@@ -163,6 +163,8 @@ export interface LiveMoment {
   messageCount: number
   createdAt: string
   roomId?: string | null
+  isBoosted?: boolean
+  boostExpiresAt?: string | null
 }
 
 export interface LiveMomentMessage {

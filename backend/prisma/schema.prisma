@@ -259,7 +259,8 @@ model LiveMoment {
   invitedUserIds String   @default("[]") // JSON array of user IDs
   viewerIds      String   @default("[]") // JSON array of currently joined user IDs
   createdAt      DateTime @default(now())
-  boosted        Boolean  @default(false)
+  boosted        Boolean   @default(false)
+  boostExpiresAt DateTime?
   messages       LiveMomentMessage[]
 }
 
