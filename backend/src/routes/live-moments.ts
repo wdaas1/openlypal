@@ -126,6 +126,17 @@ const momentInclude = {
   _count: { select: { messages: true } },
 } as const;
 
+// Stable sort: boosted first → most viewers → newest
+function sortMoments<T extends { isBoosted: boolean; viewerCount: number; createdAt: Date | string }>(
+  moments: T[]
+): T[] {
+  return [...moments].sort((a, b) => {
+    if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
+    if (b.viewerCount !== a.viewerCount) return b.viewerCount - a.viewerCount;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
 // ─── GET /api/live-moments ─────────────────────────────────────────────────
 // Get active moments for current user (created or invited to)
 liveMomentsRouter.get("/", async (c) => {
@@ -162,7 +173,7 @@ liveMomentsRouter.get("/", async (c) => {
 
   const formatted = await Promise.all(userMoments.map(formatMoment));
 
-  return c.json({ data: formatted });
+  return c.json({ data: sortMoments(formatted) });
 });
 
 // ─── POST /api/live-moments ────────────────────────────────────────────────
@@ -287,7 +298,7 @@ liveMomentsRouter.get("/following", async (c) => {
   });
 
   const formatted = await Promise.all(moments.map(formatMoment));
-  return c.json({ data: formatted });
+  return c.json({ data: sortMoments(formatted) });
 });
 
 // ─── GET /api/live-moments/archive ────────────────────────────────────────

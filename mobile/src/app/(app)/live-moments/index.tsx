@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -157,7 +157,28 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
               marginBottom: 10,
             }}
           >
-            {isEnded ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {moment.isBoosted ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: 'rgba(245,158,11,0.18)',
+                    paddingHorizontal: 9,
+                    paddingVertical: 4,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(245,158,11,0.4)',
+                  }}
+                >
+                  <Text style={{ fontSize: 10 }}>🔥</Text>
+                  <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 }}>
+                    BOOSTED
+                  </Text>
+                </View>
+              ) : null}
+              {isEnded ? (
               <View
                 style={{
                   flexDirection: 'row',
@@ -203,6 +224,7 @@ function MomentCard({ moment, isOwn }: { moment: LiveMoment; isOwn: boolean }) {
             ) : (
               <LivePulse />
             )}
+            </View>
 
             {isOwn ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -515,11 +537,22 @@ export default function LiveMomentsScreen() {
     refetchInterval: 30000,
   });
 
-  const myMoments = (moments ?? []).filter(
-    (m) => m.creatorId === session?.user?.id
+  const sortByBoost = useCallback((list: typeof moments) => {
+    if (!list) return [];
+    return [...list].sort((a, b) => {
+      if ((a.isBoosted ?? false) !== (b.isBoosted ?? false)) return a.isBoosted ? -1 : 1;
+      if ((b.viewerCount ?? 0) !== (a.viewerCount ?? 0)) return (b.viewerCount ?? 0) - (a.viewerCount ?? 0);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, []);
+
+  const myMoments = useMemo(
+    () => sortByBoost((moments ?? []).filter((m) => m.creatorId === session?.user?.id)),
+    [moments, session?.user?.id, sortByBoost]
   );
-  const invitedMoments = (moments ?? []).filter(
-    (m) => m.creatorId !== session?.user?.id
+  const invitedMoments = useMemo(
+    () => sortByBoost((moments ?? []).filter((m) => m.creatorId !== session?.user?.id)),
+    [moments, session?.user?.id, sortByBoost]
   );
 
   const handleCreate = useCallback(() => {
