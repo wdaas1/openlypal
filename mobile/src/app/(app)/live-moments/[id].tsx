@@ -616,6 +616,8 @@ export default function LiveMomentScreen() {
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
   const [showBoostModal, setShowBoostModal] = useState(false);
+  const [boostPrice, setBoostPrice] = useState<string>('£9.99');
+  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [cameraFailed, setCameraFailed] = useState(false);
   const cameraPermissionRequested = useRef(false);
@@ -1069,7 +1071,23 @@ export default function LiveMomentScreen() {
             {isCreator && !isEnded && moment?.isLive ? (
               <Pressable
                 testID="promote-live-button"
-                onPress={() => setShowBoostModal(true)}
+                onPress={async () => {
+                  setShowBoostModal(true);
+                  try {
+                    const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+                    if (!apiKey) return;
+                    Purchases.configure({ apiKey, appUserID: session?.user?.id });
+                    const offerings = await Purchases.getOfferings();
+                    const pkg = offerings.current?.availablePackages.find(
+                      (p) => p.product.identifier === 'boost_live_999'
+                    );
+                    if (pkg?.product.priceString) {
+                      setBoostPrice(pkg.product.priceString);
+                    }
+                  } catch {
+                    // Non-fatal — modal already open, price stays at fallback
+                  }
+                }}
                 style={{
                   marginLeft: 'auto',
                   flexDirection: 'row',
@@ -1526,12 +1544,12 @@ export default function LiveMomentScreen() {
                 Boost Your Live
               </Text>
               <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
-                Promote your live to more viewers for £9.99
+                Promote your live to more viewers for {boostPrice}
               </Text>
               <Pressable
                 testID="boost-confirm-button"
                 onPress={() => boostMutation.mutate()}
-                disabled={boostMutation.isPending}
+                disabled={boostMutation.isPending || isRestoringPurchases}
                 style={{
                   width: '100%',
                   backgroundColor: '#f59e0b',
@@ -1544,7 +1562,40 @@ export default function LiveMomentScreen() {
                 {boostMutation.isPending ? (
                   <ActivityIndicator color="#000000" />
                 ) : (
-                  <Text style={{ color: '#000000', fontSize: 15, fontWeight: '800' }}>Boost for £9.99</Text>
+                  <Text style={{ color: '#000000', fontSize: 15, fontWeight: '800' }}>Boost for {boostPrice}</Text>
+                )}
+              </Pressable>
+              <Pressable
+                testID="boost-restore-button"
+                disabled={isRestoringPurchases || boostMutation.isPending}
+                onPress={async () => {
+                  setIsRestoringPurchases(true);
+                  try {
+                    const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+                    if (apiKey) {
+                      Purchases.configure({ apiKey, appUserID: session?.user?.id });
+                      await Purchases.restorePurchases();
+                    }
+                    Burnt.toast({ title: 'Purchases restored', preset: 'done' });
+                  } catch {
+                    Burnt.toast({ title: 'Nothing to restore', preset: 'error' });
+                  } finally {
+                    setIsRestoringPurchases(false);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  borderRadius: 16,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  marginBottom: 10,
+                }}
+              >
+                {isRestoringPurchases ? (
+                  <ActivityIndicator color="rgba(255,255,255,0.5)" />
+                ) : (
+                  <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '600' }}>Restore Purchases</Text>
                 )}
               </Pressable>
               <Pressable
@@ -1560,6 +1611,9 @@ export default function LiveMomentScreen() {
               >
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, fontWeight: '600' }}>Cancel</Text>
               </Pressable>
+              <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'center', marginTop: 12, lineHeight: 16 }}>
+                Payment charged to your Apple ID account. By purchasing you agree to our Terms of Use and Privacy Policy.
+              </Text>
             </View>
           </View>
         ) : null}
