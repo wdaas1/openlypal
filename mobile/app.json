@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vibecode.openly-fsp5b4",
-      "buildNumber": "17",
+      "buildNumber": "21",
       "infoPlist": {
         "NSCameraUsageDescription": "Openly uses the camera to capture photos inside the app before you publish them.",
         "NSPhotoLibraryUsageDescription": "Openly accesses your photo library to let you choose videos that appear in the app.",

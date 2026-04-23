@@ -977,6 +977,11 @@ export default function LiveMomentScreen() {
         console.log('[LiveKit] Token received, wsUrl:', json.data.wsUrl);
         setStreamToken(json.data.token);
         setStreamWsUrl(json.data.wsUrl);
+        // Optimistically mark as live so the WebView renders immediately
+        // without waiting for the 3-second polling cycle
+        queryClient.setQueryData(['live-moment', momentId], (old: any) =>
+          old ? { ...old, isLive: true } : old
+        );
       } else {
         console.warn('[LiveKit] Token fetch failed:', res.status);
       }
@@ -987,7 +992,7 @@ export default function LiveMomentScreen() {
     } finally {
       setIsStartingStream(false);
     }
-  }, [momentId, goLive]);
+  }, [momentId, goLive, queryClient]);
 
   const handleJoinStream = useCallback(async () => {
     try {
@@ -1070,6 +1075,13 @@ export default function LiveMomentScreen() {
   );
   const boostCountdown = useBoostCountdown(moment?.boostExpiresAt);
   const isNotLive = !moment?.isLive;
+
+  // Auto-join viewers when the stream goes live so they don't need to tap manually
+  useEffect(() => {
+    if (!isCreator && !isNotLive && !streamToken && !isEnded && momentId) {
+      handleJoinStream();
+    }
+  }, [isCreator, isNotLive, streamToken, isEnded, momentId, handleJoinStream]);
 
   if (isLoading || !moment) {
     return (
