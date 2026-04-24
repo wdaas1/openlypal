@@ -10,11 +10,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vibecode.openly-fsp5b4",
-      "buildNumber": "24",
+      "buildNumber": "25",
       "infoPlist": {
         "NSCameraUsageDescription": "Openly uses the camera to capture photos inside the app before you publish them.",
         "NSPhotoLibraryUsageDescription": "Openly accesses your photo library to let you choose videos that appear in the app.",
-        "NSMicrophoneUsageDescription": "Openly uses the microphone to record audio clips that stay with your in-app creations.",
+        "NSMicrophoneUsageDescription": "Openly uses the microphone to record audio tracks that the app attaches to your creations.",
         "UIBackgroundModes": [
           "remote-notification"
         ]
