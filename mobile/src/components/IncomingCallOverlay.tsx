@@ -23,7 +23,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { callsApi, type Call, type CallUser } from '@/lib/api/api';
-import { getAccessToken } from '@/lib/auth/auth-client';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSession } from '@/lib/auth/use-session';
 
@@ -137,7 +136,6 @@ export function IncomingCallOverlay() {
     setIsAccepting(true);
     try {
       await callsApi.accept(incomingCall.id);
-      const authToken = await getAccessToken() ?? '';
 
       setIncomingCall(null);
 
@@ -145,9 +143,9 @@ export function IncomingCallOverlay() {
         pathname: '/(app)/call/[id]',
         params: {
           id: incomingCall.id,
-          token: authToken,
           type: incomingCall.type,
           otherUserName: incomingCall.caller?.name ?? 'Caller',
+          role: 'callee',
         },
       } as any);
     } catch {

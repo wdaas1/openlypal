@@ -17,7 +17,6 @@ import { ArrowLeft, Send, Phone, Video } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { api, callsApi, type CallType } from '@/lib/api/api';
-import { getAccessToken } from '@/lib/auth/auth-client';
 import type { Message, Conversation } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSession } from '@/lib/auth/use-session';
@@ -110,18 +109,17 @@ export default function ChatScreen() {
       if (!userId) throw new Error('No user');
       return callsApi.initiate(userId, type);
     },
-    onSuccess: async (result, type) => {
+    onSuccess: (result, type) => {
       const { call } = result;
-      const authToken = await getAccessToken() ?? '';
       const userName = otherUser?.name ?? 'User';
       setPendingCallType(null);
       router.push({
         pathname: '/(app)/call/[id]',
         params: {
           id: call.id,
-          token: authToken,
           type,
           otherUserName: userName,
+          role: 'caller',
         },
       } as any);
     },

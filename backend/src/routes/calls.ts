@@ -185,4 +185,24 @@ callsRouter.get("/:id", requireAuth, async (c) => {
   return c.json({ data: { call } });
 });
 
+// GET /api/calls/stream-token — returns a Stream Video user token for the authenticated user
+callsRouter.get("/stream-token", requireAuth, async (c) => {
+  const user = c.get("user")!;
+  const apiKey = process.env.STREAM_API_KEY;
+  const apiSecret = process.env.STREAM_API_SECRET;
+
+  if (!apiKey || !apiSecret) {
+    return c.json({ error: { message: "Stream Video not configured" } }, 503);
+  }
+
+  try {
+    const { StreamClient } = await import("@stream-io/node-sdk");
+    const client = new StreamClient(apiKey, apiSecret);
+    const token = client.generateUserToken({ user_id: user.id });
+    return c.json({ data: { token, apiKey } });
+  } catch (e: any) {
+    return c.json({ error: { message: "Failed to generate Stream token" } }, 500);
+  }
+});
+
 export { callsRouter };

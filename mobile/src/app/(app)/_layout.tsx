@@ -25,6 +25,7 @@ import { useTheme } from '@/lib/theme';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
 import { IncomingCallOverlay } from '@/components/IncomingCallOverlay';
+import { StreamVideoProvider } from '@/lib/stream-client';
 
 type TabConfig = {
   route: string;
@@ -824,6 +825,7 @@ export default function AppLayout() {
     appSettings.announcementText.length > 0;
 
   return (
+    <StreamVideoProvider>
     <AppKeyboardProvider>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
         <E2EInitializer />
@@ -898,5 +900,6 @@ export default function AppLayout() {
         {showMaintenance ? <MaintenanceOverlay /> : null}
       </View>
     </AppKeyboardProvider>
+    </StreamVideoProvider>
   );
 }

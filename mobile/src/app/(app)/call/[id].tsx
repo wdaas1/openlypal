@@ -1,231 +1,111 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ActivityIndicator, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import WebView, { type WebViewMessageEvent } from 'react-native-webview';
-import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { setAudioModeAsync } from 'expo-audio';
-import { PhoneOff, ArrowLeft } from 'lucide-react-native';
+import { useStreamVideoClient, StreamCall, CallContent } from '@stream-io/video-react-native-sdk';
+import type { Call } from '@stream-io/video-client';
+import { PhoneOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { callsApi } from '@/lib/api/api';
 
 export default function CallScreen() {
   const router = useRouter();
-  const { id, token, type, otherUserName } = useLocalSearchParams<{
+  const { id, type, otherUserName, role } = useLocalSearchParams<{
     id: string;
-    token: string;
     type: 'video' | 'audio';
     otherUserName: string;
+    role: 'caller' | 'callee';
   }>();
 
-  const [, requestCameraPermission] = useCameraPermissions();
-  const [, requestMicPermission] = useMicrophonePermissions();
-  const [permissionsReady, setPermissionsReady] = useState(false);
+  const client = useStreamVideoClient();
+  const [call, setCall] = useState<Call | null>(null);
+  const [status, setStatus] = useState('Connecting...');
+  const [error, setError] = useState<string | null>(null);
+  const callRef = useRef<Call | null>(null);
 
-  // Request camera + mic permissions and configure audio routing on mount
   useEffect(() => {
-    const requestPerms = async () => {
-      if (type !== 'audio') await requestCameraPermission();
-      await requestMicPermission();
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-        shouldRouteThroughEarpiece: type === 'audio',
-        interruptionMode: 'doNotMix',
-      });
-      setPermissionsReady(true);
-    };
-    requestPerms();
-    return () => {
-      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false, shouldRouteThroughEarpiece: false, interruptionMode: 'doNotMix' }).catch(() => {});
-    };
-  }, []);
+    if (!client || !id) return;
 
-  const handleEnd = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    try {
-      if (id) {
-        await callsApi.end(id);
-      }
-    } catch {
-      // ignore errors when ending
-    }
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(app)/messenger' as any);
-    }
-  };
+    const streamCall = client.call('default', id);
+    callRef.current = streamCall;
 
-  const handleWebViewMessage = (event: WebViewMessageEvent) => {
-    const raw = event.nativeEvent.data;
-    if (raw.startsWith('[LOG]') || raw.startsWith('[ERROR]')) {
-      console.log('[WebView]', raw);
-      return;
-    }
-    try {
-      const data = JSON.parse(raw) as { type: string };
-      if (data.type === 'end_call' || data.type === 'call_ended') {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(app)/messenger' as any);
+    const join = async () => {
+      try {
+        setStatus('Joining call...');
+        console.log('[Stream] Joining call:', id, 'role:', role);
+        await streamCall.join({ create: role === 'caller' });
+        if (type === 'audio') {
+          await streamCall.camera.disable();
         }
+        console.log('[Stream] Joined successfully');
+        setCall(streamCall);
+      } catch (e: any) {
+        console.error('[Stream] Join failed:', e?.message ?? e);
+        setError(e?.message ?? 'Failed to connect to call');
       }
-    } catch {
-      // ignore non-JSON messages
-    }
+    };
+
+    join();
+
+    return () => {
+      streamCall.leave().catch(() => {});
+    };
+  }, [client, id]);
+
+  const handleHangup = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    try { await callRef.current?.leave(); } catch {}
+    try { if (id) await callsApi.end(id); } catch {}
+    if (router.canGoBack()) router.back();
+    else router.replace('/(app)/messenger' as any);
   };
 
-  // Wait for permission dialogs to complete before loading WebView
-  if (!permissionsReady) {
+  if (!client) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#00CF35" size="large" testID="loading-indicator" />
+        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15 }}>
+          Stream Video not configured
+        </Text>
+        <Pressable onPress={handleHangup} style={{ marginTop: 24 }}>
+          <Text style={{ color: '#00CF35' }}>Go back</Text>
+        </Pressable>
       </View>
     );
   }
 
-  const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-  const callUrl = id && token
-    ? `${backendBaseUrl}/call/${id}?token=${encodeURIComponent(token)}&type=${type ?? 'video'}`
-    : null;
+  if (error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <Text style={{ color: '#FF3B30', fontSize: 16, textAlign: 'center', marginBottom: 24 }}>{error}</Text>
+        <Pressable
+          testID="end-call-button"
+          onPress={handleHangup}
+          style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <PhoneOff size={26} color="#fff" />
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!call) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#00CF35" size="large" testID="loading-indicator" />
+        <Text style={{ color: 'rgba(255,255,255,0.55)', marginTop: 14, fontSize: 14 }}>{status}</Text>
+        {otherUserName ? (
+          <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 8 }}>{otherUserName}</Text>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }} testID="call-screen">
-      {callUrl ? (
-        <WebView
-          testID="call-webview"
-          source={{ uri: callUrl }}
-          style={{ flex: 1 }}
-          mediaPlaybackRequiresUserAction={false}
-          allowsInlineMediaPlayback={true}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          allowsFullscreenVideo={false}
-          mediaCapturePermissionGrantType="grant"
-          allowsAirPlayForMediaPlayback={true}
-          originWhitelist={['*']}
-          mixedContentMode="always"
-          onMessage={handleWebViewMessage}
-          injectedJavaScript={`
-            (function() {
-              var origLog = console.log;
-              var origError = console.error;
-              console.log = function() {
-                window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
-                origLog.apply(console, arguments);
-              };
-              console.error = function() {
-                window.ReactNativeWebView.postMessage('[ERROR] ' + Array.from(arguments).join(' '));
-                origError.apply(console, arguments);
-              };
-            })();
-            true;
-          `}
+    <View style={{ flex: 1, backgroundColor: '#000' }} testID="call-screen">
+      <StreamCall call={call}>
+        <CallContent
+          onHangupCallHandler={handleHangup}
         />
-      ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color="#00CF35" size="large" testID="loading-indicator" />
-        </View>
-      )}
-
-      {/* Overlay header with name and end button */}
-      <SafeAreaView
-        style={{ position: 'absolute', top: 0, left: 0, right: 0 }}
-        edges={['top']}
-        pointerEvents="box-none"
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            gap: 12,
-          }}
-        >
-          <Pressable
-            testID="back-button"
-            onPress={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace('/(app)/messenger' as any);
-            }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ArrowLeft size={18} color="rgba(255,255,255,0.9)" />
-          </Pressable>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: '#ffffff',
-                fontSize: 16,
-                fontWeight: '700',
-                textShadowColor: 'rgba(0,0,0,0.8)',
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 4,
-              }}
-              numberOfLines={1}
-            >
-              {otherUserName ?? 'Call'}
-            </Text>
-            <Text
-              style={{
-                color: 'rgba(255,255,255,0.65)',
-                fontSize: 12,
-                fontWeight: '500',
-                textShadowColor: 'rgba(0,0,0,0.8)',
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 4,
-              }}
-            >
-              {type === 'audio' ? 'Voice call' : 'Video call'}
-            </Text>
-          </View>
-        </View>
-      </SafeAreaView>
-
-      {/* End call button pinned at bottom */}
-      <SafeAreaView
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center' }}
-        edges={['bottom']}
-        pointerEvents="box-none"
-      >
-        <View style={{ paddingBottom: 32 }}>
-          <Pressable
-            testID="end-call-button"
-            onPress={handleEnd}
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
-              backgroundColor: '#FF3B30',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#FF3B30',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 10,
-              elevation: 10,
-            }}
-          >
-            <PhoneOff size={26} color="#ffffff" />
-          </Pressable>
-        </View>
-      </SafeAreaView>
+      </StreamCall>
     </View>
   );
 }

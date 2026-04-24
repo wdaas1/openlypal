@@ -25,8 +25,6 @@ import { boostsRouter } from "./routes/boosts";
 import { callsRouter } from "./routes/calls";
 import { createBunWebSocket } from "hono/bun";
 import { wsManager } from "./ws-manager";
-import { callWsManager } from "./call-ws-manager";
-import { prisma } from "./prisma";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null; username?: string | null } | null;
@@ -197,54 +195,6 @@ app.get(
   })
 );
 
-// Call signaling WebSocket
-app.get(
-  "/ws/call/:callId",
-  upgradeWebSocket(async (c) => {
-    const callId = c.req.param("callId");
-    const token = c.req.query("token") ?? "";
-
-    let userId = "";
-    let role: "caller" | "callee" | null = null;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        userId = user.id;
-        // Look up the call to determine role
-        const call = await prisma.call.findUnique({ where: { id: callId } });
-        if (call) {
-          if (call.callerId === userId) role = "caller";
-          else if (call.calleeId === userId) role = "callee";
-        }
-      }
-    } catch {
-      // unauthenticated — will be rejected in onOpen
-    }
-
-    return {
-      onOpen(_evt, ws) {
-        if (!userId || !role) {
-          ws.close(1008, "Unauthorized");
-          return;
-        }
-        callWsManager.join(callId, userId, role, ws);
-      },
-      onMessage(evt, _ws) {
-        if (!userId) return;
-        try {
-          const data = JSON.parse(evt.data.toString()) as object;
-          callWsManager.relay(callId, userId, data);
-        } catch {
-          // ignore malformed messages
-        }
-      },
-      onClose(_evt, _ws) {
-        if (userId) callWsManager.leave(callId, userId);
-      },
-    };
-  })
-);
 
 app.route("/api/live-moments", liveMomentsRouter);
 app.route("/api/relationships", relationshipsRouter);
