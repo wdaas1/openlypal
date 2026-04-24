@@ -13,6 +13,7 @@ import {
   registerForPushNotificationsAsync,
   sendPushTokenToBackend,
   setupNotificationListeners,
+  handleColdStartNotification,
 } from '@/lib/notifications';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
@@ -135,7 +136,9 @@ function RootLayoutNav() {
       }
     });
 
-    cleanupListeners = setupNotificationListeners();
+    const navigate = (path: string) => router.push(path as never);
+    cleanupListeners = setupNotificationListeners(navigate);
+    handleColdStartNotification(navigate);
 
     return () => {
       cleanupListeners?.();

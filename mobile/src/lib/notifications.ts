@@ -115,7 +115,39 @@ export async function sendPushTokenToBackend(token: string): Promise<void> {
   }
 }
 
-export function setupNotificationListeners(): () => void {
+type NavigateFn = (path: string) => void;
+
+function handleNotificationNavigation(
+  data: Record<string, unknown>,
+  navigate: NavigateFn
+) {
+  const type = data?.type as string | undefined;
+  if (!type) return;
+
+  switch (type) {
+    case 'like':
+    case 'comment':
+    case 'mention':
+    case 'reblog':
+      if (data.postId) navigate(`/(app)/post/${data.postId}`);
+      break;
+    case 'new_post':
+      if (data.postId) navigate(`/(app)/post/${data.postId}`);
+      else if (data.userId) navigate(`/(app)/user/${data.userId}`);
+      break;
+    case 'message':
+      if (data.senderId) navigate(`/(app)/messenger/${data.senderId}`);
+      break;
+    case 'incoming_call':
+      if (data.callId) navigate(`/(app)/call/${data.callId}`);
+      break;
+    case 'follow':
+      if (data.userId) navigate(`/(app)/user/${data.userId}`);
+      break;
+  }
+}
+
+export function setupNotificationListeners(navigate: NavigateFn): () => void {
   // Fired when a notification is received while the app is in the foreground
   const receivedSubscription = Notifications.addNotificationReceivedListener(
     (notification) => {
@@ -128,8 +160,9 @@ export function setupNotificationListeners(): () => void {
 
   // Fired when the user taps on a notification (app in background/killed)
   const responseSubscription =
-    Notifications.addNotificationResponseReceivedListener((_response) => {
-      // Navigation on tap can be wired up here if needed
+    Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      handleNotificationNavigation(data, navigate);
     });
 
   // Return cleanup function
@@ -137,6 +170,18 @@ export function setupNotificationListeners(): () => void {
     receivedSubscription.remove();
     responseSubscription.remove();
   };
+}
+
+export async function handleColdStartNotification(navigate: NavigateFn) {
+  try {
+    const response = await Notifications.getLastNotificationResponseAsync();
+    if (response) {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      handleNotificationNavigation(data, navigate);
+    }
+  } catch {
+    // Non-fatal
+  }
 }
 
 // Side effects last: if this throws (e.g. limited Expo Go support), named exports
