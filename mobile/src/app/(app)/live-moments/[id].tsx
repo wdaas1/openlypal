@@ -659,7 +659,8 @@ export default function LiveMomentScreen() {
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingSent = useRef<number>(0);
   const [streamToken, setStreamToken] = useState<string | null>(null);
-  const [streamWsUrl, setStreamWsUrl] = useState<string | null>(null);
+  const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
+  const [streamCallId, setStreamCallId] = useState<string | null>(null);
   const [isStartingStream, setIsStartingStream] = useState(false);
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
@@ -964,7 +965,7 @@ export default function LiveMomentScreen() {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
       console.log('[LiveKit] Fetching publisher token for moment:', momentId);
-      const res = await fetch(`${backendUrl}/api/livekit/token`, {
+      const res = await fetch(`${backendUrl}/api/stream/live-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -973,10 +974,11 @@ export default function LiveMomentScreen() {
         body: JSON.stringify({ momentId: momentId, role: 'publisher' }),
       });
       if (res.ok) {
-        const json = await res.json() as { data: { token: string; wsUrl: string } };
-        console.log('[LiveKit] Token received, wsUrl:', json.data.wsUrl);
+        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
+        console.log('[LiveKit] Token received, callId:', json.data.callId);
         setStreamToken(json.data.token);
-        setStreamWsUrl(json.data.wsUrl);
+        setStreamApiKey(json.data.apiKey);
+        setStreamCallId(json.data.callId);
         // Optimistically mark as live so the WebView renders immediately
         // without waiting for the 3-second polling cycle
         queryClient.setQueryData(['live-moment', momentId], (old: any) =>
@@ -998,7 +1000,7 @@ export default function LiveMomentScreen() {
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
-      const res = await fetch(`${backendUrl}/api/livekit/token`, {
+      const res = await fetch(`${backendUrl}/api/stream/live-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1007,9 +1009,10 @@ export default function LiveMomentScreen() {
         body: JSON.stringify({ momentId: momentId, role: 'viewer' }),
       });
       if (res.ok) {
-        const json = await res.json() as { data: { token: string; wsUrl: string } };
+        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
         setStreamToken(json.data.token);
-        setStreamWsUrl(json.data.wsUrl);
+        setStreamApiKey(json.data.apiKey);
+        setStreamCallId(json.data.callId);
       }
     } catch {
       // ignore
@@ -1099,8 +1102,8 @@ export default function LiveMomentScreen() {
   }
 
   const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-  const streamUrl = streamToken && streamWsUrl
-    ? `${backendBaseUrl}/stream/${momentId}?token=${encodeURIComponent(streamToken)}&url=${encodeURIComponent(streamWsUrl)}&role=${isCreator ? 'publisher' : 'viewer'}`
+  const streamUrl = streamToken && streamApiKey && streamCallId
+    ? `${backendBaseUrl}/stream-room/${streamCallId}?token=${encodeURIComponent(streamToken)}&apiKey=${encodeURIComponent(streamApiKey)}&userId=${encodeURIComponent(session?.user?.id ?? '')}&userName=${encodeURIComponent((session?.user as any)?.name ?? 'User')}&role=${isCreator ? 'publisher' : 'viewer'}`
     : null;
 
   // Bottom bar shared between creator and viewer

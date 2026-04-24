@@ -593,4 +593,192 @@ streamingRouter.get("/stream/:momentId", async (c) => {
   return c.html(html);
 });
 
+// ─── POST /api/stream/live-token ──────────────────────────────────────────
+// Returns a Stream.io token for live-moment streaming (uses existing Stream creds)
+streamingRouter.post("/api/stream/live-token", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+  const apiKey = process.env.STREAM_API_KEY;
+  const apiSecret = process.env.STREAM_API_SECRET;
+  if (!apiKey || !apiSecret) {
+    return c.json(
+      { error: { message: "Streaming not configured. Add STREAM_API_KEY and STREAM_API_SECRET.", code: "NOT_CONFIGURED" } },
+      503
+    );
+  }
+
+  const body = await c.req.json<{ momentId?: string; role?: string }>();
+  const { momentId, role } = body;
+
+  if (!momentId || (role !== "publisher" && role !== "viewer")) {
+    return c.json({ error: { message: "momentId and role ('publisher'|'viewer') required", code: "BAD_REQUEST" } }, 400);
+  }
+
+  const moment = await prisma.liveMoment.findUnique({
+    where: { id: momentId },
+    select: { creatorId: true, invitedUserIds: true, status: true, isLive: true },
+  });
+
+  if (!moment) return c.json({ error: { message: "Moment not found", code: "NOT_FOUND" } }, 404);
+  if (moment.status === "ended") return c.json({ error: { message: "Moment has ended", code: "MOMENT_ENDED" } }, 400);
+
+  const isCreator = moment.creatorId === user.id;
+  const invitedIds = parseJsonArray(moment.invitedUserIds);
+
+  if (role === "publisher") {
+    if (!isCreator) return c.json({ error: { message: "Only creator can publish", code: "FORBIDDEN" } }, 403);
+    await prisma.liveMoment.update({ where: { id: momentId }, data: { isLive: true } });
+  } else {
+    if (!isCreator && !invitedIds.includes(user.id)) {
+      return c.json({ error: { message: "Not invited to this moment", code: "FORBIDDEN" } }, 403);
+    }
+    if (!moment.isLive) {
+      return c.json({ error: { message: "Stream has not started yet", code: "NOT_LIVE" } }, 400);
+    }
+  }
+
+  const { StreamClient } = await import("@stream-io/node-sdk");
+  const client = new StreamClient(apiKey, apiSecret);
+  const token = client.generateUserToken({ user_id: user.id });
+
+  return c.json({
+    data: {
+      token,
+      apiKey,
+      callId: `moment-${momentId}`,
+      userId: user.id,
+      userName: user.name,
+    },
+  });
+});
+
+// ─── GET /stream-room/:callId ──────────────────────────────────────────────
+// HTML page for live streaming via Stream.io (embedded in WebView)
+streamingRouter.get("/stream-room/:callId", (c) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Live</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
+    video { background: #111; display: block; }
+    #remote-video { width: 100vw; height: 100vh; object-fit: cover; position: fixed; top: 0; left: 0; }
+    #local-video { width: 100vw; height: 100vh; object-fit: cover; position: fixed; top: 0; left: 0; display: none; }
+    #status { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; font-size: 14px; color: rgba(255,255,255,0.6); z-index: 5; padding: 0 24px; pointer-events: none; }
+    #controls { position: fixed; bottom: 16px; left: 0; right: 0; display: none; justify-content: center; gap: 20px; z-index: 10; }
+    .btn { width: 52px; height: 52px; border-radius: 50%; border: none; outline: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(255,255,255,0.18); -webkit-tap-highlight-color: transparent; }
+    .btn:active { opacity: 0.7; transform: scale(0.94); }
+  </style>
+</head>
+<body>
+  <video id="remote-video" autoplay playsinline></video>
+  <video id="local-video" autoplay playsinline muted></video>
+  <div id="status">Connecting…</div>
+  <div id="controls">
+    <button class="btn" id="mute-btn" onclick="toggleMute()">🎤</button>
+    <button class="btn" id="cam-btn" onclick="toggleCamera()">📷</button>
+  </div>
+  <script type="module">
+    const p = new URLSearchParams(location.search);
+    const callId = p.get('callId') || '';
+    const token = p.get('token') || '';
+    const apiKey = p.get('apiKey') || '';
+    const userId = p.get('userId') || '';
+    const userName = p.get('userName') || 'User';
+    const isPublisher = p.get('role') === 'publisher';
+
+    let call = null;
+    let client = null;
+    let muted = false;
+    let cameraOff = false;
+    let pollInterval = null;
+
+    function applyStreams(participants) {
+      for (const participant of participants) {
+        try {
+          if (participant.isLocalParticipant) {
+            if (isPublisher && participant.videoStream) {
+              const el = document.getElementById('local-video');
+              if (el.srcObject !== participant.videoStream) {
+                el.srcObject = participant.videoStream;
+                el.style.display = 'block';
+              }
+            }
+          } else {
+            if (participant.videoStream) {
+              const el = document.getElementById('remote-video');
+              if (el.srcObject !== participant.videoStream) el.srcObject = participant.videoStream;
+            }
+            if (participant.audioStream) {
+              const audioId = 'audio-' + participant.userId;
+              let el = document.getElementById(audioId);
+              if (!el) {
+                el = document.createElement('audio');
+                el.id = audioId;
+                el.autoplay = true;
+                document.body.appendChild(el);
+              }
+              if (el.srcObject !== participant.audioStream) el.srcObject = participant.audioStream;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    async function init() {
+      try {
+        const { StreamVideoClient } = await import('https://esm.sh/@stream-io/video-client@1');
+        client = new StreamVideoClient({ apiKey, user: { id: userId, name: userName }, token });
+        call = client.call('default', callId);
+        await call.join({ create: isPublisher });
+
+        if (isPublisher) {
+          try { await call.camera.enable(); } catch {}
+          try { await call.microphone.enable(); } catch {}
+          document.getElementById('controls').style.display = 'flex';
+          document.getElementById('status').style.display = 'none';
+        } else {
+          document.getElementById('status').textContent = 'Waiting for host…';
+        }
+
+        function applyAndHideStatus(participants) {
+          applyStreams(participants);
+          const hasRemote = participants.some(p => !p.isLocalParticipant && p.videoStream);
+          if (hasRemote) document.getElementById('status').style.display = 'none';
+        }
+
+        call.state.participants$.subscribe(applyAndHideStatus);
+        pollInterval = setInterval(() => {
+          try { applyAndHideStatus(call.state.participants); } catch {}
+        }, 1500);
+      } catch (e) {
+        document.getElementById('status').textContent = 'Error: ' + (e.message || String(e));
+      }
+    }
+
+    window.toggleMute = function() {
+      if (!call) return;
+      muted = !muted;
+      muted ? call.microphone.disable() : call.microphone.enable();
+      document.getElementById('mute-btn').textContent = muted ? '🔇' : '🎤';
+    };
+
+    window.toggleCamera = function() {
+      if (!call) return;
+      cameraOff = !cameraOff;
+      cameraOff ? call.camera.disable() : call.camera.enable();
+      document.getElementById('cam-btn').textContent = cameraOff ? '📵' : '📷';
+    };
+
+    init();
+  </script>
+</body>
+</html>`;
+  return c.html(html);
+});
+
 export { streamingRouter };

@@ -401,7 +401,8 @@ export default function LiveMomentRoomScreen() {
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingSent = useRef<number>(0);
   const [streamToken, setStreamToken] = useState<string | null>(null);
-  const [streamWsUrl, setStreamWsUrl] = useState<string | null>(null);
+  const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
+  const [streamCallId, setStreamCallId] = useState<string | null>(null);
   const [isStartingStream, setIsStartingStream] = useState(false);
 
   const { data: moment, isLoading } = useQuery({
@@ -620,12 +621,13 @@ export default function LiveMomentRoomScreen() {
         body: JSON.stringify({ momentId: momentId, role: 'publisher' }),
       });
       if (res.ok) {
-        const json = await res.json() as { data: { token: string; wsUrl: string } };
-        console.log('[LiveKit] Token received, wsUrl:', json.data.wsUrl);
+        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
+        console.log('[Stream] Token received, callId:', json.data.callId);
         setStreamToken(json.data.token);
-        setStreamWsUrl(json.data.wsUrl);
+        setStreamApiKey(json.data.apiKey);
+        setStreamCallId(json.data.callId);
       } else {
-        console.warn('[LiveKit] Token fetch failed:', res.status);
+        console.warn('[Stream] Token fetch failed:', res.status);
       }
       goLive();
     } catch (e) {
@@ -640,7 +642,7 @@ export default function LiveMomentRoomScreen() {
     try {
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
-      const res = await fetch(`${backendUrl}/api/livekit/token`, {
+      const res = await fetch(`${backendUrl}/api/stream/live-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -649,9 +651,10 @@ export default function LiveMomentRoomScreen() {
         body: JSON.stringify({ momentId: momentId, role: 'viewer' }),
       });
       if (res.ok) {
-        const json = await res.json() as { data: { token: string; wsUrl: string } };
+        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
         setStreamToken(json.data.token);
-        setStreamWsUrl(json.data.wsUrl);
+        setStreamApiKey(json.data.apiKey);
+        setStreamCallId(json.data.callId);
       }
     } catch {
       // ignore
@@ -729,8 +732,8 @@ export default function LiveMomentRoomScreen() {
   }
 
   const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-  const streamUrl = streamToken && streamWsUrl
-    ? `${backendBaseUrl}/stream/${momentId}?token=${encodeURIComponent(streamToken)}&url=${encodeURIComponent(streamWsUrl)}&role=${isCreator ? 'publisher' : 'viewer'}`
+  const streamUrl = streamToken && streamApiKey && streamCallId
+    ? `${backendBaseUrl}/stream-room/${streamCallId}?token=${encodeURIComponent(streamToken)}&apiKey=${encodeURIComponent(streamApiKey)}&userId=${encodeURIComponent(session?.user?.id ?? '')}&userName=${encodeURIComponent((session?.user as any)?.name ?? 'User')}&role=${isCreator ? 'publisher' : 'viewer'}`
     : null;
 
   const overlayContent = (
