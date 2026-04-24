@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { StreamVideoClient } from '@stream-io/video-client';
-import { StreamVideo } from '@stream-io/video-react-native-sdk';
 import { useSession } from '@/lib/auth/use-session';
 import { api } from '@/lib/api/api';
 
@@ -61,7 +60,7 @@ export function StreamVideoProvider({ children }: { children: React.ReactNode })
 
   return (
     <StreamClientContext.Provider value={client}>
-      {client ? <StreamVideo client={client}>{children}</StreamVideo> : children}
+      {children}
     </StreamClientContext.Provider>
   );
 }
