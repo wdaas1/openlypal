@@ -1,7 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { StreamVideoClient } from '@stream-io/video-client';
 import { StreamVideo } from '@stream-io/video-react-native-sdk';
 import { useSession } from '@/lib/auth/use-session';
+import { api } from '@/lib/api/api';
+
+const StreamClientContext = createContext<StreamVideoClient | null>(null);
+
+export function useStreamClient() {
+  return useContext(StreamClientContext);
+}
 
 export function StreamVideoProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -24,16 +31,9 @@ export function StreamVideoProvider({ children }: { children: React.ReactNode })
 
     const init = async () => {
       try {
-        const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
-        const res = await fetch(`${baseUrl}/api/stream-token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ userId }),
-        });
-        const json = await res.json();
-        const token: string = json?.data?.token ?? '';
-        console.log('TOKEN:', token);
+        const result = await api.post<{ token: string }>('/api/stream-token', { userId });
+        const token = result?.token ?? '';
+        console.log('TOKEN:', token ? `${token.slice(0, 20)}...` : '(empty)');
 
         if (!token || cancelled) return;
 
@@ -59,7 +59,9 @@ export function StreamVideoProvider({ children }: { children: React.ReactNode })
     };
   }, [session?.user?.id]);
 
-  if (!client) return <>{children}</>;
-
-  return <StreamVideo client={client}>{children}</StreamVideo>;
+  return (
+    <StreamClientContext.Provider value={client}>
+      {client ? <StreamVideo client={client}>{children}</StreamVideo> : children}
+    </StreamClientContext.Provider>
+  );
 }
