@@ -12,6 +12,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         recordAudioAndroid: true,
       },
     ],
+    [
+      'expo-audio',
+      {
+        microphonePermission: 'Openly uses the microphone to record audio for live streams and calls.',
+      },
+    ],
     'expo-image-picker',
     [
       'expo-notifications',
