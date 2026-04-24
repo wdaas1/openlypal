@@ -20,6 +20,7 @@
     "@hono/zod-validator": "^0.7.6",
     "@livekit/protocol": "^1.45.3",
     "@prisma/client": "6",
+    "@stream-io/node-sdk": "^0.7.55",
     "@supabase/supabase-js": "^2.103.0",
     "@vibecodeapp/backend-sdk": "^1.0.1",
     "@vibecodeapp/cloud-studio": "^0.2.4",
