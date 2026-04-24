@@ -1415,6 +1415,7 @@ export default function LiveMomentScreen() {
   // ─── CREATOR LAYOUT ──────────────────────────────────────────────────────
   if (isCreator) {
     const cameraGranted = cameraPermission?.granted === true;
+    const cameraReady = cameraGranted && isFocused;
 
     // Still checking permissions — show loading to avoid blank camera
     if (cameraPermission === null) {
@@ -1509,8 +1510,9 @@ export default function LiveMomentScreen() {
               true;
             `}
           />
-        ) : cameraGranted && isFocused ? (
+        ) : cameraReady ? (
           <CameraView
+            key={cameraReady ? 'camera-on' : 'camera-off'}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
             facing={facingFront ? 'front' : 'back'}
             onCameraReady={() => console.log('Permission granted')}
