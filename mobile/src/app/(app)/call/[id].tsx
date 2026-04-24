@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, NativeModules } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+
+// Check BEFORE any require — prevents Metro from loading the broken native module
+const WEBRTC_AVAILABLE = !!NativeModules.WebRTCModule;
 import { PhoneOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { callsApi } from '@/lib/api/api';
@@ -59,16 +62,8 @@ function CallScreenInner({
   useEffect(() => {
     if (!streamClient || !id) return;
 
-    // Guard against missing native WebRTC module
-    let sdk: any = null;
-    try {
-      sdk = require('@stream-io/video-react-native-sdk');
-    } catch {
-      setError('Native rebuild required to use video calls (react-native-webrtc not linked).');
-      return;
-    }
-    if (!sdk) {
-      setError('Stream Video SDK unavailable.');
+    if (!WEBRTC_AVAILABLE) {
+      setError('Video calls require a native app build. The WebRTC module is not linked in this environment.');
       return;
     }
 
@@ -122,7 +117,7 @@ function CallScreenInner({
     );
   }
 
-  // Only reached when native module is available and call is joined
+  // Only reached when WEBRTC_AVAILABLE is true and call is joined
   const { StreamCall, CallContent } = require('@stream-io/video-react-native-sdk');
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }} testID="call-screen">
