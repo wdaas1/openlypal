@@ -929,7 +929,7 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
             >
               {muted ? <VolumeX size={14} color="#ffffff" /> : <Volume2 size={14} color="#ffffff" />}
               <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
-                {muted ? 'Tap to unmute' : 'Muted off'}
+                {muted ? 'Tap to unmute' : 'Sound on'}
               </Text>
             </Pressable>
             <Pressable
