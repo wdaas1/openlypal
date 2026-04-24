@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Openly",
-    "slug": "openly",
+    "slug": "openlypal",
     "scheme": "openly",
     "version": "1.0.2",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vibecode.openly-fsp5b4",
-      "buildNumber": "23",
+      "buildNumber": "24",
       "infoPlist": {
         "NSCameraUsageDescription": "Openly uses the camera to capture photos inside the app before you publish them.",
         "NSPhotoLibraryUsageDescription": "Openly accesses your photo library to let you choose videos that appear in the app.",

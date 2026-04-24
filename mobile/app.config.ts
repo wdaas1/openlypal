@@ -4,6 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
   plugins: [
     ...(config.plugins ?? []),
+    'expo-av',
     [
       'expo-camera',
       {
