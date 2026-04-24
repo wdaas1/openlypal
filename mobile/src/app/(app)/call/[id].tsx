@@ -1,13 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable, NativeModules } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-
-// Check BEFORE any require — prevents Metro from loading the broken native module
-const WEBRTC_AVAILABLE = !!NativeModules.WebRTCModule;
+import { WebView } from 'react-native-webview';
 import { PhoneOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { callsApi } from '@/lib/api/api';
-import { useStreamClient } from '@/lib/stream-client';
+import { callsApi, api } from '@/lib/api/api';
+import { useSession } from '@/lib/auth/use-session';
 
 export default function CallScreen() {
   const router = useRouter();
@@ -18,7 +16,9 @@ export default function CallScreen() {
     role: 'caller' | 'callee';
   }>();
 
-  const streamClient = useStreamClient();
+  const { data: session } = useSession();
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleHangup = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -27,14 +27,40 @@ export default function CallScreen() {
     else router.replace('/(app)/messenger' as any);
   };
 
-  // Show loading while Stream client initialises (token fetch in progress)
-  if (!streamClient) {
+  useEffect(() => {
+    const userId = session?.user?.id;
+    const apiKey = process.env.EXPO_PUBLIC_STREAM_API_KEY;
+    if (!userId || !apiKey || !id) return;
+
+    (async () => {
+      try {
+        const result = await api.post<{ token: string }>('/api/stream-token', { userId });
+        const token = result?.token;
+        if (!token) { setError('Failed to get call token'); return; }
+
+        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+        const userName = (session?.user as any)?.name ?? 'User';
+        const qs = [
+          `callId=${encodeURIComponent(id)}`,
+          `token=${encodeURIComponent(token)}`,
+          `apiKey=${encodeURIComponent(apiKey)}`,
+          `userId=${encodeURIComponent(userId)}`,
+          `userName=${encodeURIComponent(userName)}`,
+          `otherUserName=${encodeURIComponent(otherUserName ?? '')}`,
+          `role=${encodeURIComponent(role ?? 'callee')}`,
+          `type=${encodeURIComponent(type ?? 'video')}`,
+        ].join('&');
+        setWebViewUrl(`${backendUrl}/api/calls/webview/${id}?${qs}`);
+      } catch (e: any) {
+        setError(e?.message ?? 'Failed to connect');
+      }
+    })();
+  }, [session?.user?.id, id]);
+
+  if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <ActivityIndicator color="#00CF35" size="large" style={{ marginBottom: 16 }} />
-        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
-          Connecting…
-        </Text>
+        <Text style={{ color: '#FF3B30', fontSize: 15, textAlign: 'center', marginBottom: 24 }}>{error}</Text>
         <Pressable
           testID="end-call-button"
           onPress={handleHangup}
@@ -46,58 +72,18 @@ export default function CallScreen() {
     );
   }
 
-  return <CallScreenInner id={id} type={type} otherUserName={otherUserName} role={role} onHangup={handleHangup} />;
-}
-
-function CallScreenInner({
-  id, type, otherUserName, role, onHangup,
-}: {
-  id: string; type: string; otherUserName: string; role: string; onHangup: () => void;
-}) {
-  const [error, setError] = useState<string | null>(null);
-  const [call, setCall] = useState<any>(null);
-  const callRef = useRef<any>(null);
-  const streamClient = useStreamClient();
-
-  useEffect(() => {
-    if (!streamClient || !id) return;
-
-    if (!WEBRTC_AVAILABLE) {
-      setError('Video calls require a native app build. The WebRTC module is not linked in this environment.');
-      return;
-    }
-
-    const streamCall = streamClient.call('default', id);
-    callRef.current = streamCall;
-
-    const join = async () => {
-      try {
-        console.log('[Stream] Joining call:', id, 'role:', role);
-        await streamCall.join({ create: role === 'caller' });
-        if (type === 'audio') await streamCall.camera.disable();
-        console.log('[Stream] Joined successfully');
-        setCall(streamCall);
-      } catch (e: any) {
-        console.error('[Stream] Join failed:', e?.message ?? e);
-        setError(e?.message ?? 'Failed to connect to call');
-      }
-    };
-
-    join();
-
-    return () => {
-      streamCall.leave().catch(() => {});
-    };
-  }, [streamClient, id]);
-
-  if (error) {
+  if (!webViewUrl) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ color: '#FF3B30', fontSize: 15, textAlign: 'center', marginBottom: 24 }}>{error}</Text>
+      <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#00CF35" size="large" testID="loading-indicator" />
+        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 16 }}>Connecting…</Text>
+        {otherUserName ? (
+          <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 8 }}>{otherUserName}</Text>
+        ) : null}
         <Pressable
           testID="end-call-button"
-          onPress={onHangup}
-          style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }}
+          onPress={handleHangup}
+          style={{ marginTop: 32, width: 64, height: 64, borderRadius: 32, backgroundColor: '#FF3B30', alignItems: 'center', justifyContent: 'center' }}
         >
           <PhoneOff size={26} color="#fff" />
         </Pressable>
@@ -105,25 +91,23 @@ function CallScreenInner({
     );
   }
 
-  if (!call) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#00CF35" size="large" testID="loading-indicator" />
-        <Text style={{ color: 'rgba(255,255,255,0.55)', marginTop: 14, fontSize: 14 }}>Joining call…</Text>
-        {otherUserName ? (
-          <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 8 }}>{otherUserName}</Text>
-        ) : null}
-      </View>
-    );
-  }
-
-  // Only reached when WEBRTC_AVAILABLE is true and call is joined
-  const { StreamCall, CallContent } = require('@stream-io/video-react-native-sdk');
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }} testID="call-screen">
-      <StreamCall call={call}>
-        <CallContent onHangupCallHandler={onHangup} />
-      </StreamCall>
+      <WebView
+        source={{ uri: webViewUrl }}
+        style={{ flex: 1 }}
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback
+        javaScriptEnabled
+        domStorageEnabled
+        allowsFullscreenVideo={false}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'hangup') handleHangup();
+          } catch {}
+        }}
+      />
     </View>
   );
 }
