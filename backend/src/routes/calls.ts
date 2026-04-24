@@ -225,6 +225,7 @@ callsRouter.get("/webview/:callId", async (c) => {
     let client = null;
     let muted = false;
     let cameraOff = false;
+    let pollInterval = null;
 
     async function init() {
       try {
@@ -234,13 +235,15 @@ callsRouter.get("/webview/:callId", async (c) => {
 
         await call.join({ create: role === 'caller' });
 
-        if (isAudio) {
-          try { await call.camera.disable(); } catch {}
+        // Explicitly publish media — SDK does NOT auto-start without these calls
+        if (!isAudio) {
+          try { await call.camera.enable(); } catch {}
         }
+        try { await call.microphone.enable(); } catch {}
 
         document.getElementById('status').style.display = 'none';
 
-        call.state.participants$.subscribe(participants => {
+        function applyStreams(participants) {
           for (const participant of participants) {
             try {
               if (participant.isLocalParticipant) {
@@ -267,13 +270,21 @@ callsRouter.get("/webview/:callId", async (c) => {
               }
             } catch {}
           }
-        });
+        }
+
+        call.state.participants$.subscribe(applyStreams);
+
+        // Polling fallback: catches streams that arrive between observable emissions
+        pollInterval = setInterval(() => {
+          try { applyStreams(call.state.participants); } catch {}
+        }, 1500);
       } catch (e) {
         document.getElementById('status').textContent = 'Failed to connect: ' + (e.message || String(e));
       }
     }
 
     window.hangup = async function() {
+      try { clearInterval(pollInterval); } catch {}
       try { if (call) await call.leave(); } catch {}
       try { if (client) await client.disconnectUser(); } catch {}
       if (window.ReactNativeWebView) {
