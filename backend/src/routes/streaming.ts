@@ -594,11 +594,14 @@ streamingRouter.get("/stream/:momentId", async (c) => {
 });
 
 // ─── GET /call/:callId ─────────────────────────────────────────────────────
-// Serves the LiveKit WebView HTML page for 1:1 calls (both parties publish + subscribe)
+// Serves the WebRTC call page — uses native RTCPeerConnection + WebSocket signaling
 streamingRouter.get("/call/:callId", async (c) => {
   const reqUrl = new URL(c.req.url);
   const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
-  const { token, url: wsUrl, type = "video" } = c.req.query();
+  const wsBase = baseUrl.replace(/^http/, "ws");
+  const callId = c.req.param("callId");
+  const { token = "", type = "video" } = c.req.query();
+  const isVideo = type !== "audio";
 
   const html = `<!DOCTYPE html>
 <html>
@@ -606,176 +609,254 @@ streamingRouter.get("/call/:callId", async (c) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Call</title>
-<script src="${baseUrl}/livekit-client.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-  #remote-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #111; display: none; }
+  #remote-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #111; display: none; }
   #local-video { display: none; position: absolute; top: 16px; right: 16px; width: 100px; height: 140px; border-radius: 12px; object-fit: cover; background: #222; border: 2px solid rgba(255,255,255,0.3); z-index: 10; transform: scaleX(-1); }
-  #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: #fff; }
+  #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: #fff; width: 100%; padding: 20px; }
   #placeholder .avatar { width: 100px; height: 100px; border-radius: 50%; background: #333; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
-  #placeholder .name { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
-  #placeholder .status { font-size: 16px; color: rgba(255,255,255,0.6); }
+  #placeholder .status { font-size: 15px; color: rgba(255,255,255,0.6); margin-top: 8px; }
   #controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 20; }
-  .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
-  .ctrl-btn.active { background: rgba(255,255,255,0.2); }
-  .ctrl-btn.inactive { background: rgba(255,255,255,0.1); opacity: 0.5; }
-  .ctrl-btn.end { background: #ff3b30; }
-  #status-bar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.8); font-size: 13px; background: rgba(0,0,0,0.55); padding: 5px 14px; border-radius: 20px; z-index: 20; white-space: nowrap; }
+  .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; -webkit-tap-highlight-color: transparent; background: rgba(255,255,255,0.18); }
+  .ctrl-btn.muted, .ctrl-btn.off { background: rgba(255,59,48,0.6); }
 </style>
 </head>
 <body>
-<div id="status-bar">Connecting...</div>
+
 <div id="placeholder">
   <div class="avatar">&#128100;</div>
-  <div class="name">Calling...</div>
-  <div class="status" id="call-status">Waiting for other person...</div>
+  <div class="status" id="ph-status">Connecting...</div>
 </div>
+
 <video id="remote-video" autoplay playsinline></video>
 <video id="local-video" autoplay playsinline muted></video>
-<div id="controls">
-  <button class="ctrl-btn active" id="btn-mic" onclick="toggleMic()">&#127908;</button>
-  ${type !== "audio" ? '<button class="ctrl-btn active" id="btn-cam" onclick="toggleCam()">&#128247;</button>' : ""}
-  <button class="ctrl-btn end" onclick="endCall()">&#128245;</button>
-</div>
-<script>
-var TOKEN = '${token}';
-var WS_URL = '${wsUrl}';
-var CALL_TYPE = '${type}';
-var room;
-var micEnabled = true;
-var camEnabled = CALL_TYPE !== 'audio';
 
-function setStatus(msg) {
-  var el = document.getElementById('status-bar');
-  if (el) el.textContent = msg;
-}
+<div id="controls">
+  <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()">&#127908;</button>
+  ${isVideo ? '<button class="ctrl-btn" id="btn-cam" onclick="toggleCam()">&#128247;</button>' : ""}
+</div>
+
+<script>
+var CALL_ID = '${callId}';
+var TOKEN = '${token}';
+var IS_VIDEO = ${isVideo};
+var WS_BASE = '${wsBase}';
+
+var localStream = null;
+var peerConnection = null;
+var signalingWs = null;
+var myRole = null;
+var micEnabled = true;
+var camEnabled = IS_VIDEO;
+var iceCandidateQueue = [];
+
+var ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+];
 
 function log(msg) { console.log('[Call] ' + msg); }
 
-async function init() {
-  if (!TOKEN || !WS_URL) { setStatus('Error: missing credentials'); return; }
-  if (typeof LivekitClient === 'undefined') { setStatus('Error: streaming library not loaded'); return; }
+function setStatus(msg) {
+  var el = document.getElementById('ph-status');
+  if (el) el.textContent = msg;
+  log(msg);
+}
 
+// ── Local media ──────────────────────────────────────────────────────────────
+async function startLocalMedia() {
   try {
-    room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: IS_VIDEO ? { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } : false
+    });
+    log('Media acquired — audio:' + localStream.getAudioTracks().length + ' video:' + localStream.getVideoTracks().length);
+    if (IS_VIDEO && localStream.getVideoTracks().length > 0) {
+      var lv = document.getElementById('local-video');
+      lv.srcObject = localStream;
+      lv.style.display = 'block';
+    }
+  } catch (e) {
+    log('Media error: ' + e.message);
+    setStatus('Could not access camera/mic: ' + e.message);
+  }
+}
 
-    room.on(LivekitClient.RoomEvent.TrackSubscribed, function(track, pub, participant) {
-      log('Track subscribed: ' + track.kind + ' from ' + participant.identity);
-      if (track.kind === LivekitClient.Track.Kind.Video) {
-        var el = document.getElementById('remote-video');
-        track.attach(el);
-        el.style.display = 'block';
-        document.getElementById('placeholder').style.display = 'none';
-        setStatus('Connected');
-        document.getElementById('call-status').textContent = 'Connected';
-      } else if (track.kind === LivekitClient.Track.Kind.Audio) {
-        track.attach();
+// ── Peer connection ──────────────────────────────────────────────────────────
+function createPeerConnection() {
+  if (peerConnection) return;
+  peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+  if (localStream) {
+    localStream.getTracks().forEach(function(t) { peerConnection.addTrack(t, localStream); });
+  }
+
+  var remoteStream = new MediaStream();
+  peerConnection.ontrack = function(evt) {
+    log('Remote track: ' + evt.track.kind);
+    remoteStream.addTrack(evt.track);
+    if (evt.track.kind === 'video' && IS_VIDEO) {
+      var rv = document.getElementById('remote-video');
+      rv.srcObject = remoteStream;
+      rv.style.display = 'block';
+      document.getElementById('placeholder').style.display = 'none';
+    }
+    if (evt.track.kind === 'audio') {
+      var audio = document.getElementById('remote-audio');
+      if (!audio) {
+        audio = document.createElement('audio');
+        audio.id = 'remote-audio';
+        audio.autoplay = true;
+        audio.setAttribute('playsinline', '');
+        document.body.appendChild(audio);
       }
-    });
-
-    room.on(LivekitClient.RoomEvent.TrackUnsubscribed, function(track) {
-      track.detach();
-    });
-
-    room.on(LivekitClient.RoomEvent.ParticipantDisconnected, function(participant) {
-      log('Participant left: ' + participant.identity);
-      var el = document.getElementById('remote-video');
-      el.style.display = 'none';
-      document.getElementById('placeholder').style.display = 'block';
-      document.getElementById('call-status').textContent = 'Call ended';
-      setStatus('Disconnected');
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'call_ended' }));
-      }
-    });
-
-    room.on(LivekitClient.RoomEvent.Disconnected, function() {
-      log('Room disconnected');
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'disconnected' }));
-      }
-    });
-
-    await room.connect(WS_URL, TOKEN);
-    log('Connected to room: ' + room.name);
-    setStatus('Connected');
-
-    // Publish mic
-    await room.localParticipant.setMicrophoneEnabled(true);
-    log('Microphone enabled');
-
-    if (CALL_TYPE !== 'audio') {
-      // Publish camera
-      var camPub = await room.localParticipant.setCameraEnabled(true);
-      log('Camera enabled');
-      var localVideoEl = document.getElementById('local-video');
-      if (camPub && camPub.videoTrack) {
-        localVideoEl.style.display = 'block';
-        camPub.videoTrack.attach(localVideoEl);
-      } else {
-        // Fallback: check track publications
-        var pub = room.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera);
-        if (pub && pub.track) {
-          localVideoEl.style.display = 'block';
-          pub.track.attach(localVideoEl);
-        }
+      if (!audio.srcObject) {
+        audio.srcObject = remoteStream;
+        audio.play().catch(function(err) { log('Audio play: ' + err.message); });
       }
     }
+  };
 
-    // Check for already-present remote participants
-    room.remoteParticipants.forEach(function(participant) {
-      participant.trackPublications.forEach(function(pub) {
-        if (pub.isSubscribed && pub.track) {
-          if (pub.kind === LivekitClient.Track.Kind.Video) {
-            var el = document.getElementById('remote-video');
-            pub.track.attach(el);
-            el.style.display = 'block';
-            document.getElementById('placeholder').style.display = 'none';
-            setStatus('Connected');
-          } else if (pub.kind === LivekitClient.Track.Kind.Audio) {
-            pub.track.attach();
-          }
-        }
-      });
-    });
+  peerConnection.onicecandidate = function(evt) {
+    if (evt.candidate) send({ type: 'ice-candidate', candidate: evt.candidate.toJSON() });
+  };
 
-  } catch(e) {
-    var msg = e instanceof Error ? e.message : String(e);
-    log('Error: ' + msg);
-    setStatus('Connection failed: ' + msg);
-  }
+  peerConnection.oniceconnectionstatechange = function() {
+    var s = peerConnection.iceConnectionState;
+    log('ICE: ' + s);
+    if (s === 'connected' || s === 'completed') {
+      setStatus(IS_VIDEO ? 'Connected' : 'Connected \u00b7 Audio only');
+      if (!IS_VIDEO) document.getElementById('placeholder').style.display = 'block';
+    } else if (s === 'disconnected') {
+      setStatus('Reconnecting...');
+    } else if (s === 'failed') {
+      setStatus('Connection failed');
+    }
+  };
 }
 
-async function toggleMic() {
+// ── Offer / answer ───────────────────────────────────────────────────────────
+async function createAndSendOffer() {
+  createPeerConnection();
+  try {
+    var offer = await peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: IS_VIDEO });
+    await peerConnection.setLocalDescription(offer);
+    send({ type: 'offer', sdp: { type: offer.type, sdp: offer.sdp } });
+    log('Offer sent');
+  } catch (e) { log('Offer error: ' + e.message); }
+}
+
+async function handleOffer(sdp) {
+  createPeerConnection();
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+    for (var i = 0; i < iceCandidateQueue.length; i++) {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidateQueue[i]));
+    }
+    iceCandidateQueue = [];
+    var answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    send({ type: 'answer', sdp: { type: answer.type, sdp: answer.sdp } });
+    log('Answer sent');
+  } catch (e) { log('Offer handle error: ' + e.message); }
+}
+
+async function handleAnswer(sdp) {
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+    for (var i = 0; i < iceCandidateQueue.length; i++) {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidateQueue[i]));
+    }
+    iceCandidateQueue = [];
+    log('Answer handled');
+  } catch (e) { log('Answer handle error: ' + e.message); }
+}
+
+async function handleIceCandidate(candidate) {
+  if (!peerConnection || !peerConnection.remoteDescription) {
+    iceCandidateQueue.push(candidate);
+    return;
+  }
+  try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); }
+  catch (e) { log('ICE add error: ' + e.message); }
+}
+
+// ── Signaling ────────────────────────────────────────────────────────────────
+function connectSignaling() {
+  var wsUrl = WS_BASE + '/ws/call/' + CALL_ID + '?token=' + encodeURIComponent(TOKEN);
+  log('Signaling: ' + wsUrl);
+  signalingWs = new WebSocket(wsUrl);
+
+  signalingWs.onopen = function() { log('Signaling open'); setStatus('Waiting for other person...'); };
+
+  signalingWs.onmessage = async function(evt) {
+    var msg; try { msg = JSON.parse(evt.data); } catch { return; }
+    log('Signal: ' + msg.type);
+    if (msg.type === 'role') {
+      myRole = msg.role;
+      setStatus('Waiting...');
+    } else if (msg.type === 'peer-joined') {
+      setStatus('Connecting...');
+      if (myRole === 'caller') await createAndSendOffer();
+    } else if (msg.type === 'offer') {
+      await handleOffer(msg.sdp);
+    } else if (msg.type === 'answer') {
+      await handleAnswer(msg.sdp);
+    } else if (msg.type === 'ice-candidate') {
+      await handleIceCandidate(msg.candidate);
+    } else if (msg.type === 'peer-left') {
+      setStatus('Call ended');
+      cleanup();
+      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'call_ended' }));
+    }
+  };
+
+  signalingWs.onerror = function() { setStatus('Signaling error — check connection'); };
+  signalingWs.onclose = function(e) { log('Signaling closed: ' + e.code); };
+}
+
+function send(msg) {
+  if (signalingWs && signalingWs.readyState === WebSocket.OPEN) signalingWs.send(JSON.stringify(msg));
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+function toggleMic() {
   micEnabled = !micEnabled;
-  if (room) await room.localParticipant.setMicrophoneEnabled(micEnabled);
+  if (localStream) localStream.getAudioTracks().forEach(function(t) { t.enabled = micEnabled; });
   var btn = document.getElementById('btn-mic');
   btn.textContent = micEnabled ? '\\u{1F3A4}' : '\\u{1F507}';
-  btn.className = 'ctrl-btn ' + (micEnabled ? 'active' : 'inactive');
+  btn.className = 'ctrl-btn' + (micEnabled ? '' : ' muted');
 }
 
-async function toggleCam() {
+function toggleCam() {
   camEnabled = !camEnabled;
-  if (room) await room.localParticipant.setCameraEnabled(camEnabled);
+  if (localStream) localStream.getVideoTracks().forEach(function(t) { t.enabled = camEnabled; });
+  var lv = document.getElementById('local-video');
+  if (lv) lv.style.display = camEnabled ? 'block' : 'none';
   var btn = document.getElementById('btn-cam');
-  if (btn) {
-    btn.textContent = camEnabled ? '\\u{1F4F7}' : '\\u{1F6AB}';
-    btn.className = 'ctrl-btn ' + (camEnabled ? 'active' : 'inactive');
-  }
+  if (btn) { btn.textContent = camEnabled ? '\\u{1F4F7}' : '\\u{1F6AB}'; btn.className = 'ctrl-btn' + (camEnabled ? '' : ' off'); }
 }
 
-function endCall() {
-  if (room) room.disconnect();
-  if (window.ReactNativeWebView) {
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'end_call' }));
-  }
+// ── Cleanup ──────────────────────────────────────────────────────────────────
+function cleanup() {
+  if (peerConnection) { peerConnection.close(); peerConnection = null; }
+  if (localStream) { localStream.getTracks().forEach(function(t) { t.stop(); }); localStream = null; }
+  if (signalingWs && signalingWs.readyState === WebSocket.OPEN) { signalingWs.close(); signalingWs = null; }
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+async function main() {
+  if (!CALL_ID || !TOKEN) { setStatus('Error: missing credentials'); return; }
+  setStatus('Requesting media...');
+  await startLocalMedia();
+  connectSignaling();
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', main);
 } else {
-  init();
+  main();
 }
 </script>
 </body>

@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { callsApi, type Call, type CallUser } from '@/lib/api/api';
+import { getAccessToken } from '@/lib/auth/auth-client';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSession } from '@/lib/auth/use-session';
 
@@ -119,9 +120,8 @@ export function IncomingCallOverlay() {
 
     setIsAccepting(true);
     try {
-      const result = await callsApi.accept(incomingCall.id);
-      const token = result?.token;
-      const wsUrl = result?.wsUrl;
+      await callsApi.accept(incomingCall.id);
+      const authToken = await getAccessToken() ?? '';
 
       // Stop polling while in call
       if (pollingRef.current) {
@@ -135,8 +135,7 @@ export function IncomingCallOverlay() {
         pathname: '/(app)/call/[id]',
         params: {
           id: incomingCall.id,
-          token: token ?? '',
-          wsUrl: wsUrl ?? '',
+          token: authToken,
           type: incomingCall.type,
           otherUserName: incomingCall.caller?.name ?? 'Caller',
         },

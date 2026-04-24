@@ -1,8 +1,5 @@
 import { Hono, type Context, type Next } from "hono";
 import { prisma } from "../prisma";
-import { AccessToken } from "livekit-server-sdk";
-import { TrackSource } from "@livekit/protocol";
-import { env } from "../env";
 import { sendPushNotification } from "../lib/push-notifications";
 
 type Variables = {
@@ -20,28 +17,6 @@ async function requireAuth(c: Context<Env>, next: Next) {
     return c.json({ error: { message: "Unauthorized" } }, 401);
   }
   return next();
-}
-
-function isLiveKitConfigured(): boolean {
-  return Boolean(env.LIVEKIT_API_KEY && env.LIVEKIT_API_SECRET && env.LIVEKIT_URL);
-}
-
-async function generateCallToken(roomName: string, userId: string, userName: string, callType: string): Promise<string> {
-  const at = new AccessToken(env.LIVEKIT_API_KEY!, env.LIVEKIT_API_SECRET!, {
-    identity: userId,
-    name: userName,
-    ttl: 7200,
-  });
-  at.addGrant({
-    roomJoin: true,
-    room: roomName,
-    canPublish: true,
-    canSubscribe: true,
-    canPublishSources: callType === "audio"
-      ? [TrackSource.MICROPHONE]
-      : [TrackSource.CAMERA, TrackSource.MICROPHONE],
-  });
-  return await at.toJwt();
 }
 
 // GET /api/calls/incoming — Poll for incoming ringing call (callee polls)
@@ -96,10 +71,6 @@ callsRouter.post("/", requireAuth, async (c) => {
   if (!calleeId) return c.json({ error: { message: "calleeId required" } }, 400);
   if (calleeId === user.id) return c.json({ error: { message: "Cannot call yourself" } }, 400);
 
-  if (!isLiveKitConfigured()) {
-    return c.json({ error: { message: "Calling not configured. Add LIVEKIT_API_KEY, LIVEKIT_API_SECRET, and LIVEKIT_URL env vars." } }, 503);
-  }
-
   const callee = await prisma.user.findUnique({ where: { id: calleeId } });
   if (!callee) return c.json({ error: { message: "User not found" } }, 404);
 
@@ -120,9 +91,6 @@ callsRouter.post("/", requireAuth, async (c) => {
     },
   });
 
-  const roomName = `call-${call.id}`;
-  const token = await generateCallToken(roomName, user.id, user.name, type);
-
   // Send push notification to callee (non-fatal)
   if (callee.pushToken) {
     try {
@@ -137,17 +105,13 @@ callsRouter.post("/", requireAuth, async (c) => {
     }
   }
 
-  return c.json({ data: { call, token, wsUrl: env.LIVEKIT_URL } });
+  return c.json({ data: { call } });
 });
 
 // POST /api/calls/:id/accept — Callee accepts the call
 callsRouter.post("/:id/accept", requireAuth, async (c) => {
   const user = c.get("user")!;
   const callId = c.req.param("id");
-
-  if (!isLiveKitConfigured()) {
-    return c.json({ error: { message: "Calling not configured." } }, 503);
-  }
 
   const call = await prisma.call.findUnique({ where: { id: callId } });
   if (!call) return c.json({ error: { message: "Call not found" } }, 404);
@@ -159,10 +123,7 @@ callsRouter.post("/:id/accept", requireAuth, async (c) => {
     data: { status: "active", startedAt: new Date() },
   });
 
-  const roomName = `call-${callId}`;
-  const token = await generateCallToken(roomName, user.id, user.name, call.type);
-
-  return c.json({ data: { token, wsUrl: env.LIVEKIT_URL } });
+  return c.json({ data: {} });
 });
 
 // POST /api/calls/:id/decline — Callee or caller declines the call

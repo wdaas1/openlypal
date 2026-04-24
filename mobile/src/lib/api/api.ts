@@ -90,10 +90,10 @@ export type Call = {
 
 export const callsApi = {
   initiate: (calleeId: string, type: CallType) =>
-    api.post<{ call: Call; token: string; wsUrl: string }>('/api/calls', { calleeId, type }),
+    api.post<{ call: Call }>('/api/calls', { calleeId, type }),
 
   accept: (callId: string) =>
-    api.post<{ token: string; wsUrl: string }>(`/api/calls/${callId}/accept`, {}),
+    api.post<{}>(`/api/calls/${callId}/accept`, {}),
 
   decline: (callId: string) =>
     api.post<null>(`/api/calls/${callId}/decline`, {}),

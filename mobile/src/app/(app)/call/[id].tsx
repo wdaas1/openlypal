@@ -15,10 +15,9 @@ import { callsApi } from '@/lib/api/api';
 
 export default function CallScreen() {
   const router = useRouter();
-  const { id, token, wsUrl, type, otherUserName } = useLocalSearchParams<{
+  const { id, token, type, otherUserName } = useLocalSearchParams<{
     id: string;
     token: string;
-    wsUrl: string;
     type: 'video' | 'audio';
     otherUserName: string;
   }>();
@@ -78,8 +77,8 @@ export default function CallScreen() {
   }
 
   const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-  const callUrl = id && token && wsUrl
-    ? `${backendBaseUrl}/call/${id}?token=${encodeURIComponent(token)}&url=${encodeURIComponent(wsUrl)}&type=${type ?? 'video'}`
+  const callUrl = id && token
+    ? `${backendBaseUrl}/call/${id}?token=${encodeURIComponent(token)}&type=${type ?? 'video'}`
     : null;
 
   return (
