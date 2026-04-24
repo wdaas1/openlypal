@@ -206,6 +206,25 @@ app.route("/api/advertiser", advertiserRouter);
 app.route("/api/boosts", boostsRouter);
 app.route("/api/calls", callsRouter);
 
+// POST /api/stream-token — returns a Stream Video user token for the authenticated user
+app.post("/api/stream-token", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const apiKey = process.env.STREAM_API_KEY;
+  const apiSecret = process.env.STREAM_API_SECRET;
+
+  if (!apiKey || !apiSecret) {
+    return c.json({ error: { message: "Stream not configured" } }, 503);
+  }
+
+  const { StreamClient } = await import("@stream-io/node-sdk");
+  const serverClient = new StreamClient(apiKey, apiSecret);
+  const token = serverClient.createToken(user.id);
+  console.log("[Stream] Generated token for user:", user.id);
+  return c.json({ data: { token } });
+});
+
 // Auth redirect page — handles Supabase email verification redirects to openly:// deep link
 app.get("/", (c) => {
   const html = `<!DOCTYPE html>

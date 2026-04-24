@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { StreamVideoClient } from '@stream-io/video-client';
 import { StreamVideo } from '@stream-io/video-react-native-sdk';
 import { useSession } from '@/lib/auth/use-session';
-import { api } from '@/lib/api/api';
 
 export function StreamVideoProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -16,25 +15,46 @@ export function StreamVideoProvider({ children }: { children: React.ReactNode })
     console.log('STREAM KEY:', apiKey);
 
     if (!userId || !apiKey) {
-      client?.disconnectUser().catch(() => {});
       setClient(null);
       return;
     }
 
-    const c = new StreamVideoClient({
-      apiKey,
-      user: { id: userId, name: userName },
-      tokenProvider: async () => {
-        const result = await api.get<{ token: string; apiKey: string }>('/api/calls/stream-token');
-        return result?.token ?? '';
-      },
-    });
+    let streamClient: StreamVideoClient | null = null;
+    let cancelled = false;
 
-    console.log('[Stream] Client initialised for user:', userId);
-    setClient(c);
+    const init = async () => {
+      try {
+        const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+        const res = await fetch(`${baseUrl}/api/stream-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ userId }),
+        });
+        const json = await res.json();
+        const token: string = json?.data?.token ?? '';
+        console.log('TOKEN:', token);
+
+        if (!token || cancelled) return;
+
+        streamClient = new StreamVideoClient({
+          apiKey,
+          user: { id: userId, name: userName },
+          token,
+        });
+
+        console.log('[Stream] Client initialised for user:', userId);
+        if (!cancelled) setClient(streamClient);
+      } catch (e) {
+        console.error('[Stream] Init failed:', e);
+      }
+    };
+
+    init();
 
     return () => {
-      c.disconnectUser().catch(() => {});
+      cancelled = true;
+      streamClient?.disconnectUser().catch(() => {});
       setClient(null);
     };
   }, [session?.user?.id]);
