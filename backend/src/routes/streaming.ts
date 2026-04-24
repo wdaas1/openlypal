@@ -593,4 +593,192 @@ streamingRouter.get("/stream/:momentId", async (c) => {
   return c.html(html);
 });
 
+// ─── GET /call/:callId ─────────────────────────────────────────────────────
+// Serves the LiveKit WebView HTML page for 1:1 calls (both parties publish + subscribe)
+streamingRouter.get("/call/:callId", async (c) => {
+  const reqUrl = new URL(c.req.url);
+  const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
+  const { token, url: wsUrl, type = "video" } = c.req.query();
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Call</title>
+<script src="${baseUrl}/livekit-client.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  #remote-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #111; display: none; }
+  #local-video { position: absolute; top: 16px; right: 16px; width: 100px; height: 140px; border-radius: 12px; object-fit: cover; background: #222; border: 2px solid rgba(255,255,255,0.3); z-index: 10; transform: scaleX(-1); }
+  #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: #fff; }
+  #placeholder .avatar { width: 100px; height: 100px; border-radius: 50%; background: #333; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  #placeholder .name { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  #placeholder .status { font-size: 16px; color: rgba(255,255,255,0.6); }
+  #controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 20; }
+  .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .ctrl-btn.active { background: rgba(255,255,255,0.2); }
+  .ctrl-btn.inactive { background: rgba(255,255,255,0.1); opacity: 0.5; }
+  .ctrl-btn.end { background: #ff3b30; }
+  #status-bar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.8); font-size: 13px; background: rgba(0,0,0,0.55); padding: 5px 14px; border-radius: 20px; z-index: 20; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="status-bar">Connecting...</div>
+<div id="placeholder">
+  <div class="avatar">&#128100;</div>
+  <div class="name">Calling...</div>
+  <div class="status" id="call-status">Waiting for other person...</div>
+</div>
+<video id="remote-video" autoplay playsinline></video>
+<video id="local-video" autoplay playsinline muted></video>
+<div id="controls">
+  <button class="ctrl-btn active" id="btn-mic" onclick="toggleMic()">&#127908;</button>
+  ${type !== "audio" ? '<button class="ctrl-btn active" id="btn-cam" onclick="toggleCam()">&#128247;</button>' : ""}
+  <button class="ctrl-btn end" onclick="endCall()">&#128245;</button>
+</div>
+<script>
+var TOKEN = '${token}';
+var WS_URL = '${wsUrl}';
+var CALL_TYPE = '${type}';
+var room;
+var micEnabled = true;
+var camEnabled = CALL_TYPE !== 'audio';
+
+function setStatus(msg) {
+  var el = document.getElementById('status-bar');
+  if (el) el.textContent = msg;
+}
+
+function log(msg) { console.log('[Call] ' + msg); }
+
+async function init() {
+  if (!TOKEN || !WS_URL) { setStatus('Error: missing credentials'); return; }
+  if (typeof LivekitClient === 'undefined') { setStatus('Error: streaming library not loaded'); return; }
+
+  try {
+    room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+
+    room.on(LivekitClient.RoomEvent.TrackSubscribed, function(track, pub, participant) {
+      log('Track subscribed: ' + track.kind + ' from ' + participant.identity);
+      if (track.kind === LivekitClient.Track.Kind.Video) {
+        var el = document.getElementById('remote-video');
+        track.attach(el);
+        el.style.display = 'block';
+        document.getElementById('placeholder').style.display = 'none';
+        setStatus('Connected');
+        document.getElementById('call-status').textContent = 'Connected';
+      } else if (track.kind === LivekitClient.Track.Kind.Audio) {
+        track.attach();
+      }
+    });
+
+    room.on(LivekitClient.RoomEvent.TrackUnsubscribed, function(track) {
+      track.detach();
+    });
+
+    room.on(LivekitClient.RoomEvent.ParticipantDisconnected, function(participant) {
+      log('Participant left: ' + participant.identity);
+      var el = document.getElementById('remote-video');
+      el.style.display = 'none';
+      document.getElementById('placeholder').style.display = 'block';
+      document.getElementById('call-status').textContent = 'Call ended';
+      setStatus('Disconnected');
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'call_ended' }));
+      }
+    });
+
+    room.on(LivekitClient.RoomEvent.Disconnected, function() {
+      log('Room disconnected');
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'disconnected' }));
+      }
+    });
+
+    await room.connect(WS_URL, TOKEN);
+    log('Connected to room: ' + room.name);
+    setStatus('Connected');
+
+    // Publish mic
+    await room.localParticipant.setMicrophoneEnabled(true);
+    log('Microphone enabled');
+
+    if (CALL_TYPE !== 'audio') {
+      // Publish camera
+      var camPub = await room.localParticipant.setCameraEnabled(true);
+      log('Camera enabled');
+      if (camPub && camPub.videoTrack) {
+        camPub.videoTrack.attach(document.getElementById('local-video'));
+      } else {
+        // Fallback: check track publications
+        var pub = room.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera);
+        if (pub && pub.track) pub.track.attach(document.getElementById('local-video'));
+      }
+    } else {
+      document.getElementById('local-video').style.display = 'none';
+    }
+
+    // Check for already-present remote participants
+    room.remoteParticipants.forEach(function(participant) {
+      participant.trackPublications.forEach(function(pub) {
+        if (pub.isSubscribed && pub.track) {
+          if (pub.kind === LivekitClient.Track.Kind.Video) {
+            var el = document.getElementById('remote-video');
+            pub.track.attach(el);
+            el.style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+            setStatus('Connected');
+          } else if (pub.kind === LivekitClient.Track.Kind.Audio) {
+            pub.track.attach();
+          }
+        }
+      });
+    });
+
+  } catch(e) {
+    var msg = e instanceof Error ? e.message : String(e);
+    log('Error: ' + msg);
+    setStatus('Connection failed: ' + msg);
+  }
+}
+
+async function toggleMic() {
+  micEnabled = !micEnabled;
+  if (room) await room.localParticipant.setMicrophoneEnabled(micEnabled);
+  var btn = document.getElementById('btn-mic');
+  btn.textContent = micEnabled ? '\\u{1F3A4}' : '\\u{1F507}';
+  btn.className = 'ctrl-btn ' + (micEnabled ? 'active' : 'inactive');
+}
+
+async function toggleCam() {
+  camEnabled = !camEnabled;
+  if (room) await room.localParticipant.setCameraEnabled(camEnabled);
+  var btn = document.getElementById('btn-cam');
+  if (btn) {
+    btn.textContent = camEnabled ? '\\u{1F4F7}' : '\\u{1F6AB}';
+    btn.className = 'ctrl-btn ' + (camEnabled ? 'active' : 'inactive');
+  }
+}
+
+function endCall() {
+  if (room) room.disconnect();
+  if (window.ReactNativeWebView) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'end_call' }));
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>`;
+
+  return c.html(html);
+});
+
 export { streamingRouter };

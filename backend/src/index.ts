@@ -22,6 +22,7 @@ import { appRouter } from "./routes/app";
 import { streamingRouter } from "./routes/streaming";
 import { advertiserRouter } from "./routes/advertiser";
 import { boostsRouter } from "./routes/boosts";
+import { callsRouter } from "./routes/calls";
 import { createBunWebSocket } from "hono/bun";
 import { wsManager } from "./ws-manager";
 
@@ -202,6 +203,7 @@ app.route("/api/ads", adsRouter);
 app.route("/api/app", appRouter);
 app.route("/api/advertiser", advertiserRouter);
 app.route("/api/boosts", boostsRouter);
+app.route("/api/calls", callsRouter);
 
 // Auth redirect page — handles Supabase email verification redirects to openly:// deep link
 app.get("/", (c) => {

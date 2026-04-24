@@ -67,3 +67,43 @@ export const api = {
   patch: <T>(url: string, body: any) =>
     request<T>(url, { method: 'PATCH', body: JSON.stringify(body) }),
 };
+
+export type CallType = 'video' | 'audio';
+
+export type CallUser = {
+  id: string;
+  username: string;
+  name: string;
+  image: string | null;
+};
+
+export type Call = {
+  id: string;
+  callerId: string;
+  calleeId: string;
+  type: CallType;
+  status: string;
+  createdAt: string;
+  caller?: CallUser;
+  callee?: CallUser;
+};
+
+export const callsApi = {
+  initiate: (calleeId: string, type: CallType) =>
+    api.post<{ call: Call; token: string; wsUrl: string }>('/api/calls', { calleeId, type }),
+
+  accept: (callId: string) =>
+    api.post<{ token: string; wsUrl: string }>(`/api/calls/${callId}/accept`, {}),
+
+  decline: (callId: string) =>
+    api.post<null>(`/api/calls/${callId}/decline`, {}),
+
+  end: (callId: string) =>
+    api.post<null>(`/api/calls/${callId}/end`, {}),
+
+  getIncoming: () =>
+    api.get<{ call: (Call & { caller: CallUser }) | null }>('/api/calls/incoming'),
+
+  getCall: (callId: string) =>
+    api.get<{ call: Call }>(`/api/calls/${callId}`),
+};

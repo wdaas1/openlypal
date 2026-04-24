@@ -23,6 +23,7 @@ import type { Conversation } from '@/lib/types';
 import { useTheme } from '@/lib/theme';
 import { useSession } from '@/lib/auth/use-session';
 import { isAdmin } from '@/lib/auth/is-admin';
+import { IncomingCallOverlay } from '@/components/IncomingCallOverlay';
 
 type TabConfig = {
   route: string;
@@ -870,8 +871,11 @@ export default function AppLayout() {
             <Stack.Screen name="relationships/index" />
             <Stack.Screen name="profile-modules/index" />
             <Stack.Screen name="tag/[tag]" />
+            <Stack.Screen name="call/[id]" options={{ headerShown: false }} />
           </Stack>
         </Animated.View>
+
+        <IncomingCallOverlay />
 
         <FloatingTabBar onOpenModal={openModal} />
 

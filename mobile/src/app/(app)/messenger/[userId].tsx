@@ -13,10 +13,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Send } from 'lucide-react-native';
+import { ArrowLeft, Send, Phone, Video } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
 import * as Haptics from 'expo-haptics';
-import { api } from '@/lib/api/api';
+import { api, callsApi, type CallType } from '@/lib/api/api';
 import type { Message, Conversation } from '@/lib/types';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSession } from '@/lib/auth/use-session';
@@ -100,6 +100,27 @@ export default function ChatScreen() {
     }
     prevMessageCountRef.current = count;
   }, [messages, currentUserId]);
+
+  const { mutate: startCall, isPending: isStartingCall } = useMutation({
+    mutationFn: async (type: CallType) => {
+      if (!userId) throw new Error('No user');
+      return callsApi.initiate(userId, type);
+    },
+    onSuccess: (result, type) => {
+      const { call, token, wsUrl } = result;
+      const userName = otherUser?.name ?? 'User';
+      router.push({
+        pathname: '/(app)/call/[id]',
+        params: {
+          id: call.id,
+          token,
+          wsUrl,
+          type,
+          otherUserName: userName,
+        },
+      } as any);
+    },
+  });
 
   const { mutate: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (content: string) => {
@@ -209,7 +230,7 @@ export default function ChatScreen() {
         {otherUser ? (
           <>
             <UserAvatar uri={otherUser.image} name={otherUser.name} size={36} />
-            <View style={{ marginLeft: 10 }}>
+            <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
                 {otherUser.name}
               </Text>
@@ -219,8 +240,54 @@ export default function ChatScreen() {
             </View>
           </>
         ) : (
-          <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>Chat</Text>
+          <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700', flex: 1 }}>Chat</Text>
         )}
+
+        {/* Call buttons */}
+        <View style={{ flexDirection: 'row', gap: 4, marginLeft: 8 }}>
+          <Pressable
+            testID="voice-call-button"
+            onPress={() => startCall('audio')}
+            disabled={isStartingCall}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: theme.card,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}
+          >
+            {isStartingCall ? (
+              <ActivityIndicator size="small" color={theme.subtext} />
+            ) : (
+              <Phone size={17} color={theme.text} />
+            )}
+          </Pressable>
+          <Pressable
+            testID="video-call-button"
+            onPress={() => startCall('video')}
+            disabled={isStartingCall}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: theme.card,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}
+          >
+            {isStartingCall ? (
+              <ActivityIndicator size="small" color={theme.subtext} />
+            ) : (
+              <Video size={17} color={theme.text} />
+            )}
+          </Pressable>
+        </View>
       </View>
 
       <KeyboardAvoidingView

@@ -63,6 +63,8 @@ model User {
   ownedRooms           Room[]       @relation("RoomOwner")
   roomMembers          RoomMember[]
   advertiserApplication AdvertiserApplication?
+  callsAsCaller        Call[]       @relation("CallsCaller")
+  callsAsCallee        Call[]       @relation("CallsCallee")
 }
 
 model Session {
@@ -381,4 +383,19 @@ model LiveBoost {
   amount        Float    @default(9.99)
   currency      String   @default("GBP")
   createdAt     DateTime @default(now())
+}
+
+// ─── Calls ──────────────────────────────────────────────────
+
+model Call {
+  id        String    @id @default(cuid())
+  callerId  String
+  calleeId  String
+  status    String    @default("ringing") // ringing, active, ended, declined, missed
+  type      String    @default("video")   // video, audio
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+  caller    User      @relation("CallsCaller", fields: [callerId], references: [id], onDelete: Cascade)
+  callee    User      @relation("CallsCallee", fields: [calleeId], references: [id], onDelete: Cascade)
 }
