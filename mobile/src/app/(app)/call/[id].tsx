@@ -53,8 +53,13 @@ export default function CallScreen() {
   };
 
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
+    const raw = event.nativeEvent.data;
+    if (raw.startsWith('[LOG]') || raw.startsWith('[ERROR]')) {
+      console.log('[WebView]', raw);
+      return;
+    }
     try {
-      const data = JSON.parse(event.nativeEvent.data) as { type: string };
+      const data = JSON.parse(raw) as { type: string };
       if (data.type === 'end_call' || data.type === 'call_ended') {
         if (router.canGoBack()) {
           router.back();

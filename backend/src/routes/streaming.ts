@@ -596,9 +596,6 @@ streamingRouter.get("/stream/:momentId", async (c) => {
 // ─── GET /call/:callId ─────────────────────────────────────────────────────
 // Serves the WebRTC call page — uses native RTCPeerConnection + WebSocket signaling
 streamingRouter.get("/call/:callId", async (c) => {
-  const reqUrl = new URL(c.req.url);
-  const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
-  const wsBase = baseUrl.replace(/^http/, "ws");
   const callId = c.req.param("callId");
   const { token = "", type = "video" } = c.req.query();
   const isVideo = type !== "audio";
@@ -641,7 +638,7 @@ streamingRouter.get("/call/:callId", async (c) => {
 var CALL_ID = '${callId}';
 var TOKEN = '${token}';
 var IS_VIDEO = ${isVideo};
-var WS_BASE = '${wsBase}';
+var WS_BASE = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host;
 
 var localStream = null;
 var peerConnection = null;
@@ -785,7 +782,7 @@ async function handleIceCandidate(candidate) {
 // ── Signaling ────────────────────────────────────────────────────────────────
 function connectSignaling() {
   var wsUrl = WS_BASE + '/ws/call/' + CALL_ID + '?token=' + encodeURIComponent(TOKEN);
-  log('Signaling: ' + wsUrl);
+  log('Signaling to: ' + WS_BASE + ' callId=' + CALL_ID + ' tokenLen=' + TOKEN.length);
   signalingWs = new WebSocket(wsUrl);
 
   signalingWs.onopen = function() { log('Signaling open'); setStatus('Waiting for other person...'); };
@@ -812,8 +809,17 @@ function connectSignaling() {
     }
   };
 
-  signalingWs.onerror = function() { setStatus('Signaling error — check connection'); };
-  signalingWs.onclose = function(e) { log('Signaling closed: ' + e.code); };
+  signalingWs.onerror = function(e) {
+    log('WS error: ' + (e.message || 'unknown'));
+    setStatus('Cannot reach signaling server');
+  };
+
+  signalingWs.onclose = function(e) {
+    log('WS closed: code=' + e.code + ' reason=' + (e.reason || ''));
+    if (e.code === 1008) setStatus('Auth failed — please try again');
+    else if (e.code === 1006) setStatus('Connection lost — check network');
+    else if (e.code !== 1000) setStatus('Disconnected (code ' + e.code + ')');
+  };
 }
 
 function send(msg) {
