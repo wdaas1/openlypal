@@ -537,6 +537,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   };
 
   if (pathname.includes('/post/')) return null;
+  if (pathname.includes('/call/')) return null;
   // Hide tab bar inside a live moment room (but not the list or create screens)
   if (/\/live-moments\/(?!create)[^/]+/.test(pathname)) return null;
   if (/\/rooms\/[^/]+\/live-moment\//.test(pathname)) return null;

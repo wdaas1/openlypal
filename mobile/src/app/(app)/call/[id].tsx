@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
-import { useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
+import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { PhoneOff, ArrowLeft } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { callsApi } from '@/lib/api/api';
@@ -23,21 +23,19 @@ export default function CallScreen() {
     otherUserName: string;
   }>();
 
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const permissionRequested = useRef(false);
+  const [, requestCameraPermission] = useCameraPermissions();
+  const [, requestMicPermission] = useMicrophonePermissions();
+  const [permissionsReady, setPermissionsReady] = useState(false);
 
-  // Request camera + mic permissions on mount
+  // Request camera + mic permissions on mount, then show WebView
   useEffect(() => {
-    if (permissionRequested.current) return;
-    permissionRequested.current = true;
-
     const requestPerms = async () => {
       if (type !== 'audio') await requestCameraPermission();
-      await ExpoCamera.requestMicrophonePermissionsAsync();
+      await requestMicPermission();
+      setPermissionsReady(true);
     };
-
     requestPerms();
-  }, [requestCameraPermission]);
+  }, []);
 
   const handleEnd = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -70,8 +68,8 @@ export default function CallScreen() {
     }
   };
 
-  // Wait for permission to be determined
-  if (cameraPermission === null) {
+  // Wait for permission dialogs to complete before loading WebView
+  if (!permissionsReady) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color="#00CF35" size="large" testID="loading-indicator" />

@@ -611,7 +611,7 @@ streamingRouter.get("/call/:callId", async (c) => {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   #remote-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #111; display: none; }
-  #local-video { position: absolute; top: 16px; right: 16px; width: 100px; height: 140px; border-radius: 12px; object-fit: cover; background: #222; border: 2px solid rgba(255,255,255,0.3); z-index: 10; transform: scaleX(-1); }
+  #local-video { display: none; position: absolute; top: 16px; right: 16px; width: 100px; height: 140px; border-radius: 12px; object-fit: cover; background: #222; border: 2px solid rgba(255,255,255,0.3); z-index: 10; transform: scaleX(-1); }
   #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: #fff; }
   #placeholder .avatar { width: 100px; height: 100px; border-radius: 50%; background: #333; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
   #placeholder .name { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
@@ -709,15 +709,18 @@ async function init() {
       // Publish camera
       var camPub = await room.localParticipant.setCameraEnabled(true);
       log('Camera enabled');
+      var localVideoEl = document.getElementById('local-video');
       if (camPub && camPub.videoTrack) {
-        camPub.videoTrack.attach(document.getElementById('local-video'));
+        localVideoEl.style.display = 'block';
+        camPub.videoTrack.attach(localVideoEl);
       } else {
         // Fallback: check track publications
         var pub = room.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera);
-        if (pub && pub.track) pub.track.attach(document.getElementById('local-video'));
+        if (pub && pub.track) {
+          localVideoEl.style.display = 'block';
+          pub.track.attach(localVideoEl);
+        }
       }
-    } else {
-      document.getElementById('local-video').style.display = 'none';
     }
 
     // Check for already-present remote participants
