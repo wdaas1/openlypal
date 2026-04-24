@@ -14,6 +14,7 @@ import Animated, {
   runOnJS,
   interpolate,
   Easing,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -46,8 +47,8 @@ interface MediaViewerProps {
 
 interface ZoomableImageProps {
   uri: string;
-  dragY: Animated.SharedValue<number>;
-  bgOpacity: Animated.SharedValue<number>;
+  dragY: SharedValue<number>;
+  bgOpacity: SharedValue<number>;
   onDismiss: () => void;
 }
 
@@ -168,8 +169,8 @@ function ZoomableImage({ uri, dragY, bgOpacity, onDismiss }: ZoomableImageProps)
 
 interface VideoViewerProps {
   uri: string;
-  dragY: Animated.SharedValue<number>;
-  bgOpacity: Animated.SharedValue<number>;
+  dragY: SharedValue<number>;
+  bgOpacity: SharedValue<number>;
   onDismiss: () => void;
 }
 

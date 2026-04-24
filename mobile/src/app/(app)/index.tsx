@@ -2,9 +2,9 @@ import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, RefreshControl, Pressable, useWindowDimensions, ViewToken } from 'react-native';
 import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -225,7 +225,7 @@ function SkeletonLoader() {
   );
 }
 
-function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
+function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashListRef<any> | null> }) {
   const queryClient = useQueryClient();
   const { ads, dismissAd } = useAds();
   const { data: posts, isLoading, isRefetching } = useQuery({
@@ -254,7 +254,6 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
-      estimatedItemSize={600}
       drawDistance={1500}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
@@ -278,7 +277,7 @@ function ForYouTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticE
   );
 }
 
-function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
+function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashListRef<any> | null> }) {
   const queryClient = useQueryClient();
   const { ads, dismissAd } = useAds();
   const { data: posts, isLoading, isRefetching } = useQuery({
@@ -307,7 +306,6 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
-      estimatedItemSize={600}
       drawDistance={1500}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
@@ -331,7 +329,7 @@ function FollowingTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthet
   );
 }
 
-function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashList<any> | null> }) {
+function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; scrollRef?: React.RefObject<FlashListRef<any> | null> }) {
   const queryClient = useQueryClient();
   const { ads, dismissAd } = useAds();
   const { data: posts, isLoading, isRefetching } = useQuery({
@@ -360,7 +358,6 @@ function UnfilteredTab({ onScroll, scrollRef }: { onScroll: (event: NativeSynthe
       data={feedItems}
       keyExtractor={(item) => item.key}
       renderItem={renderItem}
-      estimatedItemSize={600}
       drawDistance={1500}
       contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       onScroll={onScroll}
@@ -406,17 +403,24 @@ export default function FeedScreen() {
   const scrollY = useSharedValue(0);
   const { width: screenWidth } = useWindowDimensions();
 
-  const forYouRef = useRef<FlashList<any> | null>(null);
-  const followingRef = useRef<FlashList<any> | null>(null);
-  const unfilteredRef = useRef<FlashList<any> | null>(null);
+  const forYouRef = useRef<FlashListRef<any> | null>(null);
+  const followingRef = useRef<FlashListRef<any> | null>(null);
+  const unfilteredRef = useRef<FlashListRef<any> | null>(null);
 
   const activeTabRef = useRef<Tab>('foryou');
   activeTabRef.current = activeTab;
 
+  // Pause all videos when navigating away from the feed
+  useFocusEffect(
+    useCallback(() => {
+      return () => { videoVisibility.update(new Set()); };
+    }, [])
+  );
+
   // Scroll to top + refresh when home tab pressed while already on home
   React.useEffect(() => {
     const unsub = onHomeTabPress(() => {
-      const refs: Record<Tab, React.RefObject<FlashList<any> | null>> = {
+      const refs: Record<Tab, React.RefObject<FlashListRef<any> | null>> = {
         foryou: forYouRef,
         following: followingRef,
         unfiltered: unfilteredRef,

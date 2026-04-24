@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
   runOnJS,
   Easing,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
@@ -104,8 +105,8 @@ const TABS: TabConfig[] = [
 type CreateModalProps = {
   visible: boolean;
   onClose: () => void;
-  translateY: Animated.SharedValue<number>;
-  backdropOpacity: Animated.SharedValue<number>;
+  translateY: SharedValue<number>;
+  backdropOpacity: SharedValue<number>;
 };
 
 type ActionRowProps = {
