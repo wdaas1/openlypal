@@ -26,7 +26,7 @@ function isLiveKitConfigured(): boolean {
   return Boolean(env.LIVEKIT_API_KEY && env.LIVEKIT_API_SECRET && env.LIVEKIT_URL);
 }
 
-async function generateCallToken(roomName: string, userId: string, userName: string): Promise<string> {
+async function generateCallToken(roomName: string, userId: string, userName: string, callType: string): Promise<string> {
   const at = new AccessToken(env.LIVEKIT_API_KEY!, env.LIVEKIT_API_SECRET!, {
     identity: userId,
     name: userName,
@@ -37,7 +37,9 @@ async function generateCallToken(roomName: string, userId: string, userName: str
     room: roomName,
     canPublish: true,
     canSubscribe: true,
-    canPublishSources: [TrackSource.CAMERA, TrackSource.MICROPHONE],
+    canPublishSources: callType === "audio"
+      ? [TrackSource.MICROPHONE]
+      : [TrackSource.CAMERA, TrackSource.MICROPHONE],
   });
   return await at.toJwt();
 }
@@ -119,7 +121,7 @@ callsRouter.post("/", requireAuth, async (c) => {
   });
 
   const roomName = `call-${call.id}`;
-  const token = await generateCallToken(roomName, user.id, user.name);
+  const token = await generateCallToken(roomName, user.id, user.name, type);
 
   // Send push notification to callee (non-fatal)
   if (callee.pushToken) {
@@ -158,7 +160,7 @@ callsRouter.post("/:id/accept", requireAuth, async (c) => {
   });
 
   const roomName = `call-${callId}`;
-  const token = await generateCallToken(roomName, user.id, user.name);
+  const token = await generateCallToken(roomName, user.id, user.name, call.type);
 
   return c.json({ data: { token, wsUrl: env.LIVEKIT_URL } });
 });

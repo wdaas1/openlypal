@@ -32,7 +32,7 @@ export default function CallScreen() {
     permissionRequested.current = true;
 
     const requestPerms = async () => {
-      await requestCameraPermission();
+      if (type !== 'audio') await requestCameraPermission();
       await ExpoCamera.requestMicrophonePermissionsAsync();
     };
 
