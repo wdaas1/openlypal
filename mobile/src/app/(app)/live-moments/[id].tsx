@@ -580,31 +580,6 @@ function useBoostCountdown(boostExpiresAt: string | null | undefined): string | 
   return label;
 }
 
-function useSimulatedViewerCount(realCount: number, isBoosted: boolean): number {
-  const [offset, setOffset] = useState<number>(0);
-  const prevBoosted = useRef(false);
-
-  useEffect(() => {
-    if (!isBoosted) {
-      setOffset(0);
-      prevBoosted.current = false;
-      return;
-    }
-    if (!prevBoosted.current) {
-      prevBoosted.current = true;
-      setOffset(Math.floor(Math.random() * 21) + 10);
-    }
-    const id = setInterval(() => {
-      setOffset((prev) => {
-        if (prev >= 50) return prev;
-        return prev + Math.floor(Math.random() * 3) + 1;
-      });
-    }, 10000);
-    return () => clearInterval(id);
-  }, [isBoosted]);
-
-  return realCount + offset;
-}
 
 function ViewerCountDisplay({ count }: { count: number }) {
   const scale = useSharedValue(1);
@@ -1072,10 +1047,7 @@ export default function LiveMomentScreen() {
 
   const isCreator = moment?.creatorId === session?.user?.id;
   const isEnded = moment?.status === 'ended' || timeRemaining === 'Ended';
-  const displayViewerCount = useSimulatedViewerCount(
-    moment?.viewerCount ?? 0,
-    moment?.isBoosted === true && !isEnded
-  );
+  const displayViewerCount = moment?.viewerCount ?? 0;
   const boostCountdown = useBoostCountdown(moment?.boostExpiresAt);
   const isNotLive = !moment?.isLive;
 
