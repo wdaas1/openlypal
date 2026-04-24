@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { setAudioModeAsync } from 'expo-audio';
 import { PhoneOff, ArrowLeft } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { callsApi } from '@/lib/api/api';
@@ -26,14 +27,23 @@ export default function CallScreen() {
   const [, requestMicPermission] = useMicrophonePermissions();
   const [permissionsReady, setPermissionsReady] = useState(false);
 
-  // Request camera + mic permissions on mount, then show WebView
+  // Request camera + mic permissions and configure audio routing on mount
   useEffect(() => {
     const requestPerms = async () => {
       if (type !== 'audio') await requestCameraPermission();
       await requestMicPermission();
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: type === 'audio',
+        interruptionMode: 'doNotMix',
+      });
       setPermissionsReady(true);
     };
     requestPerms();
+    return () => {
+      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false, shouldRouteThroughEarpiece: false, interruptionMode: 'doNotMix' }).catch(() => {});
+    };
   }, []);
 
   const handleEnd = async () => {

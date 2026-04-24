@@ -102,8 +102,11 @@ export default function ChatScreen() {
     prevMessageCountRef.current = count;
   }, [messages, currentUserId]);
 
-  const { mutate: startCall, isPending: isStartingCall } = useMutation({
+  const [pendingCallType, setPendingCallType] = useState<CallType | null>(null);
+
+  const { mutate: startCall } = useMutation({
     mutationFn: async (type: CallType) => {
+      setPendingCallType(type);
       if (!userId) throw new Error('No user');
       return callsApi.initiate(userId, type);
     },
@@ -111,6 +114,7 @@ export default function ChatScreen() {
       const { call } = result;
       const authToken = await getAccessToken() ?? '';
       const userName = otherUser?.name ?? 'User';
+      setPendingCallType(null);
       router.push({
         pathname: '/(app)/call/[id]',
         params: {
@@ -121,6 +125,7 @@ export default function ChatScreen() {
         },
       } as any);
     },
+    onError: () => setPendingCallType(null),
   });
 
   const { mutate: sendMessage, isPending: isSending } = useMutation({
@@ -249,7 +254,7 @@ export default function ChatScreen() {
           <Pressable
             testID="voice-call-button"
             onPress={() => startCall('audio')}
-            disabled={isStartingCall}
+            disabled={pendingCallType !== null}
             style={{
               width: 38,
               height: 38,
@@ -261,7 +266,7 @@ export default function ChatScreen() {
               borderColor: theme.border,
             }}
           >
-            {isStartingCall ? (
+            {pendingCallType === 'audio' ? (
               <ActivityIndicator size="small" color={theme.subtext} />
             ) : (
               <Phone size={17} color={theme.text} />
@@ -270,7 +275,7 @@ export default function ChatScreen() {
           <Pressable
             testID="video-call-button"
             onPress={() => startCall('video')}
-            disabled={isStartingCall}
+            disabled={pendingCallType !== null}
             style={{
               width: 38,
               height: 38,
@@ -282,7 +287,7 @@ export default function ChatScreen() {
               borderColor: theme.border,
             }}
           >
-            {isStartingCall ? (
+            {pendingCallType === 'video' ? (
               <ActivityIndicator size="small" color={theme.subtext} />
             ) : (
               <Video size={17} color={theme.text} />

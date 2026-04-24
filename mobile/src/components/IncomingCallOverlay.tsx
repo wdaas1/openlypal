@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Phone, PhoneOff, Video } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useAudioPlayer } from 'expo-audio';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -35,6 +36,7 @@ export function IncomingCallOverlay() {
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringtonePlayer = useAudioPlayer({ uri: 'https://www.soundjay.com/phone/sounds/phone-ringing-01a.mp3' });
 
   // Pulse animation for the avatar ring
   const pulseScale = useSharedValue(1);
@@ -111,6 +113,20 @@ export function IncomingCallOverlay() {
     };
   }, [session?.user]);
 
+  // Play ringtone while incoming call is ringing
+  useEffect(() => {
+    if (incomingCall) {
+      try {
+        ringtonePlayer.loop = true;
+        ringtonePlayer.play();
+      } catch {
+        // non-fatal if sound fails to load
+      }
+    } else {
+      try { ringtonePlayer.pause(); } catch {}
+    }
+  }, [!!incomingCall]);
+
   const handleAccept = async () => {
     if (!incomingCall || isAccepting) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -122,12 +138,6 @@ export function IncomingCallOverlay() {
     try {
       await callsApi.accept(incomingCall.id);
       const authToken = await getAccessToken() ?? '';
-
-      // Stop polling while in call
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
 
       setIncomingCall(null);
 
@@ -148,6 +158,7 @@ export function IncomingCallOverlay() {
   const handleDecline = async () => {
     if (!incomingCall) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    try { ringtonePlayer.pause(); } catch {}
     declineScale.value = withSpring(0.9, { damping: 8, stiffness: 300 }, () => {
       declineScale.value = withSpring(1, { damping: 8, stiffness: 200 });
     });
