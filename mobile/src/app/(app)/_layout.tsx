@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
 import { AppKeyboardProvider } from '@/lib/app-keyboard-provider';
-import { Home, Compass, PlusCircle, MessageSquare, User, Radio, Layers, Camera, Video, Users, X, Wrench } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Camera, Video, Users, X, Wrench } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -92,12 +92,12 @@ const TABS: TabConfig[] = [
     icon: () => null,
   },
   {
-    route: '/(app)/live-moments',
-    icon: (color, size) => <Radio size={size} color={color} />,
+    route: '/(app)/messenger',
+    icon: (color, size, isActive) => <ChatIcon color={color} size={size} isActive={isActive} />,
   },
   {
-    route: '/(app)/rooms',
-    icon: (color, size) => <Layers size={size} color={color} />,
+    route: '/(app)/profile',
+    icon: (color, size, isActive) => <User size={size} color={color} fill={isActive ? color : 'transparent'} />,
   },
 ];
 
@@ -488,8 +488,8 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
     if (pathname === '/' || pathname === '/index' || pathname.endsWith('/(app)')) return 0;
     if (pathname.includes('/explore')) return 1;
     if (pathname.includes('/create')) return 2;
-    if (pathname.includes('/live-moments')) return 3;
-    if (pathname.includes('/rooms')) return 4;
+    if (pathname.includes('/messenger')) return 3;
+    if (pathname.includes('/profile')) return 4;
     return -1;
   };
 
@@ -643,8 +643,8 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
                   const routeMap: Record<string, string> = {
                     '/(app)/index': '/',
                     '/(app)/explore': '/(app)/explore',
-                    '/(app)/live-moments': '/(app)/live-moments',
-                    '/(app)/rooms': '/(app)/rooms',
+                    '/(app)/messenger': '/(app)/messenger',
+                    '/(app)/profile': '/(app)/profile',
                   };
                   router.push(routeMap[tab.route] as any);
                 }}
