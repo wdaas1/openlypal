@@ -96,7 +96,7 @@ const TABS: TabConfig[] = [
     icon: (color, size, isActive) => <ChatIcon color={color} size={size} isActive={isActive} />,
   },
   {
-    route: '/(app)/create',
+    route: '/(app)/create-post',
     icon: (color, size) => <Edit3 size={size} color={color} />,
   },
 ];
@@ -643,7 +643,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
                     '/(app)/index': '/',
                     '/(app)/explore': '/(app)/explore',
                     '/(app)/messenger': '/(app)/messenger',
-                    '/(app)/create': '/(app)/create',
+                    '/(app)/create-post': '/(app)/create',
                   };
                   router.push(routeMap[tab.route] as any);
                 }}
