@@ -25,9 +25,7 @@ import Animated, {
   FadeInDown,
   FadeIn,
 } from 'react-native-reanimated';
-import { ArrowLeft, Eye, Send, StopCircle, Camera, Pin, Megaphone } from 'lucide-react-native';
-import Purchases from 'react-native-purchases';
-import * as Burnt from 'burnt';
+import { ArrowLeft, Eye, Send, StopCircle, Camera, Pin } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
@@ -630,11 +628,6 @@ export default function LiveMomentScreen() {
   const lastTypingSent = useRef<number>(0);
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
-  const [showBoostModal, setShowBoostModal] = useState(false);
-  const boostPurchasedThisSession = useRef(false);
-  const [boostPrice, setBoostPrice] = useState<string>('£9.99');
-  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
-
   const { data: moment, isLoading } = useQuery({
     queryKey: ['live-moment', momentId],
     queryFn: () => liveMomentsApi.getOne(momentId),
@@ -789,55 +782,6 @@ export default function LiveMomentScreen() {
     },
   });
   const endMoment = endMomentMutation.mutate;
-
-  // Calls the backend to record the boost and optimistically updates the UI
-  const activateBoost = useCallback(async (liveId: string, transactionId?: string) => {
-    const token = await getAccessToken();
-    const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-    await fetch(`${backendUrl}/api/boosts/live/${liveId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ transactionId }),
-    });
-
-    // Immediately update the cached moment so the UI reflects boosted state
-    const boostExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    queryClient.setQueryData(['live-moment', liveId], (old: any) =>
-      old ? { ...old, isBoosted: true, boostExpiresAt } : old
-    );
-    queryClient.invalidateQueries({ queryKey: ['live-moment', liveId] });
-    queryClient.invalidateQueries({ queryKey: ['live-moments'] });
-  }, [queryClient]);
-
-  const boostMutation = useMutation({
-    mutationFn: async () => {
-      if (moment?.isBoosted) throw new Error('Your live is already boosted.');
-      if (boostPurchasedThisSession.current) throw new Error('Boost already purchased this session.');
-      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
-      if (!apiKey) throw new Error('Boost not available yet. Please try again later.');
-      Purchases.configure({ apiKey, appUserID: session?.user?.id });
-      const offerings = await Purchases.getOfferings();
-      const pkg = offerings.current?.availablePackages.find(
-        (p) => p.product.identifier === 'boost_live_999'
-      );
-      if (!pkg) throw new Error('Boost not available yet. Please try again later.');
-      const result = await Purchases.purchasePackage(pkg);
-      const transactionId = (result as any).transaction?.transactionIdentifier ?? pkg.product.identifier;
-      boostPurchasedThisSession.current = true;
-      await activateBoost(momentId, transactionId);
-    },
-    onSuccess: () => {
-      setShowBoostModal(false);
-      Burnt.toast({ title: '🔥 Boost activated for 30 minutes', preset: 'done' });
-    },
-    onError: (err: Error) => {
-      setShowBoostModal(false);
-      Burnt.toast({ title: err.message ?? 'Boost failed. Please try again.', preset: 'error' });
-    },
-  });
 
   const { mutate: goLive, isPending: isGoingLive } = useMutation({
     mutationFn: () => liveMomentsApi.goLive(momentId),
@@ -1018,69 +962,27 @@ export default function LiveMomentScreen() {
               </Pressable>
             ))}
 
-            {isCreator && !isEnded && moment?.isLive ? (
-              moment?.isBoosted === true ? (
-                // Boost is active — show countdown, disable button
-                <View
-                  testID="boost-active-indicator"
-                  style={{
-                    marginLeft: 'auto',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 5,
-                    backgroundColor: 'rgba(245,158,11,0.1)',
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    borderWidth: 1,
-                    borderColor: 'rgba(245,158,11,0.25)',
-                  }}
-                >
-                  <Text style={{ fontSize: 11 }}>🔥</Text>
-                  <Text style={{ color: 'rgba(245,158,11,0.7)', fontSize: 11, fontWeight: '700' }}>
-                    {boostCountdown ?? 'Boosted'}
-                  </Text>
-                </View>
-              ) : (
-                // Not boosted — show PROMOTE button
-                <Pressable
-                  testID="promote-live-button"
-                  onPress={async () => {
-                    setShowBoostModal(true);
-                    try {
-                      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
-                      if (!apiKey) return;
-                      Purchases.configure({ apiKey, appUserID: session?.user?.id });
-                      const offerings = await Purchases.getOfferings();
-                      const pkg = offerings.current?.availablePackages.find(
-                        (p) => p.product.identifier === 'boost_live_999'
-                      );
-                      if (pkg?.product.priceString) {
-                        setBoostPrice(pkg.product.priceString);
-                      }
-                    } catch {
-                      // Non-fatal — modal already open, price stays at fallback
-                    }
-                  }}
-                  style={{
-                    marginLeft: 'auto',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 5,
-                    backgroundColor: 'rgba(245,158,11,0.15)',
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    borderWidth: 1,
-                    borderColor: 'rgba(245,158,11,0.35)',
-                  }}
-                >
-                  <Megaphone size={13} color="#f59e0b" />
-                  <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
-                    PROMOTE
-                  </Text>
-                </Pressable>
-              )
+            {isCreator && !isEnded && moment?.isLive && moment?.isBoosted === true ? (
+              <View
+                testID="boost-active-indicator"
+                style={{
+                  marginLeft: 'auto',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  backgroundColor: 'rgba(245,158,11,0.1)',
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(245,158,11,0.25)',
+                }}
+              >
+                <Text style={{ fontSize: 11 }}>🔥</Text>
+                <Text style={{ color: 'rgba(245,158,11,0.7)', fontSize: 11, fontWeight: '700' }}>
+                  {boostCountdown ?? 'Boosted'}
+                </Text>
+              </View>
             ) : null}
             {isCreator ? (
               <Pressable
@@ -1405,116 +1307,6 @@ export default function LiveMomentScreen() {
         {floatingReactionsOverlay}
         {endedOverlay}
 
-        {/* Boost Modal */}
-        {showBoostModal ? (
-          <View
-            style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 999,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: '#0a0a12',
-                borderRadius: 24,
-                padding: 28,
-                marginHorizontal: 28,
-                borderWidth: 1,
-                borderColor: 'rgba(245,158,11,0.25)',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 32, marginBottom: 8 }}>🔥</Text>
-              <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' }}>
-                Boost Your Live
-              </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
-                Boost increases the visibility of your live stream for 30 minutes. Results may vary.
-              </Text>
-              <Pressable
-                testID="boost-confirm-button"
-                onPress={() => boostMutation.mutate()}
-                disabled={boostMutation.isPending || isRestoringPurchases}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#f59e0b',
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  alignItems: 'center',
-                  marginBottom: 10,
-                }}
-              >
-                {boostMutation.isPending ? (
-                  <ActivityIndicator color="#000000" />
-                ) : (
-                  <Text style={{ color: '#000000', fontSize: 15, fontWeight: '800' }}>Boost for {boostPrice}</Text>
-                )}
-              </Pressable>
-              <Pressable
-                testID="boost-restore-button"
-                disabled={isRestoringPurchases || boostMutation.isPending}
-                onPress={async () => {
-                  setIsRestoringPurchases(true);
-                  try {
-                    const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
-                    if (!apiKey) throw new Error('Not available');
-                    Purchases.configure({ apiKey, appUserID: session?.user?.id });
-                    const customerInfo = await Purchases.restorePurchases();
-
-                    // Reapply boost if the product is in the restored purchase history
-                    const hadBoost =
-                      customerInfo.allPurchasedProductIdentifiers?.includes('boost_live_999') ?? false;
-
-                    if (hadBoost) {
-                      await activateBoost(momentId);
-                      setShowBoostModal(false);
-                      Burnt.toast({ title: '🔥 Your live is now boosted!', preset: 'done' });
-                    } else {
-                      Burnt.toast({ title: 'No boost to restore', preset: 'none' });
-                    }
-                  } catch {
-                    Burnt.toast({ title: 'Nothing to restore', preset: 'error' });
-                  } finally {
-                    setIsRestoringPurchases(false);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  borderRadius: 16,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                  marginBottom: 10,
-                }}
-              >
-                {isRestoringPurchases ? (
-                  <ActivityIndicator color="rgba(255,255,255,0.5)" />
-                ) : (
-                  <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '600' }}>Restore Purchases</Text>
-                )}
-              </Pressable>
-              <Pressable
-                testID="boost-cancel-button"
-                onPress={() => setShowBoostModal(false)}
-                style={{
-                  width: '100%',
-                  borderRadius: 16,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.07)',
-                }}
-              >
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, fontWeight: '600' }}>Cancel</Text>
-              </Pressable>
-              <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'center', marginTop: 12, lineHeight: 16 }}>
-                Payment charged to your Apple ID account. By purchasing you agree to our Terms of Use and Privacy Policy.
-              </Text>
-            </View>
-          </View>
-        ) : null}
       </View>
     );
   }
