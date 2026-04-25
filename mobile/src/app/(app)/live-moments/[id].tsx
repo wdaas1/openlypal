@@ -29,7 +29,13 @@ import Animated, {
 import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin, Megaphone } from 'lucide-react-native';
 import Purchases from 'react-native-purchases';
 import * as Burnt from 'burnt';
-import WebView, { type WebViewMessageEvent } from 'react-native-webview';
+import {
+  StreamCall,
+  ParticipantView,
+  useCallStateHooks,
+} from '@stream-io/video-react-native-sdk';
+import type { Call } from '@stream-io/video-react-native-sdk';
+import { useStreamClient } from '@/lib/stream-client';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -611,6 +617,40 @@ function ViewerCountDisplay({ count }: { count: number }) {
 
 type SystemMsg = { id: string; content: string; createdAt: number; isSystem: true };
 
+function HostVideoView({ facingFront }: { facingFront: boolean }) {
+  const { useLocalParticipant } = useCallStateHooks();
+  const localParticipant = useLocalParticipant();
+  if (!localParticipant) return null;
+  return (
+    <ParticipantView
+      participant={localParticipant}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+    />
+  );
+}
+
+function AudienceVideoView() {
+  const { useRemoteParticipants } = useCallStateHooks();
+  const remoteParticipants = useRemoteParticipants();
+  const host = remoteParticipants[0];
+  if (!host) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000d1a' }}>
+        <Text style={{ fontSize: 36, marginBottom: 10 }}>📡</Text>
+        <Text style={{ color: 'rgba(0,207,53,0.7)', fontSize: 13, fontWeight: '700', letterSpacing: 1 }}>
+          WAITING FOR HOST
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <ParticipantView
+      participant={host}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+    />
+  );
+}
+
 export default function LiveMomentScreen() {
   const { id: momentId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -633,9 +673,8 @@ export default function LiveMomentScreen() {
   const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingSent = useRef<number>(0);
-  const [streamToken, setStreamToken] = useState<string | null>(null);
-  const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
-  const [streamCallId, setStreamCallId] = useState<string | null>(null);
+  const [streamCall, setStreamCall] = useState<Call | null>(null);
+  const streamClient = useStreamClient();
   const [isStartingStream, setIsStartingStream] = useState(false);
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
@@ -932,67 +971,49 @@ export default function LiveMomentScreen() {
   }, []);
 
   const handleGoLive = useCallback(async () => {
+    if (!streamClient) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsStartingStream(true);
     try {
-      console.log('[LiveKit] handleGoLive: permissions already requested on mount.');
-
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
-      console.log('[LiveKit] Fetching publisher token for moment:', momentId);
-      const res = await fetch(`${backendUrl}/api/stream/live-token`, {
-        method: 'POST',
+      const res = await fetch(`${backendUrl}/api/live-moments/${momentId}/stream-token`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ momentId: momentId, role: 'publisher' }),
       });
-      if (res.ok) {
-        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
-        console.log('[LiveKit] Token received, callId:', json.data.callId);
-        setStreamToken(json.data.token);
-        setStreamApiKey(json.data.apiKey);
-        setStreamCallId(json.data.callId);
-        // Optimistically mark as live so the WebView renders immediately
-        // without waiting for the 3-second polling cycle
-        queryClient.setQueryData(['live-moment', momentId], (old: any) =>
-          old ? { ...old, isLive: true } : old
-        );
-      } else {
-        console.warn('[LiveKit] Token fetch failed:', res.status);
-      }
+      if (!res.ok) throw new Error('Failed to get stream token');
+      const json = await res.json() as { data: { callId: string } };
+      const call = streamClient.call('livestream', json.data.callId);
+      await call.getOrCreate();
+      await call.join({ create: true });
+      call.camera.enable();
+      call.microphone.enable();
+      await call.goLive();
+      setStreamCall(call);
+      queryClient.setQueryData(['live-moment', momentId], (old: any) =>
+        old ? { ...old, isLive: true } : old
+      );
       goLive();
     } catch (e) {
-      console.warn('[LiveKit] handleGoLive error:', e);
+      console.warn('[Stream] handleGoLive error:', e);
       goLive();
     } finally {
       setIsStartingStream(false);
     }
-  }, [momentId, goLive, queryClient]);
+  }, [momentId, streamClient, goLive, queryClient]);
 
   const handleJoinStream = useCallback(async () => {
+    if (!streamClient) return;
     try {
-      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAccessToken();
-      const res = await fetch(`${backendUrl}/api/stream/live-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ momentId: momentId, role: 'viewer' }),
-      });
-      if (res.ok) {
-        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
-        setStreamToken(json.data.token);
-        setStreamApiKey(json.data.apiKey);
-        setStreamCallId(json.data.callId);
-      }
-    } catch {
-      // ignore
+      const call = streamClient.call('livestream', momentId);
+      await call.join();
+      setStreamCall(call);
+    } catch (e) {
+      console.warn('[Stream] handleJoinStream error:', e);
     }
-  }, [momentId]);
+  }, [momentId, streamClient]);
 
   const handlePickMedia = useCallback(() => {
     showMediaPicker({
@@ -1051,12 +1072,26 @@ export default function LiveMomentScreen() {
   const boostCountdown = useBoostCountdown(moment?.boostExpiresAt);
   const isNotLive = !moment?.isLive;
 
+  // Cleanup stream call on unmount
+  useEffect(() => {
+    return () => {
+      streamCall?.leave().catch(() => {});
+    };
+  }, [streamCall]);
+
+  // Leave stream when moment ends
+  useEffect(() => {
+    if (isEnded && streamCall) {
+      streamCall.leave().catch(() => {});
+    }
+  }, [isEnded, streamCall]);
+
   // Auto-join viewers when the stream goes live so they don't need to tap manually
   useEffect(() => {
-    if (!isCreator && !isNotLive && !streamToken && !isEnded && momentId) {
+    if (!isCreator && !isNotLive && !streamCall && !isEnded && momentId) {
       handleJoinStream();
     }
-  }, [isCreator, isNotLive, streamToken, isEnded, momentId, handleJoinStream]);
+  }, [isCreator, isNotLive, streamCall, isEnded, momentId, handleJoinStream]);
 
   if (isLoading || !moment) {
     return (
@@ -1072,11 +1107,6 @@ export default function LiveMomentScreen() {
       </View>
     );
   }
-
-  const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-  const streamUrl = streamToken && streamApiKey && streamCallId
-    ? `${backendBaseUrl}/stream-room/${streamCallId}?token=${encodeURIComponent(streamToken)}&apiKey=${encodeURIComponent(streamApiKey)}&userId=${encodeURIComponent(session?.user?.id ?? '')}&userName=${encodeURIComponent((session?.user as any)?.name ?? 'User')}&role=${isCreator ? 'publisher' : 'viewer'}`
-    : null;
 
   // Bottom bar shared between creator and viewer
   const bottomBar = !isEnded ? (
@@ -1445,46 +1475,10 @@ export default function LiveMomentScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
         {/* Full-screen stream or camera preview */}
-        {streamUrl && !isNotLive ? (
-          <WebView
-            source={{ uri: streamUrl }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsFullscreenVideo={false}
-            mediaCapturePermissionGrantType="grant"
-            allowsAirPlayForMediaPlayback={true}
-            originWhitelist={['*']}
-            mixedContentMode="always"
-            onMessage={(event: WebViewMessageEvent) => {
-              console.log('[LiveKit WebView]', event.nativeEvent.data);
-            }}
-            injectedJavaScript={`
-              (function() {
-                var origLog = console.log;
-                var origWarn = console.warn;
-                var origError = console.error;
-                console.log = function() {
-                  window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
-                  origLog.apply(console, arguments);
-                };
-                console.warn = function() {
-                  window.ReactNativeWebView.postMessage('[WARN] ' + Array.from(arguments).join(' '));
-                  origWarn.apply(console, arguments);
-                };
-                console.error = function() {
-                  window.ReactNativeWebView.postMessage('[ERROR] ' + Array.from(arguments).join(' '));
-                  origError.apply(console, arguments);
-                };
-                window.onerror = function(msg, src, line) {
-                  window.ReactNativeWebView.postMessage('[JSERROR] ' + msg + ' at ' + src + ':' + line);
-                };
-              })();
-              true;
-            `}
-          />
+        {streamCall && !isNotLive ? (
+          <StreamCall call={streamCall}>
+            <HostVideoView facingFront={facingFront} />
+          </StreamCall>
         ) : cameraReady ? (
           <CameraView
             key={cameraReady ? 'camera-on' : 'camera-off'}
@@ -1752,50 +1746,11 @@ export default function LiveMomentScreen() {
         <LiveContentArea media={latestMedia} isLive={!isNotLive} />
       </View>
 
-      {/* Stream WebView over content area if active */}
-      {streamUrl ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: CONTENT_AREA_HEIGHT + 60,
-            overflow: 'hidden',
-          }}
-        >
-          <WebView
-            testID="stream-webview"
-            source={{ uri: streamUrl }}
-            style={{ flex: 1 }}
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsFullscreenVideo={false}
-            mediaCapturePermissionGrantType="grant"
-            allowsAirPlayForMediaPlayback={true}
-            originWhitelist={['*']}
-            mixedContentMode="always"
-            onMessage={(event: WebViewMessageEvent) => {
-              console.log('[LiveKit WebView viewer]', event.nativeEvent.data);
-            }}
-            injectedJavaScript={`
-              (function() {
-                var origLog = console.log;
-                console.log = function() {
-                  window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
-                  origLog.apply(console, arguments);
-                };
-              })();
-              true;
-            `}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
-            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80 }}
-          />
-        </View>
+      {/* Stream video over content area if active */}
+      {streamCall ? (
+        <StreamCall call={streamCall}>
+          <AudienceVideoView />
+        </StreamCall>
       ) : null}
 
       {/* Dark gradient from content to chat */}
@@ -1883,8 +1838,8 @@ export default function LiveMomentScreen() {
         {/* Spacer for content area */}
         <View style={{ height: CONTENT_AREA_HEIGHT - 80 }} />
 
-        {/* Stream join button (if live but no stream token) */}
-        {!isEnded && !isNotLive && !streamToken ? (
+        {/* Stream join button (if live but no stream call yet) */}
+        {!isEnded && !isNotLive && !streamCall ? (
           <View style={{ alignItems: 'center', paddingVertical: 8 }}>
             <Pressable
               onPress={handleJoinStream}

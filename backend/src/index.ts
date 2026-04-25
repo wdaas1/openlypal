@@ -19,7 +19,6 @@ import { profileModulesRouter } from "./routes/profile-modules";
 import { roomsRouter } from "./routes/rooms";
 import { adsRouter } from "./routes/ads";
 import { appRouter } from "./routes/app";
-import { streamingRouter } from "./routes/streaming";
 import { advertiserRouter } from "./routes/advertiser";
 import { boostsRouter } from "./routes/boosts";
 import { callsRouter } from "./routes/calls";
@@ -276,8 +275,6 @@ app.get("/", (c) => {
 </html>`;
   return c.html(html);
 });
-
-app.route("/", streamingRouter);
 
 // Allowed MIME types for uploads
 const ALLOWED_MIME_TYPES = new Set([

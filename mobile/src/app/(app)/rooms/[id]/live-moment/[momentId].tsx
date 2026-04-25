@@ -25,7 +25,13 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera } from 'lucide-react-native';
-import WebView, { type WebViewMessageEvent } from 'react-native-webview';
+import {
+  StreamCall,
+  ParticipantView,
+  useCallStateHooks,
+} from '@stream-io/video-react-native-sdk';
+import type { Call } from '@stream-io/video-react-native-sdk';
+import { useStreamClient } from '@/lib/stream-client';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -400,9 +406,8 @@ export default function LiveMomentRoomScreen() {
   const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingSent = useRef<number>(0);
-  const [streamToken, setStreamToken] = useState<string | null>(null);
-  const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
-  const [streamCallId, setStreamCallId] = useState<string | null>(null);
+  const [streamCall, setStreamCall] = useState<Call | null>(null);
+  const streamClient = useStreamClient();
   const [isStartingStream, setIsStartingStream] = useState(false);
 
   const { data: moment, isLoading } = useQuery({
@@ -603,40 +608,35 @@ export default function LiveMomentRoomScreen() {
   }, []);
 
   const handleGoLive = useCallback(async () => {
+    if (!streamClient) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsStartingStream(true);
     try {
-      console.log('[LiveKit] handleGoLive: requesting permissions...');
-      await requestStreamPermissions();
-
       const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
       const token = await getAccessToken();
-      console.log('[LiveKit] Fetching publisher token for moment:', momentId);
-      const res = await fetch(`${backendUrl}/api/livekit/token`, {
-        method: 'POST',
+      const res = await fetch(`${backendUrl}/api/live-moments/${momentId}/stream-token`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ momentId: momentId, role: 'publisher' }),
       });
-      if (res.ok) {
-        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
-        console.log('[Stream] Token received, callId:', json.data.callId);
-        setStreamToken(json.data.token);
-        setStreamApiKey(json.data.apiKey);
-        setStreamCallId(json.data.callId);
-      } else {
-        console.warn('[Stream] Token fetch failed:', res.status);
-      }
+      if (!res.ok) throw new Error('Failed to get stream token');
+      const json = await res.json() as { data: { callId: string } };
+      const call = streamClient.call('livestream', json.data.callId);
+      await call.getOrCreate();
+      await call.join({ create: true });
+      call.camera.enable();
+      call.microphone.enable();
+      await call.goLive();
+      setStreamCall(call);
       goLive();
     } catch (e) {
-      console.warn('[LiveKit] handleGoLive error:', e);
+      console.warn('[Stream] handleGoLive error:', e);
       goLive();
     } finally {
       setIsStartingStream(false);
     }
-  }, [momentId, goLive]);
+  }, [momentId, streamClient, goLive]);
 
   const handleJoinStream = useCallback(async () => {
     try {

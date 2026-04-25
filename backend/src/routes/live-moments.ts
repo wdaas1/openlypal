@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../prisma";
 import { wsManager } from "../ws-manager";
 import { sendPushNotification } from "../lib/push-notifications";
+import { env } from "../env";
 
 type Variables = {
   user: { id: string; name: string; email: string; image?: string | null } | null;
@@ -768,6 +769,61 @@ liveMomentsRouter.post("/:id/restart", async (c) => {
 
   const formatted = await formatMoment(newMoment);
   return c.json({ data: formatted }, 201);
+});
+
+// ─── GET /api/live-moments/:id/stream-token ───────────────────────────────
+// Returns a Stream Video token for a live moment (creator = host, invited = audience)
+liveMomentsRouter.get("/:id/stream-token", async (c) => {
+  const user = requireAuth(c);
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  if (!env.STREAM_API_KEY || !env.STREAM_API_SECRET) {
+    return c.json({ error: { message: "Stream not configured" } }, 503);
+  }
+
+  const { id } = c.req.param();
+
+  const moment = await prisma.liveMoment.findUnique({
+    where: { id },
+    select: { id: true, creatorId: true, invitedUserIds: true, status: true },
+  });
+
+  if (!moment || moment.status === "ended") {
+    return c.json({ error: { message: "Moment not found or has ended", code: "NOT_FOUND" } }, 404);
+  }
+
+  const isCreator = moment.creatorId === user.id;
+  const invitedIds = parseJsonArray(moment.invitedUserIds);
+  const isInvited = invitedIds.includes(user.id);
+
+  if (!isCreator && !isInvited) {
+    return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+  }
+
+  const { StreamClient } = await import("@stream-io/node-sdk");
+  const streamClient = new StreamClient(env.STREAM_API_KEY, env.STREAM_API_SECRET);
+
+  const call = streamClient.video.call("livestream", moment.id);
+  await call.getOrCreate({
+    data: {
+      created_by_id: moment.creatorId,
+      members: [{ user_id: user.id, role: isCreator ? "host" : "audience" }],
+    },
+  });
+
+  const token = streamClient.generateUserToken({ user_id: user.id });
+
+  return c.json({
+    data: {
+      token,
+      apiKey: env.STREAM_API_KEY,
+      callId: moment.id,
+      callType: "livestream",
+      role: isCreator ? "host" : "audience",
+    },
+  });
 });
 
 export { liveMomentsRouter };
