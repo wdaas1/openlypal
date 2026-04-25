@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
 import { AppKeyboardProvider } from '@/lib/app-keyboard-provider';
-import { Home, Compass, PlusCircle, MessageSquare, User, Camera, Video, Users, X, Wrench, Edit3 } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Video, Users, X, Wrench, Edit3 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -220,13 +220,6 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
 
   const actions = [
     {
-      testID: 'create-modal-post',
-      icon: <Camera size={18} color="#00CF35" />,
-      label: 'Post',
-      sub: 'Share a photo or video',
-      onPress: () => navigate('/(app)/create'),
-    },
-    {
       testID: 'create-modal-live',
       icon: <Video size={18} color="#00CF35" />,
       label: 'Go Live',
@@ -239,13 +232,6 @@ function CreateModal({ visible, onClose, translateY, backdropOpacity }: CreateMo
       label: 'Create Room',
       sub: 'Start a group space',
       onPress: () => navigate('/(app)/rooms'),
-    },
-    {
-      testID: 'create-modal-message',
-      icon: <MessageSquare size={18} color="#00CF35" />,
-      label: 'Message',
-      sub: 'Send a direct message',
-      onPress: () => navigate('/(app)/messenger'),
     },
     {
       testID: 'create-modal-profile',
