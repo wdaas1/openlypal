@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { View, Pressable, Text, LayoutChangeEvent, StyleSheet, Modal } from 'react-native';
 import { AppKeyboardProvider } from '@/lib/app-keyboard-provider';
-import { Home, Compass, PlusCircle, MessageSquare, User, Camera, Video, Users, X, Wrench } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageSquare, User, Camera, Video, Users, X, Wrench, Edit3 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -96,8 +96,8 @@ const TABS: TabConfig[] = [
     icon: (color, size, isActive) => <ChatIcon color={color} size={size} isActive={isActive} />,
   },
   {
-    route: '/(app)/profile',
-    icon: (color, size, isActive) => <User size={size} color={color} fill={isActive ? color : 'transparent'} />,
+    route: '/(app)/create',
+    icon: (color, size) => <Edit3 size={size} color={color} />,
   },
 ];
 
@@ -487,9 +487,8 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   const getActiveIndex = () => {
     if (pathname === '/' || pathname === '/index' || pathname.endsWith('/(app)')) return 0;
     if (pathname.includes('/explore')) return 1;
-    if (pathname.includes('/create')) return 2;
     if (pathname.includes('/messenger')) return 3;
-    if (pathname.includes('/profile')) return 4;
+    if (pathname.includes('/create')) return 4;
     return -1;
   };
 
@@ -499,7 +498,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   const PILL_WIDTH = 46;
 
   React.useEffect(() => {
-    const isCenter = activeIndex === 2;
+    const isCenter = false;
     const isValid = activeIndex !== -1 && !isCenter;
 
     if (isValid && barWidthRef.current > 0) {
@@ -528,7 +527,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
   const handleLayout = (e: LayoutChangeEvent) => {
     const width = e.nativeEvent.layout.width;
     barWidthRef.current = width;
-    const isCenter = activeIndex === 2;
+    const isCenter = false;
     const isValid = activeIndex !== -1 && !isCenter;
     if (isValid && width > 0) {
       const slotWidth = width / 5;
@@ -644,7 +643,7 @@ function FloatingTabBar({ onOpenModal }: FloatingTabBarProps) {
                     '/(app)/index': '/',
                     '/(app)/explore': '/(app)/explore',
                     '/(app)/messenger': '/(app)/messenger',
-                    '/(app)/profile': '/(app)/profile',
+                    '/(app)/create': '/(app)/create',
                   };
                   router.push(routeMap[tab.route] as any);
                 }}
