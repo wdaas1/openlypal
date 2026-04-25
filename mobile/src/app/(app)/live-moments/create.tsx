@@ -373,17 +373,19 @@ export default function CreateMomentScreen() {
             testID="go-live-button"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              router.push('/(app)/live-moments/coming-soon' as any);
+              createMutation.mutate();
             }}
+            disabled={!canGoLive}
             style={{
               borderRadius: 20,
               overflow: 'hidden',
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.2,
+              shadowOpacity: canGoLive ? 0.2 : 0,
               shadowRadius: 5,
-              elevation: 12,
+              elevation: canGoLive ? 12 : 0,
               marginTop: 8,
+              opacity: canGoLive ? 1 : 0.4,
             }}
           >
             <LinearGradient

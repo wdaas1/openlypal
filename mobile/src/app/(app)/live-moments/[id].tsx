@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -26,18 +25,10 @@ import Animated, {
   FadeInDown,
   FadeIn,
 } from 'react-native-reanimated';
-import { ArrowLeft, Eye, Send, StopCircle, FlipHorizontal, Camera, Pin, Megaphone } from 'lucide-react-native';
+import { ArrowLeft, Eye, Send, StopCircle, Camera, Pin, Megaphone } from 'lucide-react-native';
 import Purchases from 'react-native-purchases';
 import * as Burnt from 'burnt';
-import {
-  StreamCall,
-  ParticipantView,
-  useCallStateHooks,
-} from '@stream-io/video-react-native-sdk';
-import type { Call } from '@stream-io/video-react-native-sdk';
-import { useStreamClient } from '@/lib/stream-client';
 import * as Haptics from 'expo-haptics';
-import { CameraView, useCameraPermissions, Camera as ExpoCamera } from 'expo-camera';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { liveMomentsApi } from '@/lib/api/live-moments';
 import { useSession } from '@/lib/auth/use-session';
@@ -617,40 +608,6 @@ function ViewerCountDisplay({ count }: { count: number }) {
 
 type SystemMsg = { id: string; content: string; createdAt: number; isSystem: true };
 
-function HostVideoView({ facingFront }: { facingFront: boolean }) {
-  const { useLocalParticipant } = useCallStateHooks();
-  const localParticipant = useLocalParticipant();
-  if (!localParticipant) return null;
-  return (
-    <ParticipantView
-      participant={localParticipant}
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-    />
-  );
-}
-
-function AudienceVideoView() {
-  const { useRemoteParticipants } = useCallStateHooks();
-  const remoteParticipants = useRemoteParticipants();
-  const host = remoteParticipants[0];
-  if (!host) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000d1a' }}>
-        <Text style={{ fontSize: 36, marginBottom: 10 }}>📡</Text>
-        <Text style={{ color: 'rgba(0,207,53,0.7)', fontSize: 13, fontWeight: '700', letterSpacing: 1 }}>
-          WAITING FOR HOST
-        </Text>
-      </View>
-    );
-  }
-  return (
-    <ParticipantView
-      participant={host}
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-    />
-  );
-}
-
 export default function LiveMomentScreen() {
   const { id: momentId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -667,42 +624,16 @@ export default function LiveMomentScreen() {
   const reactionCounter = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
   const [timeRemaining, setTimeRemaining] = useState('');
-  const [facingFront, setFacingFront] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingSent = useRef<number>(0);
-  const [streamCall, setStreamCall] = useState<Call | null>(null);
-  const streamClient = useStreamClient();
-  const [isStartingStream, setIsStartingStream] = useState(false);
   const [systemMessages, setSystemMessages] = useState<SystemMsg[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<LiveMomentMessage | null>(null);
   const [showBoostModal, setShowBoostModal] = useState(false);
   const boostPurchasedThisSession = useRef(false);
   const [boostPrice, setBoostPrice] = useState<string>('£9.99');
   const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [cameraFailed, setCameraFailed] = useState(false);
-  const cameraPermissionRequested = useRef(false);
-  const isFocused = useIsFocused();
-
-  // Request camera + microphone permissions once on mount (creator only)
-  useEffect(() => {
-    if (cameraPermissionRequested.current) return;
-    cameraPermissionRequested.current = true;
-
-    const requestPerms = async () => {
-      console.log('Requesting camera permission');
-      // Use hook updater so cameraPermission state syncs after grant/deny
-      const camResult = await requestCameraPermission();
-      await ExpoCamera.requestMicrophonePermissionsAsync();
-      const granted = camResult?.granted === true;
-      console.log(granted ? 'Permission granted' : 'Permission denied');
-    };
-
-    requestPerms();
-  }, [requestCameraPermission]);
 
   const { data: moment, isLoading } = useQuery({
     queryKey: ['live-moment', momentId],
@@ -753,7 +684,7 @@ export default function LiveMomentScreen() {
       ws = new WebSocket(`${wsUrl}/ws/live-moments/${momentId}?token=${encodeURIComponent(token)}`);
       wsRef.current = ws;
 
-      ws.onopen = () => setWsConnected(true);
+      ws.onopen = () => {};
 
       ws.onmessage = (e) => {
         try {
@@ -802,12 +733,9 @@ export default function LiveMomentScreen() {
       };
 
       ws.onclose = () => {
-        setWsConnected(false);
         wsRef.current = null;
       };
-      ws.onerror = () => {
-        setWsConnected(false);
-      };
+      ws.onerror = () => {};
     };
 
     connect();
@@ -965,55 +893,10 @@ export default function LiveMomentScreen() {
     endMoment();
   }, [endMoment]);
 
-  const handleFlipCamera = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setFacingFront((prev) => !prev);
-  }, []);
-
-  const handleGoLive = useCallback(async () => {
-    if (!streamClient) return;
+  const handleGoLive = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setIsStartingStream(true);
-    try {
-      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAccessToken();
-      const res = await fetch(`${backendUrl}/api/live-moments/${momentId}/stream-token`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!res.ok) throw new Error('Failed to get stream token');
-      const json = await res.json() as { data: { callId: string } };
-      const call = streamClient.call('livestream', json.data.callId);
-      await call.getOrCreate();
-      await call.join({ create: true });
-      call.camera.enable();
-      call.microphone.enable();
-      await call.goLive();
-      setStreamCall(call);
-      queryClient.setQueryData(['live-moment', momentId], (old: any) =>
-        old ? { ...old, isLive: true } : old
-      );
-      goLive();
-    } catch (e) {
-      console.warn('[Stream] handleGoLive error:', e);
-      goLive();
-    } finally {
-      setIsStartingStream(false);
-    }
-  }, [momentId, streamClient, goLive, queryClient]);
-
-  const handleJoinStream = useCallback(async () => {
-    if (!streamClient) return;
-    try {
-      const call = streamClient.call('livestream', momentId);
-      await call.join();
-      setStreamCall(call);
-    } catch (e) {
-      console.warn('[Stream] handleJoinStream error:', e);
-    }
-  }, [momentId, streamClient]);
+    goLive();
+  }, [goLive]);
 
   const handlePickMedia = useCallback(() => {
     showMediaPicker({
@@ -1071,27 +954,6 @@ export default function LiveMomentScreen() {
   const displayViewerCount = moment?.viewerCount ?? 0;
   const boostCountdown = useBoostCountdown(moment?.boostExpiresAt);
   const isNotLive = !moment?.isLive;
-
-  // Cleanup stream call on unmount
-  useEffect(() => {
-    return () => {
-      streamCall?.leave().catch(() => {});
-    };
-  }, [streamCall]);
-
-  // Leave stream when moment ends
-  useEffect(() => {
-    if (isEnded && streamCall) {
-      streamCall.leave().catch(() => {});
-    }
-  }, [isEnded, streamCall]);
-
-  // Auto-join viewers when the stream goes live so they don't need to tap manually
-  useEffect(() => {
-    if (!isCreator && !isNotLive && !streamCall && !isEnded && momentId) {
-      handleJoinStream();
-    }
-  }, [isCreator, isNotLive, streamCall, isEnded, momentId, handleJoinStream]);
 
   if (isLoading || !moment) {
     return (
@@ -1419,96 +1281,29 @@ export default function LiveMomentScreen() {
 
   // ─── CREATOR LAYOUT ──────────────────────────────────────────────────────
   if (isCreator) {
-    const cameraGranted = cameraPermission?.granted === true;
-    const cameraReady = cameraGranted && isFocused;
-
-    // Still checking permissions — show loading to avoid blank camera
-    if (cameraPermission === null) {
-      return (
-        <View style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color="#00CF35" size="large" testID="camera-permission-loading" />
-        </View>
-      );
-    }
-
-    // Permission denied screen
-    if (!cameraGranted) {
-      return (
-        <View
-          testID="permission-denied-screen"
-          style={{ flex: 1, backgroundColor: '#000d1a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}
-        >
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>📷</Text>
-          <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '900', textAlign: 'center', marginBottom: 12 }}>
-            Camera access required to go live
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 32 }}>
-            Allow camera and microphone access so your viewers can see and hear you.
-          </Text>
-          <Pressable
-            testID="enable-camera-button"
-            onPress={async () => {
-              console.log('Requesting camera permission');
-              const camResult = await requestCameraPermission();
-              await ExpoCamera.requestMicrophonePermissionsAsync();
-              const granted = camResult?.granted === true;
-              console.log(granted ? 'Permission granted' : 'Permission denied');
-            }}
-            style={{
-              backgroundColor: '#00CF35',
-              paddingHorizontal: 32,
-              paddingVertical: 14,
-              borderRadius: 30,
-              shadowColor: '#00CF35',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 10,
-            }}
-          >
-            <Text style={{ color: '#001935', fontSize: 16, fontWeight: '900' }}>Enable Camera</Text>
-          </Pressable>
-        </View>
-      );
-    }
-
     return (
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {/* Full-screen stream or camera preview */}
-        {streamCall && !isNotLive ? (
-          <StreamCall call={streamCall}>
-            <HostVideoView facingFront={facingFront} />
-          </StreamCall>
-        ) : cameraReady ? (
-          <CameraView
-            key={cameraReady ? 'camera-on' : 'camera-off'}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            facing={facingFront ? 'front' : 'back'}
-            onCameraReady={() => console.log('Permission granted')}
-            onMountError={() => setCameraFailed(true)}
-          >
-            {cameraFailed ? (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' }}>
-                  Camera failed to initialize
-                </Text>
-              </View>
-            ) : null}
-          </CameraView>
-        ) : (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: '#0a0a12',
-            }}
-          />
-        )}
+      <View style={{ flex: 1, backgroundColor: '#000d1a' }}>
+        {/* Dark gradient background */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.65)', 'transparent', 'rgba(0,0,0,0.8)']}
+          colors={['#000d1a', '#001025', '#000d1a']}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+
+        {/* Broadcast visualization */}
+        {!isEnded ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 120 }}>
+            {isNotLive ? (
+              // Not yet live — pulsing satellite icon
+              <BroadcastIdleAnimation />
+            ) : (
+              // Live — green glow indicator
+              <LiveBroadcastAnimation />
+            )}
+          </View>
+        ) : null}
+
+        <LinearGradient
+          colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.8)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
 
@@ -1568,20 +1363,6 @@ export default function LiveMomentScreen() {
               ) : (
                 <LiveBadge />
               )}
-              <Pressable
-                testID="flip-camera-button"
-                onPress={handleFlipCamera}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <FlipHorizontal size={18} color="rgba(255,255,255,0.9)" />
-              </Pressable>
             </View>
           </View>
 
@@ -1603,7 +1384,7 @@ export default function LiveMomentScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center' }}>
                 Tap to start broadcasting to your viewers
               </Text>
-              <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive || isStartingStream} />
+              <GoLivePulseButton onPress={handleGoLive} isPending={isGoingLive} />
             </View>
           ) : null}
 
@@ -1746,13 +1527,6 @@ export default function LiveMomentScreen() {
         <LiveContentArea media={latestMedia} isLive={!isNotLive} />
       </View>
 
-      {/* Stream video over content area if active */}
-      {streamCall ? (
-        <StreamCall call={streamCall}>
-          <AudienceVideoView />
-        </StreamCall>
-      ) : null}
-
       {/* Dark gradient from content to chat */}
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.95)']}
@@ -1838,28 +1612,6 @@ export default function LiveMomentScreen() {
         {/* Spacer for content area */}
         <View style={{ height: CONTENT_AREA_HEIGHT - 80 }} />
 
-        {/* Stream join button (if live but no stream call yet) */}
-        {!isEnded && !isNotLive && !streamCall ? (
-          <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-            <Pressable
-              onPress={handleJoinStream}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: 'rgba(255,59,48,0.85)',
-                paddingHorizontal: 20,
-                paddingVertical: 9,
-                borderRadius: 24,
-              }}
-            >
-              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 1 }}>
-                JOIN LIVE VIDEO
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         {/* Chat area - semi-transparent over dark bg */}
         <View
           style={{
@@ -1877,6 +1629,95 @@ export default function LiveMomentScreen() {
 
       {floatingReactionsOverlay}
       {endedOverlay}
+    </View>
+  );
+}
+
+// ─── Creator background animations ───────────────────────────────────────────
+
+function BroadcastIdleAnimation() {
+  const pulse = useSharedValue(1);
+  const opacity = useSharedValue(0.5);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(withTiming(1.15, { duration: 900 }), withTiming(1, { duration: 900 })),
+      -1,
+      false
+    );
+    opacity.value = withRepeat(
+      withSequence(withTiming(1, { duration: 900 }), withTiming(0.5, { duration: 900 })),
+      -1,
+      false
+    );
+  }, [pulse, opacity]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Animated.View style={pulseStyle}>
+        <Text style={{ fontSize: 56 }}>📡</Text>
+      </Animated.View>
+      <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13, fontWeight: '700', letterSpacing: 1.5, marginTop: 14 }}>
+        READY TO GO LIVE
+      </Text>
+    </View>
+  );
+}
+
+function LiveBroadcastAnimation() {
+  const glow = useSharedValue(0.5);
+
+  useEffect(() => {
+    glow.value = withRepeat(
+      withSequence(withTiming(1, { duration: 700 }), withTiming(0.5, { duration: 700 })),
+      -1,
+      false
+    );
+  }, [glow]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glow.value,
+  }));
+
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Animated.View
+        style={[
+          glowStyle,
+          {
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: 'rgba(0,207,53,0.15)',
+            borderWidth: 2,
+            borderColor: 'rgba(0,207,53,0.5)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#00CF35',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.6,
+            shadowRadius: 20,
+            elevation: 10,
+          },
+        ]}
+      >
+        <View
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: '#00CF35',
+          }}
+        />
+      </Animated.View>
+      <Text style={{ color: 'rgba(0,207,53,0.8)', fontSize: 13, fontWeight: '900', letterSpacing: 2, marginTop: 16 }}>
+        LIVE
+      </Text>
     </View>
   );
 }
