@@ -98,7 +98,15 @@ callsRouter.post("/", requireAuth, async (c) => {
         callee.pushToken,
         `${user.name} is calling`,
         type === "video" ? "Incoming video call" : "Incoming voice call",
-        { type: "incoming_call", callId: call.id }
+        {
+          type: "incoming_call",
+          callId: call.id,
+          callerId: user.id,
+          callerName: user.name ?? user.username ?? "",
+          callerUsername: user.username ?? "",
+          callerAvatar: user.image ?? null,
+          callType: type,
+        }
       );
     } catch {
       // Non-fatal

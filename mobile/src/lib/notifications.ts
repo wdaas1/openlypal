@@ -139,7 +139,15 @@ function handleNotificationNavigation(
       if (data.senderId) navigate(`/(app)/messenger/${data.senderId}`);
       break;
     case 'incoming_call':
-      if (data.callId) navigate(`/(app)/call/${data.callId}`);
+      if (data.callId) {
+        const params = new URLSearchParams({ role: 'callee' });
+        if (data.callerName) params.set('callerName', String(data.callerName));
+        if (data.callerUsername) params.set('callerUsername', String(data.callerUsername));
+        if (data.callerAvatar) params.set('callerAvatar', String(data.callerAvatar));
+        if (data.callType) params.set('callType', String(data.callType));
+        if (data.callerId) params.set('callerId', String(data.callerId));
+        navigate(`/(app)/call/${data.callId}?${params.toString()}`);
+      }
       break;
     case 'follow':
       if (data.userId) navigate(`/(app)/user/${data.userId}`);
@@ -151,9 +159,14 @@ export function setupNotificationListeners(navigate: NavigateFn): () => void {
   // Fired when a notification is received while the app is in the foreground
   const receivedSubscription = Notifications.addNotificationReceivedListener(
     (notification) => {
+      const data = notification.request.content.data as Record<string, unknown>;
+      // For incoming calls, navigate immediately instead of showing a toast
+      if (data?.type === 'incoming_call') {
+        handleNotificationNavigation(data, navigate);
+        return;
+      }
       const title = notification.request.content.title ?? 'New notification';
       const body = notification.request.content.body ?? '';
-
       showForegroundToast(title, body);
     }
   );
