@@ -61,7 +61,7 @@ async function requestStreamPermissions(): Promise<boolean> {
       return cameraResult.status === 'granted' && micResult === 'granted';
     }
 
-    console.log('[LiveKit] iOS microphone permission will be requested by WebView.');
+    console.log('[LiveKit] iOS microphone permission will be requested by the SDK.');
     return cameraResult.status === 'granted';
   } catch (e) {
     console.warn('[LiveKit] Permission request error:', e);
@@ -384,6 +384,40 @@ function MessageBubble({
   );
 }
 
+function HostVideoView({ facingFront: _facingFront }: { facingFront: boolean }) {
+  const { useLocalParticipant } = useCallStateHooks();
+  const localParticipant = useLocalParticipant();
+  if (!localParticipant) return null;
+  return (
+    <ParticipantView
+      participant={localParticipant}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+    />
+  );
+}
+
+function AudienceVideoView() {
+  const { useRemoteParticipants } = useCallStateHooks();
+  const remoteParticipants = useRemoteParticipants();
+  const host = remoteParticipants[0];
+  if (!host) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000d1a' }}>
+        <Text style={{ fontSize: 36, marginBottom: 10 }}>📡</Text>
+        <Text style={{ color: 'rgba(0,207,53,0.7)', fontSize: 13, fontWeight: '700', letterSpacing: 1 }}>
+          WAITING FOR HOST
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <ParticipantView
+      participant={host}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+    />
+  );
+}
+
 export default function LiveMomentRoomScreen() {
   const { momentId } = useLocalSearchParams<{ id: string; momentId: string }>();
   const router = useRouter();
@@ -639,27 +673,15 @@ export default function LiveMomentRoomScreen() {
   }, [momentId, streamClient, goLive]);
 
   const handleJoinStream = useCallback(async () => {
+    if (!streamClient) return;
     try {
-      const backendUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-      const token = await getAccessToken();
-      const res = await fetch(`${backendUrl}/api/stream/live-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ momentId: momentId, role: 'viewer' }),
-      });
-      if (res.ok) {
-        const json = await res.json() as { data: { token: string; apiKey: string; callId: string; userId: string; userName: string } };
-        setStreamToken(json.data.token);
-        setStreamApiKey(json.data.apiKey);
-        setStreamCallId(json.data.callId);
-      }
-    } catch {
-      // ignore
+      const call = streamClient.call('livestream', momentId);
+      await call.join();
+      setStreamCall(call);
+    } catch (e) {
+      console.warn('[Stream] handleJoinStream error:', e);
     }
-  }, [momentId]);
+  }, [momentId, streamClient]);
 
   const handlePickMedia = useCallback(() => {
     showMediaPicker({
@@ -712,6 +734,23 @@ export default function LiveMomentRoomScreen() {
     });
   }, [sendMessage]);
 
+  // Cleanup stream call on unmount
+  useEffect(() => {
+    return () => {
+      streamCall?.leave().catch(() => {});
+    };
+  }, [streamCall]);
+
+  // Auto-join viewers when the stream goes live
+  useEffect(() => {
+    const isCreatorCheck = moment?.creatorId === session?.user?.id;
+    const isNotLiveCheck = !moment?.isLive;
+    const isEndedCheck = moment?.status === 'ended' || timeRemaining === 'Ended';
+    if (!isCreatorCheck && !isNotLiveCheck && !streamCall && !isEndedCheck && momentId) {
+      handleJoinStream();
+    }
+  }, [moment?.isLive, moment?.status, moment?.creatorId, session?.user?.id, streamCall, momentId, timeRemaining, handleJoinStream]);
+
   const isCreator = moment?.creatorId === session?.user?.id;
   const isEnded = moment?.status === 'ended' || timeRemaining === 'Ended';
   const isNotLive = !moment?.isLive;
@@ -730,11 +769,6 @@ export default function LiveMomentRoomScreen() {
       </View>
     );
   }
-
-  const backendBaseUrl = (process.env.EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
-  const streamUrl = streamToken && streamApiKey && streamCallId
-    ? `${backendBaseUrl}/stream-room/${streamCallId}?token=${encodeURIComponent(streamToken)}&apiKey=${encodeURIComponent(streamApiKey)}&userId=${encodeURIComponent(session?.user?.id ?? '')}&userName=${encodeURIComponent((session?.user as any)?.name ?? 'User')}&role=${isCreator ? 'publisher' : 'viewer'}`
-    : null;
 
   const overlayContent = (
     <SafeAreaView
@@ -862,63 +896,25 @@ export default function LiveMomentRoomScreen() {
         </Text>
       ) : null}
 
-      {streamUrl && !isCreator ? (
-        <View
-          style={{
-            height: 260,
-            backgroundColor: '#000',
-            overflow: 'hidden',
-            borderBottomWidth: 1,
-            borderBottomColor: 'rgba(255,255,255,0.06)',
-          }}
-        >
-          <WebView
-            testID="stream-webview"
-            source={{ uri: streamUrl }}
-            style={{ flex: 1 }}
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsFullscreenVideo={false}
-            mediaCapturePermissionGrantType="grant"
-            allowsAirPlayForMediaPlayback={true}
-            originWhitelist={['*']}
-            mixedContentMode="always"
-            onMessage={(event: WebViewMessageEvent) => {
-              console.log('[LiveKit WebView]', event.nativeEvent.data);
+      {/* Viewer stream area: show audience video if connected, otherwise placeholder/join button */}
+      {!isCreator && !isEnded ? (
+        streamCall ? (
+          <View
+            style={{
+              height: 260,
+              backgroundColor: '#000',
+              overflow: 'hidden',
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(255,255,255,0.06)',
             }}
-            injectedJavaScript={`
-              (function() {
-                var origLog = console.log;
-                var origWarn = console.warn;
-                var origError = console.error;
-                console.log = function() {
-                  window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
-                  origLog.apply(console, arguments);
-                };
-                console.warn = function() {
-                  window.ReactNativeWebView.postMessage('[WARN] ' + Array.from(arguments).join(' '));
-                  origWarn.apply(console, arguments);
-                };
-                console.error = function() {
-                  window.ReactNativeWebView.postMessage('[ERROR] ' + Array.from(arguments).join(' '));
-                  origError.apply(console, arguments);
-                };
-                window.onerror = function(msg, src, line) {
-                  window.ReactNativeWebView.postMessage('[JSERROR] ' + msg + ' at ' + src + ':' + line);
-                };
-              })();
-              true;
-            `}
-          />
-        </View>
-      ) : null}
-
-      {!isCreator && !isEnded && (isNotLive || (!isNotLive && !streamToken)) ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 32 }}>📡</Text>
-          {isNotLive ? (
+          >
+            <StreamCall call={streamCall}>
+              <AudienceVideoView />
+            </StreamCall>
+          </View>
+        ) : isNotLive ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 32 }}>📡</Text>
             <Text
               style={{
                 color: 'rgba(255,255,255,0.35)',
@@ -931,69 +927,70 @@ export default function LiveMomentRoomScreen() {
             >
               Creator hasn't gone live yet
             </Text>
-          ) : (
-            <>
-              <Text
-                style={{
-                  color: 'rgba(255,255,255,0.6)',
-                  fontSize: 15,
-                  fontWeight: '600',
-                  marginTop: 12,
-                  textAlign: 'center',
-                  paddingHorizontal: 40,
-                }}
-              >
-                Stream is live!
+          </View>
+        ) : (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 24 }}>
+            <Text style={{ fontSize: 32 }}>📡</Text>
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.6)',
+                fontSize: 15,
+                fontWeight: '600',
+                marginTop: 12,
+                textAlign: 'center',
+                paddingHorizontal: 40,
+              }}
+            >
+              Stream is live!
+            </Text>
+            <Pressable
+              onPress={handleJoinStream}
+              style={{
+                marginTop: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: '#FF3B30',
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 24,
+                shadowColor: '#FF3B30',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.2,
+                shadowRadius: 5,
+                elevation: 8,
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>
+                JOIN LIVE
               </Text>
-              <Pressable
-                onPress={handleJoinStream}
-                style={{
-                  marginTop: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: '#FF3B30',
-                  paddingHorizontal: 24,
-                  paddingVertical: 12,
-                  borderRadius: 24,
-                  shadowColor: '#FF3B30',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 5,
-                  elevation: 8,
-                }}
-              >
-                <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>
-                  JOIN LIVE
-                </Text>
-              </Pressable>
-            </>
-          )}
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          testID="messages-scroll"
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {(messages ?? []).length === 0 ? (
-            <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>
-                No messages yet. Say something!
-              </Text>
-            </View>
-          ) : null}
-          {(messages ?? []).map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isOwn={msg.userId === session?.user?.id}
-            />
-          ))}
-        </ScrollView>
-      )}
+            </Pressable>
+          </View>
+        )
+      ) : null}
+
+      <ScrollView
+        ref={scrollRef}
+        testID="messages-scroll"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {(messages ?? []).length === 0 ? (
+          <View style={{ alignItems: 'center', paddingTop: 60 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>
+              No messages yet. Say something!
+            </Text>
+          </View>
+        ) : null}
+        {(messages ?? []).map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            isOwn={msg.userId === session?.user?.id}
+          />
+        ))}
+      </ScrollView>
 
       <View
         style={{ position: 'absolute', bottom: 100, right: 0, width: 120, height: 160 }}
@@ -1192,85 +1189,28 @@ export default function LiveMomentRoomScreen() {
   if (isCreator) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {/* Always show dark background for creator so chat is visible */}
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: '#0a0a12',
-          }}
-        />
+        {/* Full-screen stream view when live, otherwise dark background */}
+        {streamCall && !isNotLive ? (
+          <StreamCall call={streamCall}>
+            <HostVideoView facingFront={facingFront} />
+          </StreamCall>
+        ) : (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: '#0a0a12',
+            }}
+          />
+        )}
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.75)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
         {overlayContent}
-        {/* Small PIP stream preview in top-right corner when live */}
-        {streamUrl && !isNotLive ? (
-          <View
-            style={{
-              position: 'absolute',
-              top: 96,
-              right: 16,
-              width: 108,
-              height: 160,
-              borderRadius: 16,
-              overflow: 'hidden',
-              borderWidth: 2,
-              borderColor: '#FF3B30',
-              shadowColor: '#FF3B30',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 10,
-              elevation: 12,
-            }}
-          >
-            <WebView
-              source={{ uri: streamUrl }}
-              style={{ flex: 1 }}
-              mediaPlaybackRequiresUserAction={false}
-              allowsInlineMediaPlayback={true}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              allowsFullscreenVideo={false}
-              mediaCapturePermissionGrantType="grant"
-              allowsAirPlayForMediaPlayback={true}
-              originWhitelist={['*']}
-              mixedContentMode="always"
-              onMessage={(event: WebViewMessageEvent) => {
-                console.log('[LiveKit WebView creator]', event.nativeEvent.data);
-              }}
-              injectedJavaScript={`
-                (function() {
-                  var origLog = console.log;
-                  console.log = function() {
-                    window.ReactNativeWebView.postMessage('[LOG] ' + Array.from(arguments).join(' '));
-                    origLog.apply(console, arguments);
-                  };
-                })();
-                true;
-              `}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                top: 6,
-                left: 6,
-                backgroundColor: '#FF3B30',
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 6,
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }}>
-                LIVE
-              </Text>
-            </View>
-          </View>
-        ) : null}
       </View>
     );
   }
