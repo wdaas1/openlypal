@@ -28,7 +28,7 @@ export const LIGHT = {
   text: '#001935',
   subtext: '#5a7fa5',
   border: '#E2E8F0',
-  accent: '#00CF35',
+  accent: '#E53535',
   accentText: '#001935',
   inputBg: '#FFFFFF',
   danger: '#FF4E6A',
