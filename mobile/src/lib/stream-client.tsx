@@ -36,6 +36,12 @@ export function StreamVideoProvider({ children }: { children: React.ReactNode })
 
         if (!token || cancelled) return;
 
+        // Guard: native WebRTC module may not be available in dev builds
+        if (!StreamVideoClient || typeof StreamVideoClient !== 'function') {
+          console.warn('[Stream] StreamVideoClient not available - native WebRTC module missing');
+          return;
+        }
+
         streamClient = new StreamVideoClient({
           apiKey,
           user: { id: userId, name: userName },
