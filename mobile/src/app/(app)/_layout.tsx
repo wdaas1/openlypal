@@ -860,7 +860,7 @@ export default function AppLayout() {
             <Stack.Screen name="relationships/index" />
             <Stack.Screen name="profile-modules/index" />
             <Stack.Screen name="tag/[tag]" />
-            <Stack.Screen name="call/[id]" options={{ headerShown: false }} />
+            {/* <Stack.Screen name="call/[id]" options={{ headerShown: false }} /> */}{/* commented out — implement before publishing if you want the feature to be there */}
           </Stack>
         </Animated.View>
 

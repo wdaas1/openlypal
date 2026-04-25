@@ -138,17 +138,17 @@ function handleNotificationNavigation(
     case 'message':
       if (data.senderId) navigate(`/(app)/messenger/${data.senderId}`);
       break;
-    case 'incoming_call':
-      if (data.callId) {
-        const params = new URLSearchParams({ role: 'callee' });
-        if (data.callerName) params.set('callerName', String(data.callerName));
-        if (data.callerUsername) params.set('callerUsername', String(data.callerUsername));
-        if (data.callerAvatar) params.set('callerAvatar', String(data.callerAvatar));
-        if (data.callType) params.set('callType', String(data.callType));
-        if (data.callerId) params.set('callerId', String(data.callerId));
-        navigate(`/(app)/call/${data.callId}?${params.toString()}`);
-      }
-      break;
+    // case 'incoming_call': — commented out — implement before publishing if you want the feature to be there
+    //   if (data.callId) {
+    //     const params = new URLSearchParams({ role: 'callee' });
+    //     if (data.callerName) params.set('callerName', String(data.callerName));
+    //     if (data.callerUsername) params.set('callerUsername', String(data.callerUsername));
+    //     if (data.callerAvatar) params.set('callerAvatar', String(data.callerAvatar));
+    //     if (data.callType) params.set('callType', String(data.callType));
+    //     if (data.callerId) params.set('callerId', String(data.callerId));
+    //     navigate(`/(app)/call/${data.callId}?${params.toString()}`);
+    //   }
+    //   break;
     case 'follow':
       if (data.userId) navigate(`/(app)/user/${data.userId}`);
       break;
