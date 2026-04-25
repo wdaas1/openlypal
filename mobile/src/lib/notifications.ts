@@ -175,7 +175,7 @@ export function setupNotificationListeners(navigate: NavigateFn): () => void {
   const responseSubscription =
     Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
-      handleNotificationNavigation(data, navigate);
+      setTimeout(() => handleNotificationNavigation(data, navigate), 300);
     });
 
   // Return cleanup function

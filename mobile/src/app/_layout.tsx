@@ -139,7 +139,7 @@ function RootLayoutNav() {
     const navigate = (path: string) => router.push(path as never);
     cleanupListeners = setupNotificationListeners(navigate);
     // Delay cold-start navigation slightly to ensure the router is fully mounted
-    setTimeout(() => { handleColdStartNotification(navigate); }, 500);
+    setTimeout(() => { handleColdStartNotification(navigate); }, 1500);
 
     return () => {
       cleanupListeners?.();

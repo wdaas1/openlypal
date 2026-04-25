@@ -372,20 +372,17 @@ export default function CreateMomentScreen() {
           <Pressable
             testID="go-live-button"
             onPress={() => {
-              if (!canGoLive) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              createMutation.mutate();
+              router.push('/(app)/live-moments/coming-soon' as any);
             }}
-            disabled={!canGoLive}
             style={{
               borderRadius: 20,
               overflow: 'hidden',
-              opacity: canGoLive ? 1 : 0.4,
               shadowColor: '#00CF35',
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: canGoLive ? 0.2 : 0,
+              shadowOpacity: 0.2,
               shadowRadius: 5,
-              elevation: canGoLive ? 12 : 0,
+              elevation: 12,
               marginTop: 8,
             }}
           >
@@ -399,23 +396,17 @@ export default function CreateMomentScreen() {
                 gap: 10,
               }}
             >
-              {createMutation.isPending ? (
-                <ActivityIndicator color="#001935" />
-              ) : (
-                <>
-                  <Radio size={22} color="#001935" />
-                  <Text
-                    style={{
-                      color: '#001935',
-                      fontSize: 22,
-                      fontWeight: '900',
-                      letterSpacing: 3,
-                    }}
-                  >
-                    GO LIVE
-                  </Text>
-                </>
-              )}
+              <Radio size={22} color="#001935" />
+              <Text
+                style={{
+                  color: '#001935',
+                  fontSize: 22,
+                  fontWeight: '900',
+                  letterSpacing: 3,
+                }}
+              >
+                GO LIVE
+              </Text>
             </LinearGradient>
           </Pressable>
         </ScrollView>
