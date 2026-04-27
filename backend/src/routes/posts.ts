@@ -167,6 +167,15 @@ function mapReblogFeedItem(
   };
 }
 
+// Get IDs that the user has blocked or been blocked by
+async function getBlockedIds(userId: string): Promise<string[]> {
+  const blocks = await prisma.block.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  return blocks.map((b) => (b.blockerId === userId ? b.blockedId : b.blockerId));
+}
+
 // Build content sensitivity filter for a user's contentSensitivity preference
 function buildSensitivityFilter(contentSensitivity: string | null | undefined): Record<string, unknown> {
   const sensitivity = contentSensitivity ?? "safe";
@@ -208,6 +217,8 @@ postsRouter.get("/", async (c) => {
     return c.json({ data: likes.map((l) => mapPost(l.post as Parameters<typeof mapPost>[0], user.id)) });
   }
 
+  const blockedIds = user ? await getBlockedIds(user.id) : [];
+
   const posts = await prisma.post.findMany({
     where: {
       hidden: false,
@@ -215,6 +226,7 @@ postsRouter.get("/", async (c) => {
       type: { not: "live_recap" },
       ...(filterUserId ? { userId: filterUserId } : {}),
       ...(tag ? { tags: { contains: tag } } : {}),
+      ...(blockedIds.length > 0 ? { userId: { notIn: blockedIds } } : {}),
     },
     include: postInclude(user?.id),
     orderBy: { createdAt: "desc" },
@@ -224,6 +236,7 @@ postsRouter.get("/", async (c) => {
   // For the general feed (no userId filter and no tag filter), also include recent reblogs
   if (!filterUserId && !tag) {
     const reblogs = await prisma.reblog.findMany({
+      where: blockedIds.length > 0 ? { userId: { notIn: blockedIds } } : undefined,
       include: reblogFeedInclude(user?.id),
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -267,8 +280,15 @@ postsRouter.get("/feed/unfiltered", async (c) => {
   const user = c.get("user");
   const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
 
+  const blockedIds = user ? await getBlockedIds(user.id) : [];
+
   const posts = await prisma.post.findMany({
-    where: { hidden: false, roomId: null, type: { not: "live_recap" } },
+    where: {
+      hidden: false,
+      roomId: null,
+      type: { not: "live_recap" },
+      ...(blockedIds.length > 0 ? { userId: { notIn: blockedIds } } : {}),
+    },
     include: postInclude(user?.id),
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -284,11 +304,11 @@ postsRouter.get("/feed/following", async (c) => {
 
   if (!user) return c.json({ data: [] });
 
-  const following = await prisma.follow.findMany({
-    where: { followerId: user.id },
-    select: { followingId: true },
-  });
-  const followingIds = following.map((f) => f.followingId);
+  const [following, blockedIds] = await Promise.all([
+    prisma.follow.findMany({ where: { followerId: user.id }, select: { followingId: true } }),
+    getBlockedIds(user.id),
+  ]);
+  const followingIds = following.map((f) => f.followingId).filter((id) => !blockedIds.includes(id));
 
   if (followingIds.length === 0) return c.json({ data: [] });
 

@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '@/lib/auth/use-session';
+import { TERMS_KEY } from './terms';
 import {
   registerForPushNotificationsAsync,
   sendPushTokenToBackend,
@@ -284,6 +285,16 @@ function RootLayoutNav() {
 
     let cancelled = false;
     (async () => {
+      // Always check terms first — required before any navigation
+      const termsAccepted = await AsyncStorage.getItem(TERMS_KEY);
+      if (termsAccepted !== 'true') {
+        if (!cancelled) {
+          router.replace('/terms' as any);
+          SplashScreen.hideAsync();
+        }
+        return;
+      }
+
       if (session?.user) {
         // Read fresh from AsyncStorage every time instead of trusting React state.
         // On web (localStorage), the state can be stale after onboarding completes
@@ -323,6 +334,7 @@ function RootLayoutNav() {
     <ThemeProvider value={navTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="terms" />
         <Stack.Screen name="welcome" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />

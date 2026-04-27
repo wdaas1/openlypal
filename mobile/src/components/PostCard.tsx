@@ -60,10 +60,11 @@ interface PostCardProps {
 }
 
 const REPORT_REASONS: { label: string; category: string }[] = [
-  { label: 'Illegal content', category: 'illegal' },
-  { label: 'Abuse / harassment', category: 'abuse' },
   { label: 'Spam', category: 'spam' },
-  { label: 'Explicit content', category: 'explicit' },
+  { label: 'Abuse / harassment', category: 'abuse' },
+  { label: 'Nudity', category: 'nudity' },
+  { label: 'Violence', category: 'violence' },
+  { label: 'Other', category: 'other' },
 ];
 
 function isRecent(createdAt: string, thresholdMs: number): boolean {
@@ -336,6 +337,17 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
     },
     onError: () => {
       setReportError(true);
+    },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/api/users/${post.userId}/block`);
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
 
@@ -1188,6 +1200,28 @@ const PostCard = React.memo(function PostCard({ post, isVisible = true, videoKey
                     >
                       <Flag size={18} color="#FF4E6A" />
                       <Text style={{ color: theme.text, fontSize: 15, fontWeight: '500' }}>Report</Text>
+                    </Pressable>
+                    <Pressable
+                      testID="menu-block-button"
+                      onPress={() => {
+                        setMenuVisible(false);
+                        Alert.alert(
+                          'Block User',
+                          `Block @${post.user.username ?? post.user.name}? Their posts will be hidden and they won't be able to interact with you.`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Block',
+                              style: 'destructive',
+                              onPress: () => blockMutation.mutate(),
+                            },
+                          ]
+                        );
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, gap: 12 }}
+                    >
+                      <ShieldAlert size={18} color="#FF4E6A" />
+                      <Text style={{ color: '#FF4E6A', fontSize: 15, fontWeight: '500' }}>Block User</Text>
                     </Pressable>
                     <Pressable
                       testID="menu-not-interested-button"

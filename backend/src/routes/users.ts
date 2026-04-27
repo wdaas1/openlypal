@@ -691,4 +691,48 @@ usersRouter.patch("/me/notification-preferences", zValidator("json", z.object({
   return c.json({ data: updated });
 });
 
+// GET /blocked - List blocked users
+usersRouter.get("/blocked", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const blocks = await prisma.block.findMany({
+    where: { blockerId: user.id },
+    include: { blocked: { select: { id: true, name: true, username: true, image: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return c.json({ data: blocks.map((b) => b.blocked) });
+});
+
+// POST /:id/block - Toggle block/unblock
+usersRouter.post("/:id/block", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const blockedId = c.req.param("id");
+  if (blockedId === user.id) return c.json({ error: { message: "Cannot block yourself" } }, 400);
+
+  await ensureUserRow(user);
+
+  const existing = await prisma.block.findUnique({
+    where: { blockerId_blockedId: { blockerId: user.id, blockedId } },
+  });
+
+  if (existing) {
+    await prisma.block.delete({ where: { id: existing.id } });
+    return c.json({ data: { blocked: false } });
+  }
+
+  // Also unfollow both directions when blocking
+  await prisma.follow.deleteMany({
+    where: {
+      OR: [
+        { followerId: user.id, followingId: blockedId },
+        { followerId: blockedId, followingId: user.id },
+      ],
+    },
+  });
+
+  await prisma.block.create({ data: { blockerId: user.id, blockedId } });
+  return c.json({ data: { blocked: true } });
+});
+
 export { usersRouter };

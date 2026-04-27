@@ -12,7 +12,7 @@ const reportsRouter = new Hono<{ Variables: Variables }>();
 
 const reportSchema = z.object({
   postId: z.string(),
-  category: z.enum(["illegal", "abuse", "spam", "explicit"]),
+  category: z.enum(["illegal", "abuse", "spam", "explicit", "nudity", "violence", "other"]),
   reason: z.string().optional(),
 });
 
