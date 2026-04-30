@@ -1,10 +1,920 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Openly App</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Openly — Web App</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green: #00CF35;
+      --red: #FF4E6A;
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.13);
+      --text: #f0f0f0;
+      --muted: rgba(255,255,255,0.45);
+      --muted2: rgba(255,255,255,0.25);
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { cursor: pointer; border: none; outline: none; font-family: inherit; }
+
+    /* ── NAV ── */
+    nav#topnav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,10,0.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 600px; margin: 0 auto;
+      height: 52px; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 0 20px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 17px; font-weight: 700; color: var(--text);
+      letter-spacing: -0.3px; cursor: pointer;
+    }
+    .nav-links { display: flex; align-items: center; gap: 2px; list-style: none; }
+    .nav-btn {
+      background: none; color: var(--muted);
+      font-size: 14px; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .nav-btn.active { color: var(--text); background: rgba(255,255,255,0.07); }
+
+    /* ── PAGE ── */
+    .page { max-width: 600px; margin: 0 auto; padding: 0 0 80px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── LOADING ── */
+    .loading-wrap {
+      display: flex; align-items: center; justify-content: center; padding: 80px 0;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid rgba(0,207,53,0.2);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── AUTH ── */
+    .auth-wrap { max-width: 380px; margin: 60px auto 0; padding: 0 20px; }
+    .auth-logo {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; margin-bottom: 36px; text-align: center;
+    }
+    .auth-logo-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .auth-logo-sub { font-size: 13px; color: var(--muted); }
+    .auth-card {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 28px 24px;
+    }
+    .auth-tabs {
+      display: flex; background: var(--surface2);
+      border-radius: 10px; padding: 3px; margin-bottom: 22px;
+    }
+    .auth-tab {
+      flex: 1; padding: 8px; border-radius: 8px;
+      background: none; color: var(--muted);
+      font-size: 14px; font-weight: 600; transition: all 0.15s;
+    }
+    .auth-tab.active { background: var(--surface3); color: var(--text); }
+    .form-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+    .form-input {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 14px; font-family: inherit;
+      transition: border-color 0.15s; outline: none;
+    }
+    .form-input:focus { border-color: rgba(0,207,53,0.4); }
+    .form-input::placeholder { color: var(--muted2); }
+    .terms-row { display: flex; align-items: flex-start; gap: 9px; margin: 4px 0; }
+    .terms-row input[type=checkbox] { width: 15px; height: 15px; margin-top: 2px; accent-color: var(--green); flex-shrink: 0; }
+    .terms-row label { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .terms-row a { font-size: 13px; }
+    .btn-primary {
+      width: 100%; padding: 13px; border-radius: 10px;
+      background: var(--green); color: #000;
+      font-size: 14px; font-weight: 700; transition: all 0.15s; margin-top: 12px;
+    }
+    .btn-primary:hover:not(:disabled) { background: #00e83c; }
+    .btn-primary:disabled { background: rgba(0,207,53,0.3); color: rgba(0,0,0,0.4); cursor: not-allowed; }
+    .auth-switch { text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); }
+    .auth-switch button { background: none; color: var(--green); font-size: 13px; font-weight: 600; }
+    .form-error { color: var(--red); font-size: 13px; margin-top: 6px; text-align: center; }
+
+    /* ── FEED ── */
+    .post-card {
+      padding: 16px 20px; border-bottom: 1px solid var(--border); transition: background 0.1s;
+    }
+    .post-card:hover { background: rgba(255,255,255,0.02); }
+    .reblog-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted); margin-bottom: 10px;
+    }
+    .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #00CF35 0%, #00a02a 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #000;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .post-meta { flex: 1; min-width: 0; }
+    .post-name { font-size: 14px; font-weight: 700; }
+    .post-handle { font-size: 12px; color: var(--muted); }
+    .post-time { font-size: 12px; color: var(--muted2); flex-shrink: 0; }
+    .post-content {
+      font-size: 15px; line-height: 1.65; color: rgba(255,255,255,0.88);
+      margin-bottom: 12px; word-break: break-word; white-space: pre-wrap;
+    }
+    .post-image { width: 100%; border-radius: 10px; margin-bottom: 12px; display: block; }
+    .post-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .post-tag {
+      font-size: 12px; color: var(--green);
+      background: rgba(0,207,53,0.08); padding: 3px 9px; border-radius: 100px;
+    }
+    .post-actions { display: flex; align-items: center; gap: 18px; }
+    .action-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: none; color: var(--muted2); font-size: 13px;
+      transition: color 0.15s; padding: 0;
+    }
+    .action-btn:hover { color: var(--muted); }
+    .action-btn.liked { color: var(--red); }
+
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 60px 20px; gap: 10px; text-align: center; color: var(--muted);
+    }
+    .empty-state p { font-size: 14px; line-height: 1.6; }
+    .load-more {
+      display: block; width: 100%; padding: 18px;
+      background: none; color: var(--muted); font-size: 14px;
+      text-align: center; border-top: 1px solid var(--border);
+      transition: color 0.15s, background 0.15s;
+    }
+    .load-more:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+
+    /* ── COMPOSE ── */
+    .compose-wrap { padding: 20px 20px 0; border-bottom: 1px solid var(--border); }
+    .compose-inner { display: flex; gap: 12px; }
+    .compose-right { flex: 1; }
+    .compose-textarea {
+      width: 100%; min-height: 80px; background: none; border: none;
+      color: var(--text); font-size: 15px; font-family: inherit;
+      line-height: 1.6; resize: none; outline: none; padding: 2px 0;
+    }
+    .compose-textarea::placeholder { color: var(--muted2); }
+    .compose-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+    .compose-char { font-size: 12px; color: var(--muted2); }
+    .compose-char.warn { color: var(--red); }
+    .compose-submit {
+      padding: 8px 18px; border-radius: 8px;
+      background: var(--green); color: #000; font-size: 14px; font-weight: 700; transition: all 0.15s;
+    }
+    .compose-submit:hover:not(:disabled) { background: #00e83c; }
+    .compose-submit:disabled { background: rgba(0,207,53,0.3); color: rgba(0,0,0,0.4); cursor: not-allowed; }
+
+    /* ── PROFILE ── */
+    .profile-banner { height: 100px; background: linear-gradient(135deg, rgba(0,207,53,0.15) 0%, rgba(0,207,53,0.04) 100%); }
+    .profile-info { padding: 0 20px 20px; border-bottom: 1px solid var(--border); }
+    .profile-avatar-row {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-top: -26px; margin-bottom: 14px;
+    }
+    .profile-avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, #00CF35 0%, #00a02a 100%);
+      border: 3px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: #000; overflow: hidden;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-name { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 2px; }
+    .profile-handle { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .profile-bio { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.55; margin-bottom: 14px; }
+    .profile-stats { display: flex; gap: 24px; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 15px; font-weight: 700; display: block; }
+    .stat-label { font-size: 11px; color: var(--muted); }
+    .signout-btn {
+      padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      background: none; border: 1px solid var(--border2); color: var(--muted); transition: all 0.15s;
+    }
+    .signout-btn:hover { color: var(--red); border-color: rgba(255,78,106,0.3); }
+    .profile-section-title {
+      padding: 14px 20px 10px;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── VERIFY ── */
+    .verify-wrap { max-width: 380px; margin: 60px auto 0; padding: 0 20px; text-align: center; }
+    .verify-icon {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: rgba(0,207,53,0.1); margin: 0 auto 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .verify-title { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    .verify-sub { color: var(--muted); font-size: 14px; line-height: 1.65; margin-bottom: 22px; }
+    .verify-email-badge { color: var(--green); font-weight: 600; margin-bottom: 22px; display: block; }
+    .btn-outline {
+      width: 100%; padding: 12px; border-radius: 10px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text); font-size: 14px; font-weight: 600; margin-top: 8px; transition: all 0.15s;
+    }
+    .btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.07); }
+    .btn-outline:disabled { opacity: 0.45; cursor: not-allowed; }
+    .link-btn {
+      background: none; color: var(--muted); font-size: 13px;
+      margin-top: 18px; text-decoration: underline; text-underline-offset: 3px;
+    }
+
+    /* ── SKELETON ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,0.04) 50%, var(--surface2) 75%);
+      background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 6px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text); font-size: 13px; font-weight: 500;
+      padding: 10px 22px; border-radius: 100px; white-space: nowrap;
+      z-index: 999; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+    }
+    #toast.show { opacity: 1; }
+    #toast.success { border-color: rgba(0,207,53,0.3); color: var(--green); }
+    #toast.error { border-color: rgba(255,78,106,0.3); color: var(--red); }
+
+    @media (max-width: 640px) {
+      .nav-btn:not(.active) { display: none; }
+    }
+  </style>
 </head>
-<body style="background:black; color:white; font-family:sans-serif;">
-  <h1>🚀 Openly App is LIVE</h1>
-  <p>If you see this, /app is working.</p>
+<body>
+
+<nav id="topnav">
+  <div class="nav-inner">
+    <div class="nav-logo" onclick="navigate('feed')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24">
+        <path d="M16 3 A13 13 0 1 1 26 22" fill="none" stroke="#00CF35" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="4" fill="#00CF35"/>
+        <circle cx="27" cy="23" r="1.8" fill="#FF4E6A"/>
+      </svg>
+      Openly
+    </div>
+    <ul class="nav-links" id="navLinks" style="display:none">
+      <li><button class="nav-btn active" id="navFeed" onclick="navigate('feed')">Home</button></li>
+      <li><button class="nav-btn" id="navCreate" onclick="navigate('create')">Create Post</button></li>
+      <li><button class="nav-btn" id="navProfile" onclick="navigate('profile')">Profile</button></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Loading -->
+  <div class="screen active" id="screenLoading">
+    <div class="loading-wrap"><div class="spinner"></div></div>
+  </div>
+
+  <!-- Auth -->
+  <div class="screen" id="screenAuth">
+    <div class="auth-wrap">
+      <div class="auth-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="52" height="52">
+          <path d="M16 3 A13 13 0 1 1 26 22" fill="none" stroke="#00CF35" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="16" cy="16" r="4" fill="#00CF35"/>
+          <circle cx="27" cy="23" r="1.8" fill="#FF4E6A"/>
+        </svg>
+        <span class="auth-logo-name">Openly</span>
+        <span class="auth-logo-sub">Sign in to continue</span>
+      </div>
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin" onclick="setAuthMode('login')">Log in</button>
+          <button class="auth-tab" id="tabSignup" onclick="setAuthMode('signup')">Sign up</button>
+        </div>
+        <div id="authFormContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verify Email -->
+  <div class="screen" id="screenVerify">
+    <div class="verify-wrap">
+      <div class="verify-icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#00CF35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+      </div>
+      <div class="verify-title">Check your email</div>
+      <span class="verify-email-badge" id="verifyEmailLabel"></span>
+      <div class="verify-sub">We sent a verification link. Click it to activate your account. Check spam if you don't see it.</div>
+      <button class="btn-primary" id="verifyCheckBtn" onclick="checkVerified()">I've verified my email</button>
+      <div id="verifyMsg" style="margin-top:8px;font-size:13px;text-align:center;min-height:18px"></div>
+      <button class="btn-outline" id="verifyResendBtn" onclick="resendVerification()">Resend email</button>
+      <div id="verifyResendMsg" style="margin-top:6px;font-size:13px;text-align:center;min-height:18px"></div>
+      <button class="link-btn" onclick="doSignOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Feed -->
+  <div class="screen" id="screenFeed">
+    <div id="composeBox" style="display:none">
+      <div class="compose-wrap">
+        <div class="compose-inner">
+          <div class="avatar" id="composeAvatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0"></div>
+          <div class="compose-right">
+            <textarea class="compose-textarea" id="composeText" placeholder="What's on your mind?" maxlength="500" oninput="onComposeInput()"></textarea>
+            <div class="compose-footer">
+              <span class="compose-char" id="composeChar">0 / 500</span>
+              <button class="compose-submit" id="composeBtn" onclick="submitPost()" disabled>Post</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="feedList"></div>
+  </div>
+
+  <!-- Create Post -->
+  <div class="screen" id="screenCreate">
+    <div style="padding:28px 20px 0">
+      <div style="font-size:18px;font-weight:800;margin-bottom:20px">New Post</div>
+      <div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden">
+        <div style="padding:16px">
+          <textarea id="createText"
+            style="width:100%;min-height:140px;background:none;border:none;color:var(--text);font-size:15px;font-family:inherit;line-height:1.65;resize:none;outline:none"
+            placeholder="What's on your mind?" maxlength="500" oninput="onCreateInput()"></textarea>
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12px;color:var(--muted2)" id="createChar">0 / 500</span>
+          <button id="createBtn" onclick="submitCreatePost()"
+            style="padding:9px 20px;border-radius:9px;background:var(--green);color:#000;font-size:14px;font-weight:700;transition:all 0.15s;opacity:0.35;cursor:not-allowed"
+            disabled>Post</button>
+        </div>
+      </div>
+      <div id="createError" style="color:var(--red);font-size:13px;margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- Profile -->
+  <div class="screen" id="screenProfile">
+    <div id="profileContent"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── CONFIG ────────────────────────────────────────────
+  const BACKEND = 'https://preview-mhclvhwicuwu.dev.vibecode.run';
+  const MAX_CHARS = 500;
+  const TOKEN_KEY = 'openly_token';
+  const VERIFY_KEY = 'openly_verify_email';
+
+  // ── STATE ─────────────────────────────────────────────
+  let token = localStorage.getItem(TOKEN_KEY) || null;
+  let currentUser = null;
+  let authMode = 'login';
+  let feedPosts = [];
+  const FEED_LIMIT = 20;
+
+  // ── INIT ──────────────────────────────────────────────
+  (async () => {
+    showScreen('loading');
+    if (token) {
+      try {
+        const sess = await authFetch('/api/auth/get-session');
+        if (sess && sess.user) {
+          currentUser = sess.user;
+          if (!currentUser.emailVerified) {
+            showVerifyScreen(currentUser.email);
+          } else {
+            showNav();
+            navigate('feed');
+          }
+          return;
+        }
+      } catch {}
+      clearToken();
+    }
+    showScreen('auth');
+    renderAuthForm();
+  })();
+
+  // ── FETCH HELPERS ─────────────────────────────────────
+  async function apiFetch(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(BACKEND + path, { ...opts, headers });
+    if (res.status === 204) return null;
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error?.message || json?.message || `Error ${res.status}`);
+    return json.data !== undefined ? json.data : json;
+  }
+
+  async function authFetch(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(BACKEND + path, { ...opts, headers, credentials: 'include' });
+    if (res.status === 401) return null;
+    if (!res.ok) {
+      let msg = `Error ${res.status}`;
+      try { const j = await res.json(); msg = j?.message || j?.error?.message || msg; } catch {}
+      throw new Error(msg);
+    }
+    return res.json();
+  }
+
+  function clearToken() {
+    token = null;
+    localStorage.removeItem(TOKEN_KEY);
+  }
+
+  // ── NAVIGATION ────────────────────────────────────────
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById('screen' + cap(name));
+    if (el) el.classList.add('active');
+  }
+
+  function showNav() {
+    document.getElementById('navLinks').style.display = '';
+  }
+
+  function navigate(screen) {
+    if (!currentUser) { showScreen('auth'); renderAuthForm(); return; }
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('nav' + cap(screen));
+    if (btn) btn.classList.add('active');
+    if (screen === 'feed') showFeed();
+    else if (screen === 'create') showCreate();
+    else if (screen === 'profile') showProfile();
+  }
+
+  // ── AUTH ──────────────────────────────────────────────
+  function renderAuthForm() {
+    const c = document.getElementById('authFormContainer');
+    if (!c) return;
+    document.getElementById('tabLogin').classList.toggle('active', authMode === 'login');
+    document.getElementById('tabSignup').classList.toggle('active', authMode === 'signup');
+
+    if (authMode === 'login') {
+      c.innerHTML = `
+        <form id="authForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <input class="form-input" type="email" id="loginEmail" placeholder="Email" autocomplete="email" required/>
+            <input class="form-input" type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" minlength="6" required/>
+          </div>
+          <div id="authError" class="form-error" style="display:none"></div>
+          <button type="submit" class="btn-primary" id="authBtn">Log in</button>
+        </form>
+        <div class="auth-switch" style="margin-top:16px">
+          Don't have an account? <button onclick="setAuthMode('signup')">Sign up</button>
+        </div>`;
+    } else {
+      c.innerHTML = `
+        <form id="authForm" onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <input class="form-input" type="text" id="signupName" placeholder="Display name" autocomplete="name" required/>
+            <input class="form-input" type="email" id="signupEmail" placeholder="Email" autocomplete="email" required/>
+            <input class="form-input" type="password" id="signupPassword" placeholder="Password (min 6 chars)" autocomplete="new-password" minlength="6" required/>
+          </div>
+          <div class="terms-row">
+            <input type="checkbox" id="termsCheck" onchange="updateSignupBtn()"/>
+            <label for="termsCheck">I agree to the <a href="/terms" target="_blank">Terms</a> &amp; <a href="/privacy-policy" target="_blank">Privacy Policy</a></label>
+          </div>
+          <div id="authError" class="form-error" style="display:none"></div>
+          <button type="submit" class="btn-primary" id="authBtn" disabled>Create account</button>
+        </form>
+        <div class="auth-switch" style="margin-top:16px">
+          Already have an account? <button onclick="setAuthMode('login')">Log in</button>
+        </div>`;
+    }
+  }
+
+  function setAuthMode(mode) { authMode = mode; renderAuthForm(); }
+
+  function updateSignupBtn() {
+    const btn = document.getElementById('authBtn');
+    if (btn) btn.disabled = !document.getElementById('termsCheck')?.checked;
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPassword').value;
+    setAuthLoading(true);
+    try {
+      const res = await authFetch('/api/auth/sign-in/email', {
+        method: 'POST', body: JSON.stringify({ email, password: pass }),
+      });
+      if (!res || !res.token) throw new Error('Invalid email or password.');
+      token = res.token;
+      localStorage.setItem(TOKEN_KEY, token);
+      currentUser = res.user;
+      if (!currentUser.emailVerified) {
+        showVerifyScreen(email);
+      } else {
+        showNav();
+        navigate('feed');
+      }
+    } catch (err) {
+      setAuthError(err.message.includes('Invalid') || err.message.includes('password') || err.message.includes('credentials')
+        ? 'Invalid email or password.' : err.message);
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleSignup(e) {
+    e.preventDefault();
+    const name  = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const pass  = document.getElementById('signupPassword').value;
+    setAuthLoading(true);
+    try {
+      const suffix   = Math.floor(1000 + Math.random() * 9000);
+      const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) + suffix;
+      const res = await authFetch('/api/auth/sign-up/email', {
+        method: 'POST', body: JSON.stringify({ email, password: pass, name, username }),
+      });
+      if (!res) throw new Error('Sign up failed.');
+      if (res.token) { token = res.token; localStorage.setItem(TOKEN_KEY, token); }
+      currentUser = res.user || null;
+      showVerifyScreen(email);
+    } catch (err) {
+      const m = err.message;
+      setAuthError(m.includes('already') || m.includes('registered') || m.includes('exists')
+        ? 'An account with this email already exists.' : m);
+      setAuthLoading(false);
+    }
+  }
+
+  function setAuthLoading(on) {
+    const btn = document.getElementById('authBtn');
+    if (!btn) return;
+    btn.disabled = on;
+    btn.textContent = on ? 'Please wait…' : (authMode === 'login' ? 'Log in' : 'Create account');
+  }
+
+  function setAuthError(msg) {
+    const el = document.getElementById('authError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+
+  // ── VERIFY ────────────────────────────────────────────
+  function showVerifyScreen(email) {
+    localStorage.setItem(VERIFY_KEY, email || '');
+    showNav();
+    showScreen('verify');
+    const lbl = document.getElementById('verifyEmailLabel');
+    if (lbl) lbl.textContent = email || '';
+  }
+
+  async function checkVerified() {
+    const btn = document.getElementById('verifyCheckBtn');
+    const msg = document.getElementById('verifyMsg');
+    if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+    if (msg) msg.textContent = '';
+    try {
+      const sess = await authFetch('/api/auth/get-session');
+      if (sess?.user?.emailVerified) {
+        currentUser = sess.user;
+        if (sess.token) { token = sess.token; localStorage.setItem(TOKEN_KEY, token); }
+        localStorage.removeItem(VERIFY_KEY);
+        navigate('feed');
+      } else {
+        if (msg) { msg.textContent = 'Not verified yet — check your inbox.'; msg.style.color = 'var(--red)'; }
+        if (btn) { btn.disabled = false; btn.textContent = "I've verified my email"; }
+      }
+    } catch (err) {
+      if (msg) { msg.textContent = err.message; msg.style.color = 'var(--red)'; }
+      if (btn) { btn.disabled = false; btn.textContent = "I've verified my email"; }
+    }
+  }
+
+  async function resendVerification() {
+    const email = localStorage.getItem(VERIFY_KEY) || currentUser?.email || '';
+    const btn = document.getElementById('verifyResendBtn');
+    const msg = document.getElementById('verifyResendMsg');
+    if (!email) { if (msg) { msg.textContent = 'No email on record.'; msg.style.color = 'var(--red)'; } return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      await authFetch('/api/auth/send-verification-email', { method: 'POST', body: JSON.stringify({ email }) });
+      if (msg) { msg.textContent = 'Verification email sent!'; msg.style.color = 'var(--green)'; }
+      if (btn) btn.textContent = 'Sent!';
+      setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'Resend email'; } }, 30000);
+    } catch (err) {
+      if (msg) { msg.textContent = err.message; msg.style.color = 'var(--red)'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Resend email'; }
+    }
+  }
+
+  // ── SIGN OUT ──────────────────────────────────────────
+  async function doSignOut() {
+    try { await authFetch('/api/auth/sign-out', { method: 'POST' }); } catch {}
+    clearToken();
+    currentUser = null; feedPosts = [];
+    localStorage.removeItem(VERIFY_KEY);
+    authMode = 'login';
+    document.getElementById('navLinks').style.display = 'none';
+    showScreen('auth');
+    renderAuthForm();
+  }
+
+  // ── FEED ──────────────────────────────────────────────
+  async function showFeed() {
+    showScreen('feed');
+    feedPosts = [];
+    const listEl = document.getElementById('feedList');
+    const box = document.getElementById('composeBox');
+
+    box.style.display = currentUser ? 'block' : 'none';
+    if (currentUser) {
+      const av = document.getElementById('composeAvatar');
+      if (av) {
+        av.innerHTML = currentUser.image
+          ? `<img src="${esc(currentUser.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          : (currentUser.name || 'U').charAt(0).toUpperCase();
+      }
+    }
+
+    if (listEl) listEl.innerHTML = skeletons(4);
+    await loadFeed(false);
+  }
+
+  async function loadFeed(append) {
+    const listEl = document.getElementById('feedList');
+    if (!listEl) return;
+    if (append) {
+      const lb = document.getElementById('loadMoreBtn');
+      if (lb) { lb.disabled = true; lb.textContent = 'Loading…'; }
+    }
+    try {
+      const posts = await apiFetch(`/api/posts?limit=${FEED_LIMIT}`) || [];
+      feedPosts = append ? [...feedPosts, ...posts] : posts;
+      if (!append) listEl.innerHTML = '';
+      if (feedPosts.length === 0) {
+        listEl.innerHTML = `<div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <p>No posts yet.<br/>Be the first to post something!</p></div>`;
+        return;
+      }
+      listEl.innerHTML = feedPosts.map(renderPost).join('');
+      if (posts.length >= FEED_LIMIT) {
+        listEl.innerHTML += `<button class="load-more" id="loadMoreBtn" onclick="loadFeed(true)">Load more</button>`;
+      }
+    } catch (err) {
+      if (!append) listEl.innerHTML = `<div class="empty-state"><p style="color:var(--red)">${esc(err.message)}</p></div>`;
+    }
+  }
+
+  function renderPost(p) {
+    if (p._type === 'reblog') {
+      const rb = p.rebloggedBy || {};
+      return `<div class="post-card">
+        <div class="reblog-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+          ${esc(rb.name || rb.username || 'Someone')} reblogged
+        </div>
+        ${p.post ? renderPost(p.post) : ''}
+      </div>`;
+    }
+    const u = p.user || {};
+    const liked = p.isLiked || false;
+    const tags = (p.tags || []).filter(Boolean);
+    return `<div class="post-card" id="post-${esc(p.id)}">
+      <div class="post-header">
+        <div class="avatar">${u.image ? `<img src="${esc(u.image)}" alt="" loading="lazy" onerror="this.style.display='none'">` : (u.name || 'U').charAt(0).toUpperCase()}</div>
+        <div class="post-meta">
+          <div class="post-name">${esc(u.name || 'Unknown')}</div>
+          <div class="post-handle">@${esc(u.username || 'user')}</div>
+        </div>
+        <span class="post-time">${timeAgo(p.createdAt)}</span>
+      </div>
+      ${p.content ? `<div class="post-content">${esc(p.content)}</div>` : ''}
+      ${p.imageUrl ? `<img class="post-image" src="${esc(p.imageUrl)}" alt="" loading="lazy">` : ''}
+      ${tags.length ? `<div class="post-tags">${tags.map(t => `<span class="post-tag">#${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="post-actions">
+        <button class="action-btn ${liked ? 'liked' : ''}" id="like-${esc(p.id)}" onclick="toggleLike('${esc(p.id)}',${liked})">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="${liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span id="lc-${esc(p.id)}">${p.likeCount || 0}</span>
+        </button>
+        <span class="action-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          ${p.commentCount || 0}
+        </span>
+        <span class="action-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+          ${p.reblogCount || 0}
+        </span>
+      </div>
+    </div>`;
+  }
+
+  async function toggleLike(id, cur) {
+    if (!currentUser) { toast('Log in to like posts', 'error'); return; }
+    const btn = document.getElementById(`like-${id}`);
+    const cnt = document.getElementById(`lc-${id}`);
+    if (!btn || !cnt) return;
+    const next = !cur;
+    btn.classList.toggle('liked', next);
+    btn.querySelector('svg')?.setAttribute('fill', next ? 'currentColor' : 'none');
+    cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') + (next ? 1 : -1));
+    btn.onclick = () => toggleLike(id, next);
+    try { await apiFetch(`/api/posts/${id}/like`, { method: 'POST' }); }
+    catch {
+      btn.classList.toggle('liked', cur);
+      btn.querySelector('svg')?.setAttribute('fill', cur ? 'currentColor' : 'none');
+      cnt.textContent = Math.max(0, parseInt(cnt.textContent || '0') + (cur ? 1 : -1));
+      btn.onclick = () => toggleLike(id, cur);
+    }
+  }
+
+  // ── COMPOSE ───────────────────────────────────────────
+  function onComposeInput() {
+    const ta = document.getElementById('composeText');
+    const cc = document.getElementById('composeChar');
+    const btn = document.getElementById('composeBtn');
+    if (!ta || !cc || !btn) return;
+    const n = ta.value.length;
+    cc.textContent = `${n} / ${MAX_CHARS}`;
+    cc.classList.toggle('warn', n > MAX_CHARS * 0.88);
+    btn.disabled = n === 0 || n > MAX_CHARS;
+  }
+
+  async function submitPost() {
+    const content = document.getElementById('composeText')?.value.trim();
+    if (!content) return;
+    const btn = document.getElementById('composeBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    try {
+      await apiFetch('/api/posts', { method: 'POST', body: JSON.stringify({ content }) });
+      document.getElementById('composeText').value = '';
+      onComposeInput();
+      toast('Post created!', 'success');
+      await showFeed();
+    } catch (err) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Post'; }
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── CREATE SCREEN ─────────────────────────────────────
+  function showCreate() {
+    showScreen('create');
+    const ta = document.getElementById('createText');
+    if (ta) ta.value = '';
+    onCreateInput();
+  }
+
+  function onCreateInput() {
+    const ta = document.getElementById('createText');
+    const cc = document.getElementById('createChar');
+    const btn = document.getElementById('createBtn');
+    if (!ta || !cc || !btn) return;
+    const n = ta.value.length;
+    cc.textContent = `${n} / ${MAX_CHARS}`;
+    const ok = n > 0 && n <= MAX_CHARS;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.35';
+    btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
+  }
+
+  async function submitCreatePost() {
+    const content = document.getElementById('createText')?.value.trim();
+    if (!content) return;
+    const btn = document.getElementById('createBtn');
+    const err = document.getElementById('createError');
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    if (err) err.textContent = '';
+    try {
+      await apiFetch('/api/posts', { method: 'POST', body: JSON.stringify({ content }) });
+      toast('Post created!', 'success');
+      navigate('feed');
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Post'; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+      if (err) err.textContent = e.message;
+    }
+  }
+
+  // ── PROFILE ───────────────────────────────────────────
+  async function showProfile() {
+    showScreen('profile');
+    const el = document.getElementById('profileContent');
+    if (el) el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div></div>`;
+    try {
+      const [profile, posts] = await Promise.all([
+        apiFetch('/api/users/me'),
+        apiFetch(`/api/posts?userId=me&limit=20`).catch(() => []),
+      ]);
+      const userPosts = Array.isArray(posts) ? posts : [];
+      if (el) el.innerHTML = `
+        <div class="profile-banner"></div>
+        <div class="profile-info">
+          <div class="profile-avatar-row">
+            <div class="profile-avatar">
+              ${profile.image ? `<img src="${esc(profile.image)}" alt="" loading="lazy">` : (profile.name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <button class="signout-btn" onclick="doSignOut()">Sign out</button>
+          </div>
+          <div class="profile-name">${esc(profile.name || '')}</div>
+          <div class="profile-handle">@${esc(profile.username || profile.email || '')}</div>
+          ${profile.bio ? `<div class="profile-bio">${esc(profile.bio)}</div>` : ''}
+          <div class="profile-stats">
+            <div class="stat"><span class="stat-num">${profile.postCount ?? userPosts.length}</span><span class="stat-label">Posts</span></div>
+            <div class="stat"><span class="stat-num">${profile.followerCount ?? 0}</span><span class="stat-label">Followers</span></div>
+            <div class="stat"><span class="stat-num">${profile.followingCount ?? 0}</span><span class="stat-label">Following</span></div>
+          </div>
+        </div>
+        <div class="profile-section-title">Posts</div>
+        <div>${userPosts.length === 0
+          ? `<div class="empty-state"><p>No posts yet.</p></div>`
+          : userPosts.map(renderPost).join('')}
+        </div>`;
+    } catch (e) {
+      if (el) el.innerHTML = `<div class="empty-state"><p style="color:var(--red)">${esc(e.message)}</p></div>`;
+    }
+  }
+
+  // ── TOAST ─────────────────────────────────────────────
+  let _toastTimer;
+  function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    clearTimeout(_toastTimer);
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── SKELETON ──────────────────────────────────────────
+  function skeletons(n) {
+    return Array.from({ length: n }, () => `
+      <div class="post-card" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="skeleton" style="height:12px;width:38%"></div>
+            <div class="skeleton" style="height:10px;width:22%"></div>
+          </div>
+        </div>
+        <div class="skeleton" style="height:14px;width:90%"></div>
+        <div class="skeleton" style="height:14px;width:68%"></div>
+      </div>`).join('');
+  }
+
+  // ── UTILS ─────────────────────────────────────────────
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const d = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (d < 60) return `${d}s`;
+    if (d < 3600) return `${Math.floor(d/60)}m`;
+    if (d < 86400) return `${Math.floor(d/3600)}h`;
+    if (d < 2592000) return `${Math.floor(d/86400)}d`;
+    return new Date(iso).toLocaleDateString();
+  }
+
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+</script>
 </body>
 </html>
